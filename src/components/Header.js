@@ -367,7 +367,7 @@ const Header = () => {
 
 export default Header;
 */
-
+/*
 import React from 'react';
 import { Menu } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -447,17 +447,17 @@ const Header = () => {
         boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
       }}>
         
-        {/* LEFT SIDE */}
+        {/* LEFT SIDE *}
         <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
           
-          {/* Logo */}
+          {/* Logo *}
           <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
             <img 
               src={logoSrc} 
               alt="Odessey Logo" 
               style={{ height: '40px', width: 'auto', objectFit: 'contain' }} 
             />
-            {/* Remove text if your logo already has it, otherwise keep this: */}
+            {/* Remove text if your logo already has it, otherwise keep this: *}
             <span style={{ fontSize: '20px', fontWeight: 'bold', color: 'white' }}>Odessey</span>
           </div>
 
@@ -470,7 +470,7 @@ const Header = () => {
           </nav>
         </div>
 
-        {/* RIGHT SIDE */}
+        {/* RIGHT SIDE *}
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <nav style={{ display: 'flex', gap: '20px' }}>
             {navLinks.map((link) => (
@@ -481,6 +481,172 @@ const Header = () => {
           </nav>
 
           <button style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '4px' }}>
+            <Menu size={24} />
+          </button>
+        </div>
+
+      </div>
+    </header>
+  );
+};
+
+export default Header;
+*/
+
+import React, { useState, useEffect } from 'react';
+import { Menu } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+
+// Import your logo
+import logoSrc from '/Users/sahilgupta/OdesseyWeb/odessey-web/src/Odesseylogo/logo_odessey.png'; 
+
+const Header = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // 👇 1. State to track scrolling
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // 👇 2. Listen for scroll events
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 50) {
+        setIsScrolled(true); // User has scrolled down -> Turn White
+      } else {
+        setIsScrolled(false); // User is at top -> Stay Transparent
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const navLinks = [
+    { name: 'Our Lodges', href: '/lodges' },
+    { name: 'Experiences', href: '/experiences' },
+    { name: 'Our Mission', href: '/mission' }
+  ];
+
+  const leftNavLinks = [
+    { name: 'Plan your trip', href: '/plan' },
+    { name: 'Story', href: '/story' },
+    { name: 'Itinerary', href: '/itinerary' }
+  ];
+
+  // 👇 3. Dynamic Styles based on 'isScrolled'
+  const textColor = isScrolled ? '#111827' : 'white'; // Black if scrolled, White if top
+  const glassBackground = isScrolled 
+    ? 'rgba(255, 255, 255, 0.95)' // Solid White (High visibility)
+    : 'rgba(255, 255, 255, 0.1)'; // Transparent Glass
+
+  const linkStyle = {
+    color: textColor,
+    textDecoration: 'none',
+    fontSize: '14px',
+    fontWeight: '500',
+    padding: '8px 12px',
+    borderRadius: '8px',
+    transition: 'color 0.3s ease', // Smooth color change
+    cursor: 'pointer'
+  };
+
+  const handleNavClick = (href) => {
+    if (href.startsWith('/#')) {
+      const id = href.split('#')[1];
+      if (location.pathname !== '/') {
+        navigate('/');
+        setTimeout(() => {
+          document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      } else {
+        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      navigate(href);
+    }
+  };
+
+  return (
+    <header style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 50,
+      padding: '20px',
+      transition: 'padding 0.3s ease' // Smooth transition for padding if needed
+    }}>
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
+        
+        // Dynamic Background
+        backgroundColor: glassBackground,
+        backdropFilter: 'blur(10px)',
+        
+        // Dynamic Border
+        border: isScrolled ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255, 255, 255, 0.2)',
+        
+        // Dynamic Shadow
+        boxShadow: isScrolled ? '0 4px 20px rgba(0,0,0,0.08)' : '0 4px 6px rgba(0,0,0,0.05)',
+        
+        borderRadius: '16px',
+        padding: '10px 24px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        transition: 'all 0.3s ease'
+      }}>
+        
+        {/* LEFT SIDE */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+          
+          {/* LOGO */}
+          <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+            <img 
+              src={logoSrc} 
+              alt="Odessey Logo" 
+              style={{ height: '40px', width: 'auto', objectFit: 'contain' }} 
+            />
+            {/* Dynamic Logo Text Color */}
+            <span style={{ fontSize: '20px', fontWeight: 'bold', color: textColor, transition: 'color 0.3s ease' }}>
+              Odessey
+            </span>
+          </div>
+
+          <nav style={{ display: 'flex', gap: '20px' }}>
+            {leftNavLinks.map((link) => (
+              <span 
+                key={link.name} 
+                onClick={() => handleNavClick(link.href)} 
+                style={linkStyle}
+                onMouseEnter={(e) => e.target.style.backgroundColor = isScrolled ? '#f3f4f6' : 'rgba(255,255,255,0.2)'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+              >
+                {link.name}
+              </span>
+            ))}
+          </nav>
+        </div>
+
+        {/* RIGHT SIDE */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <nav style={{ display: 'flex', gap: '20px' }}>
+            {navLinks.map((link) => (
+              <span 
+                key={link.name} 
+                onClick={() => handleNavClick(link.href)} 
+                style={linkStyle}
+                onMouseEnter={(e) => e.target.style.backgroundColor = isScrolled ? '#f3f4f6' : 'rgba(255,255,255,0.2)'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+              >
+                {link.name}
+              </span>
+            ))}
+          </nav>
+
+          {/* Dynamic Menu Icon Color */}
+          <button style={{ background: 'none', border: 'none', color: textColor, cursor: 'pointer', padding: '4px', transition: 'color 0.3s ease' }}>
             <Menu size={24} />
           </button>
         </div>

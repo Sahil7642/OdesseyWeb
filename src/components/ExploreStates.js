@@ -186,12 +186,42 @@ const ExploreStates = () => {
 
   // Reliable Image List
   const stateImages = [
-    "https://images.unsplash.com/photo-1532375810709-75b1da00537c?auto=format&fit=crop&w=600&q=80", 
-    "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=600&q=80", 
-    "https://images.unsplash.com/photo-1519955266818-0231b63402bc?auto=format&fit=crop&w=600&q=80", 
-    "https://s7ap1.scene7.com/is/image/incredibleindia/1-varkala-cliff-varkala-kerala-attr-hero?qlt=82&ts=1742154423234", 
-    "https://images.unsplash.com/photo-1514222134-b57cbb8ce073?auto=format&fit=crop&w=600&q=80", 
-    "https://images.unsplash.com/photo-1598324789736-4861f89564a0?auto=format&fit=crop&w=600&q=80"
+    "https://www.indiantempletour.com/wp-content/uploads/2022/08/Andaman-and-Nicobar-Islands-Package-1.jpg", //1. Andaman & Nicobar Islands
+    "https://etimg.etb2bimg.com/photo/89314482.cms", //2. Andhra Pradesh
+    "https://static.toiimg.com/thumb/91692790/Arunachal-Dirang-Monastery.jpg?width=1200&height=900", //Arunchal Pradesh
+    "https://www.kaziranganationalpark-india.com/blog/wp-content/uploads/2025/04/majuli-island.jpg", //Assam
+    "https://upload.wikimedia.org/wikipedia/commons/d/dd/Temple_No.-_3%2C_Nalanda_Archaeological_Site.jpg", //Bihar
+    "https://chandigarhtourism.in/images/places-to-vist/headers/chandigarh-local-sightseeing-tour-packages-header-chandigarh-tourism.jpg.jpg", //Chandigarh
+    "https://portal-tourism.cgstate.gov.in/files/Chitrakote%20Waterfall(1).JPG", //Chattisgrah
+    "https://s7ap1.scene7.com/is/image/incredibleindia/2-diu-fort-diu-attr-hero-1?qlt=82&ts=1726737809175", //DNHDD
+    "https://static.toiimg.com/photo/msid-88070906,width-96,height-65.cms", //Delhi
+    "https://images.financialexpressdigital.com/2024/01/goa-tourism.jpg", // Goa
+    "https://www.gujarattourism.com/content/dam/gujrattourism/images/home_page/SOU.jpg", //Gujarat
+    "https://haryanatourism.gov.in/wp-content/uploads/2024/06/KURUKSHETRA.jpg", //Haryana
+    "https://www.naturetravelagency.com/uploads/1724499766best%20time%20to%20visit%20himachal%20Pradesh%20for%20snowfall.png", // Himachal Pradesh
+    "https://www.peakadventuretour.com/assets/imgs/kashmir-tourism-01.webp", //Jammu and Kashmir
+    "https://s7ap1.scene7.com/is/image/incredibleindia/jonha-falls-ranchi-jharkhand-new?qlt=82&ts=1727010871094", // Jharkhand
+    "https://www.delhitourism.com/images/destination/5e5f7e1a005ce1.jpg", //Karnataka
+    "https://www.ekeralatourism.net/wp-content/uploads/2018/03/Alleppey.jpg", //Kerala
+    "https://etimg.etb2bimg.com/photo/77779116.cms", //Ladakh
+    "https://www.lakshadweeptoursandtravels.com/images/banner-slide-2.jpg", // Lakshadweep
+    "https://www.bandhavgarh-national-park.com/images/Khajuraho_2.jpg", // Madhya Pradesh
+    "https://www.clubmahindra.com/blog/media/section_images/shuttersto-2b0161eaf6ec9f1.jpg", // Maharashtra
+    "https://manipurtourism.gov.in/wp-content/uploads/2020/08/Pakhangba.jpg", // Manipur
+    "https://chalotravellers.com/wp-content/uploads/2024/08/Dawki-Shnongpdeng-meghalaya.jpg", // Meghalaya
+    "https://mizoramtourism.com/post_images/673ac0a2656b5_627debbb4e724_DD-1808.jpg", // Mizoram
+    "https://s7ap1.scene7.com/is/image/incredibleindia/dimapur-nagaland-travel-masthead-hero?qlt=82&ts=1727368339099", // Nagaland
+    "https://www.transformingtravels.com/wp-content/uploads/2025/10/Odisha-tourism-1920x960.jpg", // Odisha
+    "https://media.assettype.com/outlooktraveller%2F2024-02%2F10e4c7c9-ca10-4359-87c0-925664bf69b9%2Fshutterstock_1967101996.jpg?rect=1079%2C0%2C1688%2C2250", // Puducherry
+    "https://images.unsplash.com/photo-1514222134-b57cbb8ce073?auto=format&fit=crop&w=600&q=80", // Punjab
+    "https://s7ap1.scene7.com/is/image/incredibleindia/2-mehrangarh-fort-jodhpur-rajasthan-city-hero?qlt=82&ts=1726660925514", // Rajasthan
+    "https://www.indianholiday.com/wordpress/wp-content/uploads/2025/09/Best-Places-to-Visit-in-Sikkim.jpg", //Sikkim
+    "https://s7ap1.scene7.com/is/image/incredibleindia/1-meenakshi-amman-temple-madurai-tamil-nadu-attr-hero?qlt=82&ts=1726654442664", // Tamil Nadu
+    "https://www.fabhotels.com/blog/wp-content/uploads/2019/02/Golconda-Fort.jpg", // Telangana
+    "https://tripuratourism.gov.in/images/tour/1661759345/80.jpg", // Tripura
+    "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=600&q=80", // Uttar Pradesh
+    "https://upload.wikimedia.org/wikipedia/commons/8/83/Auli_Himalayas.jpg",  // Uttarakhand
+    "https://hblimg.mmtcdn.com/content/hubble/img/dest_img/mmt/activities/m_Kolkata_dest_landscape_l_956_1435.jpg", // West Bengal
   ];
 
   useEffect(() => {

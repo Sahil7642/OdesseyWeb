@@ -11,16 +11,16 @@ const TravelerStories = () => {
       name: "Ananya Sharma",
       location: "Spiti Valley, Himachal",
       avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80",
-      image: "https://images.unsplash.com/photo-1579619623193-4e3113110593?auto=format&fit=crop&w=600&q=80",
+      image: "https://tripstorz.com/_astro/key-monastery-in-spiti-valley-during-winter.CLBQd5yK_Z2dSSsR.jpg",
       title: "Finding Silence in the Mountains",
       snippet: "The silence in Spiti isn't empty; it's full of answers. Living with the locals in a mud house changed how I view luxury..."
     },
     {
       id: 2,
-      name: "Rahul Verma",
+      name: "Rahul Mehta",
       location: "Gokarna, Karnataka",
       avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80",
-      image: "https://images.unsplash.com/photo-1596309873994-4d1012117565?auto=format&fit=crop&w=600&q=80",
+      image: "https://s7ap1.scene7.com/is/image/incredibleindia/1-om-beach-gokarna-karnataka-city-hero?qlt=82&ts=1726720866389",
       title: "Beyond the Beaches",
       snippet: "Gokarna is more than just beaches. I hiked the cliff trails at sunrise and discovered a hidden temple that isn't on any map..."
     },
@@ -29,16 +29,16 @@ const TravelerStories = () => {
       name: "Priya & Amit",
       location: "Mawlynnong, Meghalaya",
       avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
-      image: "https://images.unsplash.com/photo-1590456206869-d34346e92f23?auto=format&fit=crop&w=600&q=80",
+      image: "https://www.esikkimtourism.in/wp-content/uploads/2018/07/Meghalaya-Mawlynnong.jpg",
       title: "Walking on Living Roots",
       snippet: "The living root bridges are nature's engineering marvel. We stayed in a homestay where the host cooked us a bamboo feast..."
     },
     {
       id: 4,
-      name: "David Lee",
+      name: "David Mathew",
       location: "Varanasi, UP",
       avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
-      image: "https://images.unsplash.com/photo-1561361513-2d000a50f0dc?auto=format&fit=crop&w=600&q=80",
+      image: "https://www.indianpanorama.in/assets/images/tourpackages/banner/holy-varanasi.webp",
       title: "Colors of the Ghats",
       snippet: "Varanasi is an assault on the senses in the best way possible. The evening Aarti ceremony was a spiritual experience I'll never forget..."
     }

@@ -152,7 +152,7 @@ function App() {
 export default App;
 
 */
-
+/*
 import React, { useState } from "react";
 // 👇 1. Import Router Components
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
@@ -187,14 +187,13 @@ function App() {
         <Header />
         
         <Routes>
-          {/* 👇 ROUTE 1: The Main Home Page */}
+          {/* 👇 ROUTE 1: The Main Home Page *}
           <Route path="/" element={
             <>
               <HeroSection onSearch={handleSearch} /> 
               <ExploreStates />
               <TravellerTypes />
               <ExperienceGrid />
-              <TravelerStories />
               <div id="traveler-diaries">
                 <TravelerStories />
               </div>
@@ -204,9 +203,89 @@ function App() {
             </>
           } />
 
-          {/* 👇 ROUTE 2: The New State Detail Page */}
-          {/* ":stateCode" is a variable (like "GA" or "MH") that we pass to the page */}
+          {/* 👇 ROUTE 2: The New State Detail Page *}
+          {/* ":stateCode" is a variable (like "GA" or "MH") that we pass to the page *}
           <Route path="/state/:stateCode" element={<StateDetails />} />
+        </Routes>
+
+        <Footer />
+  
+      </div>
+    </Router>
+  );
+}
+
+export default App;
+*/
+
+import React, { useState } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import "./index.css"; 
+
+// Existing Components
+import Header from "./components/Header";
+import Footer from "./components/Footer";
+import HeroSection from "./components/HeroSection"; 
+import ExploreStates from "./components/ExploreStates"; 
+import TravelerTypes from "./components/TravellerTypes";
+import ExperienceGrid from "./components/ExperienceGrid";
+import TravelerStories from "./components/TravelerStories";
+import SearchResults from "./components/SearchResults";
+import StateDetails from "./components/StateDetails"; 
+
+// 👇 NEW PAGES (We will create these next)
+import PlanTrip from "./pages/PlanTrip";
+import StoriesPage from "./pages/StoriesPage";
+import ItinerariesPage from "./pages/ItinerariesPage";
+import LodgesPage from "./pages/LodgesPage";
+import ExperiencesPage from "./pages/ExperiencesPage";
+import MissionPage from "./pages/MissionPage";
+
+function App() {
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = (place) => {
+    setSearchQuery(place.name);
+    setSearchResults([place]);
+    setTimeout(() => {
+      document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  return (
+    <Router>
+      <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
+        <Header />
+        
+        <Routes>
+          {/* HOME PAGE */}
+          <Route path="/" element={
+            <>
+              <HeroSection onSearch={handleSearch} /> 
+              <ExploreStates />
+              <TravelerTypes />
+              <ExperienceGrid />
+              <div id="traveler-diaries">
+                <TravelerStories />
+              </div>
+              <div id="search-results">
+                <SearchResults searchQuery={searchQuery} searchResults={searchResults} />
+              </div>
+            </>
+          } />
+          
+          {/* STATE DETAILS PAGE */}
+          <Route path="/state/:stateCode" element={<StateDetails />} />
+
+          {/* 👇 NEW ROUTES FOR HEADER LINKS */}
+          <Route path="/plan" element={<PlanTrip />} />
+          <Route path="/story" element={<StoriesPage />} />
+          <Route path="/itinerary" element={<ItinerariesPage />} />
+          <Route path="/lodges" element={<LodgesPage />} />
+          <Route path="/experiences" element={<ExperiencesPage />} />
+          <Route path="/mission" element={<MissionPage />} />
+
         </Routes>
 
         <Footer />
