@@ -844,8 +844,33 @@ const StateDetails = () => {
   const [displayName, setDisplayName] = useState("");
   const [wikiData, setWikiData] = useState(null);
   const [subDestinations, setSubDestinations] = useState([]);
+  const [relatedDestinations, setRelatedDestinations] = useState([]);
+  const [selectedRelatedDestination, setSelectedRelatedDestination] = useState(null);
+  const [selectedRelatedData, setSelectedRelatedData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [summarizing, setSummarizing] = useState(false);
+
+  // --- HELPER: FIND 3 MATCHING DESTINATIONS ---
+  const findRelatedDestinations = (currentDestination) => {
+    const allDestinations = [];
+    Object.entries(placeDatabase).forEach(([state, places]) => {
+      places.forEach(place => {
+        allDestinations.push({
+          name: place.name,
+          detail: place.detail,
+          state: state
+        });
+      });
+    });
+    
+    // Filter out the current destination and get 3 random ones
+    const filtered = allDestinations.filter(d => 
+      d.name.toLowerCase() !== currentDestination.toLowerCase()
+    );
+    
+    // Shuffle and take first 3
+    return filtered.sort(() => Math.random() - 0.5).slice(0, 3);
+  };
 
   // --- HELPER: SUMMARIZE TEXT USING OLLAMA ---
   const summarizeWithOllama = async (text) => {
@@ -898,6 +923,18 @@ const StateDetails = () => {
       if (pageId && pageId !== "-1") {
         const page = pages[pageId];
         
+        // Check if the extract has sufficient content (minimum 200 characters)
+        const extractLength = page.extract ? page.extract.trim().length : 0;
+        if (extractLength < 200) {
+          return {
+            title: page.title,
+            extract: null,
+            image: page.thumbnail ? page.thumbnail.source : null,
+            url: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title)}`,
+            insufficientContent: true
+          };
+        }
+        
         // 3. Summarize Wikipedia extract using Ollama
         let summarizedText = page.extract; // Fallback to original if summarization fails
         if (page.extract) {
@@ -911,7 +948,8 @@ const StateDetails = () => {
           title: page.title,
           extract: summarizedText,
           image: page.thumbnail ? page.thumbnail.source : null,
-          url: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title)}`
+          url: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title)}`,
+          insufficientContent: false
         };
       }
     } catch (error) {
@@ -951,6 +989,12 @@ const StateDetails = () => {
         searchName.toLowerCase().includes(k.toLowerCase())
       );
       setSubDestinations(dbKey ? placeDatabase[dbKey] : []);
+
+      // 4. If Wikipedia data is null or insufficient, find related destinations
+      if (!wikiResult || wikiResult.insufficientContent) {
+        const related = findRelatedDestinations(searchName);
+        setRelatedDestinations(related);
+      }
       
       setLoading(false);
     };
@@ -967,7 +1011,9 @@ const StateDetails = () => {
 
   // Fallback Values
   const heroImage = wikiData?.image || `https://source.unsplash.com/random/1200x500?${displayName},india,tourism`;
-  const description = wikiData?.extract || `Welcome to ${displayName}. While we couldn't retrieve the latest encyclopedia entry, this destination is renowned for its unique culture, landscapes, and heritage in Incredible India.`;
+  const description = wikiData?.insufficientContent 
+    ? `The destination you searched for does not have global footprint.`
+    : wikiData?.extract || `The destination you searched for does not have global footprint.`;
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', paddingBottom: '80px' }}>
@@ -1018,30 +1064,40 @@ const StateDetails = () => {
           </div>
           
           <div style={{ fontSize: '18px', lineHeight: '1.8', color: '#4b5563', marginBottom: '20px' }}>
-            <ReactMarkdown
-              components={{
-                h1: ({ children }) => <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '16px', marginBottom: '12px', color: '#1f2937' }}>{children}</h3>,
-                h2: ({ children }) => <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '14px', marginBottom: '10px', color: '#1f2937' }}>{children}</h3>,
-                h3: ({ children }) => <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '12px', marginBottom: '8px', color: '#1f2937' }}>{children}</h4>,
-                p: ({ children }) => <p style={{ marginBottom: '12px', margin: '12px 0' }}>{children}</p>,
-                strong: ({ children }) => <strong style={{ fontWeight: 'bold', color: '#16a34a' }}>{children}</strong>,
-                em: ({ children }) => <em style={{ fontStyle: 'italic', color: '#6b7280' }}>{children}</em>,
-                ul: ({ children }) => <ul style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'disc' }}>{children}</ul>,
-                ol: ({ children }) => <ol style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'decimal' }}>{children}</ol>,
-                li: ({ children }) => <li style={{ marginBottom: '6px' }}>{children}</li>,
-                blockquote: ({ children }) => <blockquote style={{ borderLeft: '4px solid #16a34a', paddingLeft: '16px', marginLeft: '0', marginBottom: '12px', fontStyle: 'italic', color: '#6b7280' }}>{children}</blockquote>,
-                code: ({ children }) => <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '14px' }}>{children}</code>,
-              }}
-            >
-              {description}
-            </ReactMarkdown>
+            {wikiData?.insufficientContent ? (
+              <div style={{ padding: '20px', backgroundColor: '#fef3c7', borderRadius: '8px', borderLeft: '4px solid #f59e0b', color: '#92400e' }}>
+                <p style={{ margin: 0, fontSize: '16px', fontWeight: '500' }}>
+                  ⓘ {description}
+                </p>
+              </div>
+            ) : (
+              <ReactMarkdown
+                components={{
+                  h1: ({ children }) => <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '16px', marginBottom: '12px', color: '#1f2937' }}>{children}</h3>,
+                  h2: ({ children }) => <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '14px', marginBottom: '10px', color: '#1f2937' }}>{children}</h3>,
+                  h3: ({ children }) => <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '12px', marginBottom: '8px', color: '#1f2937' }}>{children}</h4>,
+                  p: ({ children }) => <p style={{ marginBottom: '12px', margin: '12px 0' }}>{children}</p>,
+                  strong: ({ children }) => <strong style={{ fontWeight: 'bold', color: '#16a34a' }}>{children}</strong>,
+                  em: ({ children }) => <em style={{ fontStyle: 'italic', color: '#6b7280' }}>{children}</em>,
+                  ul: ({ children }) => <ul style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'disc' }}>{children}</ul>,
+                  ol: ({ children }) => <ol style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'decimal' }}>{children}</ol>,
+                  li: ({ children }) => <li style={{ marginBottom: '6px' }}>{children}</li>,
+                  blockquote: ({ children }) => <blockquote style={{ borderLeft: '4px solid #16a34a', paddingLeft: '16px', marginLeft: '0', marginBottom: '12px', fontStyle: 'italic', color: '#6b7280' }}>{children}</blockquote>,
+                  code: ({ children }) => <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '14px' }}>{children}</code>,
+                }}
+              >
+                {description}
+              </ReactMarkdown>
+            )}
           </div>
           
-          <div style={{ paddingTop: '16px', borderTop: '1px solid #e5e7eb', fontSize: '12px', color: '#9ca3af' }}>
-            <span style={{ fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              ✨ Content enhanced and formatted using Ollama AI • Source: Wikipedia
-            </span>
-          </div>
+          {!wikiData?.insufficientContent && (
+            <div style={{ paddingTop: '16px', borderTop: '1px solid #e5e7eb', fontSize: '12px', color: '#9ca3af' }}>
+              <span style={{ fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                ✨ Content enhanced and formatted using Ollama AI • Source: Wikipedia
+              </span>
+            </div>
+          )}
         </div>
 
         {/* SUB-DESTINATIONS GRID (Only if available in our DB) */}
@@ -1077,6 +1133,131 @@ const StateDetails = () => {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* RELATED DESTINATIONS (When Wikipedia fails) */}
+        {(wikiData === null || wikiData?.insufficientContent) && relatedDestinations.length > 0 && (
+          <div style={{ marginTop: '60px' }}>
+            <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '30px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              🗺️ Similar Destinations You Might Like
+            </h3>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+              {relatedDestinations.map((place, index) => (
+                <div key={index} style={{ backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', cursor: 'pointer' }}>
+                  <div style={{ height: '200px', overflow: 'hidden', backgroundColor: '#e5e7eb' }}>
+                    <img 
+                      src={`https://source.unsplash.com/random/600x400?${place.name},india`} 
+                      alt={place.name} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => { e.target.src = 'https://source.unsplash.com/random/600x400?travel'; }}
+                    />
+                  </div>
+                  <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <p style={{ fontSize: '12px', color: '#9ca3af', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0' }}>
+                      {place.state}
+                    </p>
+                    <h4 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>
+                      {place.name}
+                    </h4>
+                    <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.6', marginBottom: '20px', flex: 1 }}>
+                      {place.detail}
+                    </p>
+                    <button 
+                      onClick={async () => {
+                        setSummarizing(true);
+                        const data = await fetchWikiData(place.name);
+                        setSummarizing(false);
+                        setSelectedRelatedDestination(place);
+                        setSelectedRelatedData(data);
+                      }}
+                      style={{ color: '#16a34a', fontWeight: '600', fontSize: '14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}
+                    >
+                      Explore &rarr;
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* SELECTED RELATED DESTINATION DETAILS */}
+            {selectedRelatedDestination && (
+              <div style={{ marginTop: '50px', backgroundColor: '#f0fdf4', borderRadius: '16px', padding: '40px', border: '2px solid #16a34a' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '20px', borderBottom: '2px solid #16a34a' }}>
+                  <h3 style={{ fontSize: '28px', fontWeight: 'bold', color: '#15803d', margin: 0 }}>
+                    ✨ {selectedRelatedDestination.name}
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setSelectedRelatedDestination(null);
+                      setSelectedRelatedData(null);
+                    }}
+                    style={{ background: 'none', border: 'none', fontSize: '28px', cursor: 'pointer', color: '#64748b' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {selectedRelatedData ? (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '20px', alignItems: 'start' }}>
+                      {selectedRelatedData.image && (
+                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                          <img 
+                            src={selectedRelatedData.image}
+                            alt={selectedRelatedDestination.name}
+                            style={{ borderRadius: '8px', width: '100%', height: 'auto', maxHeight: '280px', objectFit: 'cover' }}
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                        </div>
+                      )}
+                      <div>
+                        {selectedRelatedData.insufficientContent ? (
+                          <div style={{ padding: '16px', backgroundColor: '#fef3c7', borderRadius: '8px', borderLeft: '4px solid #f59e0b', color: '#92400e' }}>
+                            <p style={{ margin: 0, fontSize: '15px', fontWeight: '500' }}>
+                              ⓘ Limited information available for this destination on Wikipedia. Please refer to the main destination page for more details.
+                            </p>
+                          </div>
+                        ) : (
+                          <p style={{ fontSize: '15px', color: '#334155', lineHeight: '1.8', margin: 0 }}>
+                            {selectedRelatedData.extract}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {selectedRelatedData.url && (
+                      <a 
+                        href={selectedRelatedData.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 20px', backgroundColor: '#16a34a', color: 'white', textDecoration: 'none', borderRadius: '8px', fontWeight: '600', fontSize: '14px', marginTop: '16px' }}
+                      >
+                        Read Full Article on Wikipedia
+                      </a>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', gap: '16px' }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#16a34a', animation: 'pulse 1.5s infinite' }} />
+                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#16a34a', animation: 'pulse 1.5s infinite 0.3s' }} />
+                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#16a34a', animation: 'pulse 1.5s infinite 0.6s' }} />
+                    </div>
+                    <p style={{ margin: 0, fontSize: '15px', color: '#15803d', fontWeight: '600' }}>
+                      Fetching details with Ollama AI...
+                    </p>
+                    <style>{`
+                      @keyframes pulse {
+                        0%, 100% { opacity: 0.3; }
+                        50% { opacity: 1; }
+                      }
+                    `}</style>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
