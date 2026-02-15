@@ -89,6 +89,7 @@ const StateDetails = () => {
 export default StateDetails;
 */
 
+/*
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { State } from 'country-state-city';
@@ -401,7 +402,7 @@ const StateDetails = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       
-      {/* 1. Header Image Banner */}
+      {/* 1. Header Image Banner *}
       <div className="relative h-[400px]">
         <img 
           src={`https://source.unsplash.com/random/1200x500?${stateName},india,tourism`} 
@@ -413,7 +414,7 @@ const StateDetails = () => {
           <p className="text-xl opacity-90 font-light">Incredible India</p>
         </div>
         
-        {/* Back Button */}
+        {/* Back Button *}
         <button 
           onClick={() => navigate(-1)}
           className="absolute top-24 left-6 md:left-10 bg-white/20 backdrop-blur-md p-3 rounded-full text-white hover:bg-white/30 transition border border-white/30"
@@ -422,10 +423,10 @@ const StateDetails = () => {
         </button>
       </div>
 
-      {/* 2. Content Container */}
+      {/* 2. Content Container *}
       <div className="max-w-6xl mx-auto px-6 -mt-20 relative z-10">
         
-        {/* Intro Card */}
+        {/* Intro Card *}
         <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 mb-12">
           <h2 className="text-3xl font-bold text-gray-800 mb-6 border-l-4 border-green-500 pl-4">
             About {stateName}
@@ -441,7 +442,7 @@ const StateDetails = () => {
           )}
         </div>
 
-        {/* 3. Places to Visit Grid */}
+        {/* 3. Places to Visit Grid *}
         <h3 className="text-2xl font-bold text-gray-800 mb-8 flex items-center">
           <MapPin className="mr-2 text-green-600" /> 
           Top Destinations in {stateName}
@@ -452,7 +453,7 @@ const StateDetails = () => {
             {data.places.map((place, index) => (
               <div key={index} className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition group h-full flex flex-col">
                 
-                {/* Image Area */}
+                {/* Image Area *}
                 <div className="h-56 overflow-hidden relative bg-gray-200">
                   <img 
                     src={`https://source.unsplash.com/random/600x400?${place.name.split('(')[0]},india`} 
@@ -465,7 +466,7 @@ const StateDetails = () => {
                   </h4>
                 </div>
 
-                {/* Text Area */}
+                {/* Text Area *}
                 <div className="p-6 flex-1 flex flex-col">
                   <p className="text-gray-600 text-sm leading-relaxed mb-4 flex-1">
                     {place.detail}
@@ -481,6 +482,534 @@ const StateDetails = () => {
         ) : (
           <div className="p-10 text-center bg-white rounded-xl shadow-sm">
             <p className="text-gray-500">Destination details are being curated for this state.</p>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+};
+
+export default StateDetails;
+*/
+
+/*
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { State } from 'country-state-city';
+import { ArrowLeft, MapPin, Info } from 'lucide-react';
+
+// --- 1. HARDCODED PLACES (Keep this for the "Top Destinations" grid) ---
+// We only keep the 'places' array here. The 'desc' will now come from Wikipedia.
+const placeDatabase = {
+  "Andhra Pradesh": [
+    { name: "Tirumala Venkateswara Temple", detail: "Hilltop Vaishnavite shrine, one of the world’s richest temples." },
+    { name: "Araku Valley", detail: "Scenic Eastern Ghats hill station known for coffee estates." },
+    { name: "Amaravati Stupa", detail: "Ruins of a grand 3rd‑century BCE Buddhist stupa." }
+  ],
+  "Arunachal Pradesh": [
+    { name: "Tawang Monastery", detail: "Vast 17th‑century Tibetan Buddhist monastery." },
+    { name: "Ziro Valley", detail: "Picturesque terraced valley famous for Apatani tribes." },
+    { name: "Namdapha National Park", detail: "Biodiverse park with clouded leopards." }
+  ],
+  "Assam": [
+    { name: "Kaziranga National Park", detail: "Home to two-thirds of the world's one-horned rhinos." },
+    { name: "Majuli Island", detail: "World's largest river island and cultural hub." },
+    { name: "Kamakhya Temple", detail: "Ancient hilltop Shakti shrine." }
+  ],
+  "Bihar": [
+    { name: "Mahabodhi Temple", detail: "UNESCO site marking the Buddha’s enlightenment." },
+    { name: "Nalanda Ruins", detail: "Ancient Buddhist university archaeological site." },
+    { name: "Rajgir", detail: "Ancient capital with hot springs and caves." }
+  ],
+  "Goa": [
+    { name: "Basilica of Bom Jesus", detail: "UNESCO site holding St. Francis Xavier's remains." },
+    { name: "Palolem Beach", detail: "Scenic beach known for its crescent shape." },
+    { name: "Dudhsagar Falls", detail: "Four-tiered waterfall on the Mandovi River." }
+  ],
+  "Gujarat": [
+    { name: "Statue of Unity", detail: "The world's tallest statue." },
+    { name: "Gir National Park", detail: "The only home of the Asiatic Lion." },
+    { name: "Rann of Kutch", detail: "Famous white salt desert." }
+  ],
+  "Himachal Pradesh": [
+    { name: "Manali", detail: "High-altitude resort town gateway to skiing." },
+    { name: "Shimla", detail: " Colonial summer capital with the Ridge." },
+    { name: "Dharamshala", detail: "Home of the Dalai Lama." }
+  ],
+  "Karnataka": [
+    { name: "Hampi", detail: "Ancient village dotted with ruins of Vijayanagara." },
+    { name: "Coorg", detail: "Coffee plantations and misty hills." },
+    { name: "Mysore Palace", detail: "Historical palace of the Wodeyar dynasty." }
+  ],
+  "Kerala": [
+    { name: "Alleppey", detail: "Famous for houseboat cruises on backwaters." },
+    { name: "Munnar", detail: "Hill station with vast tea gardens." },
+    { name: "Kochi", detail: "Colonial history and Chinese fishing nets." }
+  ],
+  "Maharashtra": [
+    { name: "Ajanta & Ellora Caves", detail: "Ancient rock-cut caves." },
+    { name: "Gateway of India", detail: "Iconic arch monument in Mumbai." },
+    { name: "Mahabaleshwar", detail: "Hill station known for strawberries." }
+  ],
+  "Rajasthan": [
+    { name: "Jaipur (Pink City)", detail: "Famous for Hawa Mahal and Amber Fort." },
+    { name: "Udaipur", detail: "City of Lakes and lavish palaces." },
+    { name: "Jaisalmer", detail: "The Golden City in the Thar Desert." }
+  ],
+  "Tamil Nadu": [
+    { name: "Meenakshi Temple", detail: "Historic Hindu temple in Madurai." },
+    { name: "Ooty", detail: "Popular hill station in the Nilgiri hills." },
+    { name: "Mahabalipuram", detail: "UNESCO site of 7th-century rock monuments." }
+  ],
+  "Uttar Pradesh": [
+    { name: "Taj Mahal", detail: "Ivory-white marble mausoleum in Agra." },
+    { name: "Varanasi Ghats", detail: "Spiritual river banks of the Ganges." },
+    { name: "Fatehpur Sikri", detail: "Short-lived capital of the Mughal empire." }
+  ],
+  "West Bengal": [
+    { name: "Darjeeling", detail: "Famous for tea and the Himalayan Railway." },
+    { name: "Sundarbans", detail: "Largest mangrove forest and tiger reserve." },
+    { name: "Victoria Memorial", detail: "Large marble building in Kolkata." }
+  ]
+};
+
+const StateDetails = () => {
+  const { stateCode } = useParams();
+  const navigate = useNavigate();
+  
+  const [stateName, setStateName] = useState("");
+  const [wikiData, setWikiData] = useState(null); // Stores Wikipedia text
+  const [loading, setLoading] = useState(true);
+  const [places, setPlaces] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      
+      // 1. Identify the State Name
+      const stateObj = State.getStateByCodeAndCountry(stateCode, 'IN');
+      let name = stateObj ? stateObj.name : stateCode; // Fallback if code lookup fails
+
+      // Normalizing names for better matches
+      if (name.includes("Jammu")) name = "Jammu and Kashmir";
+      if (name.includes("Andaman")) name = "Andaman and Nicobar Islands";
+      
+      setStateName(name);
+
+      // 2. Fetch Places from our Hardcoded Database
+      // We check if the state name exists in our keys
+      const dbKey = Object.keys(placeDatabase).find(k => name.includes(k) || k.includes(name));
+      setPlaces(placeDatabase[dbKey] || []);
+
+      // 3. FETCH FROM WIKIPEDIA API
+      try {
+        const response = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`);
+        if (response.ok) {
+          const json = await response.json();
+          setWikiData({
+            extract: json.extract,
+            thumbnail: json.thumbnail ? json.thumbnail.source : null,
+            description: json.description
+          });
+        } else {
+          setWikiData(null);
+        }
+      } catch (error) {
+        console.error("Wiki API Error:", error);
+        setWikiData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [stateCode]);
+
+  if (loading) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ fontSize: '18px', color: '#6b7280' }}>Loading information from Wikipedia...</p>
+    </div>
+  );
+
+  // Fallback image if Wikipedia doesn't have one
+  const heroImage = wikiData?.thumbnail || `https://source.unsplash.com/random/1200x500?${stateName},india,landscape`;
+
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', paddingBottom: '80px' }}>
+      
+      {/* 1. Header Image Banner *}
+      <div style={{ position: 'relative', height: '400px' }}>
+        <img 
+          src={heroImage}
+          alt={stateName} 
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+        <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', textAlign: 'center', padding: '20px' }}>
+          <h1 style={{ fontSize: '48px', fontWeight: 'bold', marginBottom: '10px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>{stateName}</h1>
+          <p style={{ fontSize: '20px', fontWeight: '300', opacity: 0.9 }}>Incredible India</p>
+        </div>
+        
+        {/* Back Button *}
+        <button 
+          onClick={() => navigate(-1)}
+          style={{ position: 'absolute', top: '100px', left: '30px', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', padding: '10px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', color: 'white', cursor: 'pointer' }}
+        >
+          <ArrowLeft size={24} />
+        </button>
+      </div>
+
+      {/* 2. Content Container *}
+      <div style={{ maxWidth: '1100px', margin: '-80px auto 0', position: 'relative', zIndex: 10, padding: '0 20px' }}>
+        
+        {/* Intro Card (Data from Wikipedia) *}
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '40px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', marginBottom: '50px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+            <Info color="#16a34a" size={24} />
+            <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>About {stateName}</h2>
+          </div>
+          
+          {wikiData ? (
+            <div>
+              <p style={{ fontSize: '18px', lineHeight: '1.8', color: '#4b5563', marginBottom: '20px' }}>
+                {wikiData.extract}
+              </p>
+              <p style={{ fontSize: '12px', color: '#9ca3af', fontStyle: 'italic' }}>
+                Source: Wikipedia
+              </p>
+            </div>
+          ) : (
+            <p style={{ color: '#6b7280' }}>Description unavailable at the moment.</p>
+          )}
+        </div>
+
+        {/* 3. Places to Visit Grid (From our DB) *}
+        {places.length > 0 && (
+          <div>
+            <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '30px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <MapPin color="#16a34a" /> 
+              Top Destinations in {stateName}
+            </h3>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+              {places.map((place, index) => (
+                <div key={index} style={{ backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column' }}>
+                  
+                  {/* Image Area *}
+                  <div style={{ height: '200px', overflow: 'hidden', backgroundColor: '#e5e7eb' }}>
+                    <img 
+                      src={`https://source.unsplash.com/random/600x400?${place.name},india`} 
+                      alt={place.name} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+
+                  {/* Text Area *}
+                  <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <h4 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>
+                      {place.name}
+                    </h4>
+                    <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.6', marginBottom: '20px', flex: 1 }}>
+                      {place.detail}
+                    </p>
+                    <button style={{ color: '#16a34a', fontWeight: '600', fontSize: '14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
+                      Check Availability &rarr;
+                    </button>
+                  </div>
+
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {places.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>
+            <p>Curated destination list coming soon for {stateName}.</p>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+};
+
+export default StateDetails;
+*/
+
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { State } from 'country-state-city';
+import { ArrowLeft, MapPin, Info, ExternalLink } from 'lucide-react';
+
+// --- 1. INTERNAL DATABASE (For Top Destinations Grid ONLY) ---
+const placeDatabase = {
+  "Andhra Pradesh": [
+    { name: "Tirumala Temple", detail: "Hilltop Vaishnavite shrine, one of the world’s richest temples." },
+    { name: "Araku Valley", detail: "Scenic hill station known for coffee estates and waterfalls." },
+    { name: "Amaravati", detail: "Ancient Buddhist site featuring a grand stupa." }
+  ],
+  "Arunachal Pradesh": [
+    { name: "Tawang Monastery", detail: "India's largest monastery with stunning mountain views." },
+    { name: "Ziro Valley", detail: "Apatani tribal landscape with rice fields and pine hills." },
+    { name: "Sela Pass", detail: "High-altitude mountain pass covered in snow year-round." }
+  ],
+  "Assam": [
+    { name: "Kaziranga Park", detail: "UNESCO site famous for the Great Indian One-Horned Rhinoceros." },
+    { name: "Majuli Island", detail: "World's largest river island and hub of Vaishnavite culture." },
+    { name: "Kamakhya Temple", detail: "Powerful hilltop Shakti shrine in Guwahati." }
+  ],
+  "Bihar": [
+    { name: "Bodh Gaya", detail: "The holiest Buddhist site where Buddha attained enlightenment." },
+    { name: "Nalanda Ruins", detail: "Remains of the ancient monastic university." },
+    { name: "Rajgir", detail: "Ancient capital featuring the Vishwa Shanti Stupa." }
+  ],
+  "Goa": [
+    { name: "Calangute Beach", detail: "The 'Queen of Beaches', famous for water sports and nightlife." },
+    { name: "Basilica of Bom Jesus", detail: "UNESCO church holding the remains of St. Francis Xavier." },
+    { name: "Dudhsagar Falls", detail: "Spectacular four-tiered waterfall on the Mandovi River." }
+  ],
+  "Gujarat": [
+    { name: "Rann of Kutch", detail: "Vast white salt desert famous for the Rann Utsav." },
+    { name: "Statue of Unity", detail: "The world's tallest statue dedicated to Sardar Patel." },
+    { name: "Gir National Park", detail: "The only natural habitat of the Asiatic Lion." }
+  ],
+  "Himachal Pradesh": [
+    { name: "Manali", detail: "Adventure hub for skiing, paragliding, and trekking." },
+    { name: "Shimla", detail: "The Queen of Hills with its historic Ridge and Mall Road." },
+    { name: "Kasol", detail: "Scenic village on the Parvati River, popular with backpackers." }
+  ],
+  "Jammu and Kashmir": [
+    { name: "Gulmarg", detail: "Popular skiing destination and hill station." },
+    { name: "Dal Lake", detail: "Famous for houseboats and Shikara rides." },
+    { name: "Vaishno Devi", detail: "Sacred Hindu pilgrimage site." }
+  ],
+  "Karnataka": [
+    { name: "Hampi", detail: "Surreal boulder landscape dotted with Vijayanagara ruins." },
+    { name: "Coorg", detail: "Scotland of India, famous for coffee and misty hills." },
+    { name: "Mysore Palace", detail: "Grand royal palace illuminated with thousands of lights." }
+  ],
+  "Kerala": [
+    { name: "Alleppey", detail: "Venice of the East, known for houseboat cruises." },
+    { name: "Munnar", detail: "Rolling tea gardens and misty mountains." },
+    { name: "Varkala", detail: "Beautiful coastal town with dramatic red cliffs." }
+  ],
+  "Ladakh": [
+    { name: "Pangong Lake", detail: "High-altitude brackish lake famous for changing colors." },
+    { name: "Hemis Monastery", detail: "Largest and wealthiest Ladakhi Buddhist monastery." },
+    { name: "Khardung La", detail: "One of the world's highest motorable roads." }
+  ],
+  "Madhya Pradesh": [
+    { name: "Khajuraho", detail: "UNESCO temples famous for intricate stone carvings." },
+    { name: "Bandhavgarh", detail: "National park with the highest density of tigers." },
+    { name: "Sanchi Stupa", detail: "Ancient Buddhist complex built by Emperor Ashoka." }
+  ],
+  "Maharashtra": [
+    { name: "Ajanta & Ellora", detail: "Ancient rock-cut caves featuring Buddhist and Hindu art." },
+    { name: "Mahabaleshwar", detail: "Hill station famous for strawberries and viewpoints." },
+    { name: "Gateway of India", detail: "Iconic colonial arch overlooking the Arabian Sea." }
+  ],
+  "Rajasthan": [
+    { name: "Jaipur", detail: "The Pink City, home to Hawa Mahal and Amber Fort." },
+    { name: "Udaipur", detail: "City of Lakes, known for its romantic Lake Palace." },
+    { name: "Jaisalmer", detail: "The Golden City with its living fort and sand dunes." }
+  ],
+  "Tamil Nadu": [
+    { name: "Meenakshi Temple", detail: "Architectural marvel with colorful gopurams in Madurai." },
+    { name: "Ooty", detail: "Queen of Hill Stations in the Nilgiri Blue Mountains." },
+    { name: "Mahabalipuram", detail: "UNESCO site famous for rock-cut shore temples." }
+  ],
+  "Uttar Pradesh": [
+    { name: "Taj Mahal", detail: "Symbol of eternal love and one of the Seven Wonders." },
+    { name: "Varanasi", detail: "Oldest living city, famous for Ganga Aarti and ghats." },
+    { name: "Ayodhya", detail: "The birthplace of Lord Rama, a major pilgrimage site." }
+  ],
+  "Uttarakhand": [
+    { name: "Rishikesh", detail: "Yoga Capital of the World on the banks of the Ganges." },
+    { name: "Nainital", detail: "Lake district famous for boating and scenic views." },
+    { name: "Kedarnath", detail: "Sacred Shiva temple set amidst snowy peaks." }
+  ],
+  "West Bengal": [
+    { name: "Darjeeling", detail: "Queen of the Hills, famous for tea and the Toy Train." },
+    { name: "Sundarbans", detail: "Largest mangrove forest, home to the Royal Bengal Tiger." },
+    { name: "Kolkata", detail: "City of Joy, known for Victoria Memorial and food." }
+  ]
+};
+
+const StateDetails = () => {
+  const { placeName } = useParams();
+  const navigate = useNavigate();
+  
+  const [displayName, setDisplayName] = useState("");
+  const [wikiData, setWikiData] = useState(null);
+  const [subDestinations, setSubDestinations] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // --- HELPER: FETCH WIKIPEDIA DATA ---
+  const fetchWikiData = async (query) => {
+    try {
+      // 1. Try Direct Search
+      let endpoint = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&prop=extracts|pageimages&pithumbsize=1200&exintro&explaintext&redirects=1&titles=${encodeURIComponent(query)}`;
+      let response = await fetch(endpoint);
+      let data = await response.json();
+      let pages = data.query?.pages;
+      let pageId = Object.keys(pages)[0];
+
+      // 2. If Direct Search Fails (or returns empty), Try Appending "India"
+      if (!pageId || pageId === "-1") {
+        endpoint = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&prop=extracts|pageimages&pithumbsize=1200&exintro&explaintext&redirects=1&titles=${encodeURIComponent(query + " India")}`;
+        response = await fetch(endpoint);
+        data = await response.json();
+        pages = data.query?.pages;
+        pageId = Object.keys(pages)[0];
+      }
+
+      if (pageId && pageId !== "-1") {
+        const page = pages[pageId];
+        return {
+          title: page.title,
+          extract: page.extract,
+          image: page.thumbnail ? page.thumbnail.source : null,
+          url: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title)}`
+        };
+      }
+    } catch (error) {
+      console.error("Wiki Fetch Error:", error);
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    const loadContent = async () => {
+      setLoading(true);
+      
+      // 1. Resolve State/Place Name
+      let searchName = placeName;
+      // Handle 2-letter codes (e.g., "RJ" -> "Rajasthan")
+      if (placeName.length === 2 && placeName === placeName.toUpperCase()) {
+        const stateObj = State.getStateByCodeAndCountry(placeName, 'IN');
+        if (stateObj) searchName = stateObj.name;
+      }
+      
+      // Fix Naming Quirks
+      if (searchName === "Jammu & Kashmir") searchName = "Jammu and Kashmir";
+      if (searchName.includes("Andaman")) searchName = "Andaman and Nicobar Islands";
+      
+      setDisplayName(searchName);
+
+      // 2. Fetch Wiki Data (Text & Hero Image)
+      const wikiResult = await fetchWikiData(searchName);
+      setWikiData(wikiResult);
+
+      // 3. Fetch Internal Sub-Destinations (The Grid)
+      const dbKey = Object.keys(placeDatabase).find(k => 
+        k.toLowerCase() === searchName.toLowerCase() || 
+        searchName.toLowerCase().includes(k.toLowerCase())
+      );
+      setSubDestinations(dbKey ? placeDatabase[dbKey] : []);
+      
+      setLoading(false);
+    };
+
+    loadContent();
+  }, [placeName]);
+
+  if (loading) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ fontSize: '18px', color: '#6b7280' }}>Fetching travel details...</p>
+    </div>
+  );
+
+  // Fallback Values
+  const heroImage = wikiData?.image || `https://source.unsplash.com/random/1200x500?${displayName},india,tourism`;
+  const description = wikiData?.extract || `Welcome to ${displayName}. While we couldn't retrieve the latest encyclopedia entry, this destination is renowned for its unique culture, landscapes, and heritage in Incredible India.`;
+
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', paddingBottom: '80px' }}>
+      
+      {/* HEADER IMAGE */}
+      <div style={{ position: 'relative', height: '400px', backgroundColor: '#e5e7eb' }}>
+        <img 
+          src={heroImage}
+          alt={displayName} 
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={(e) => { e.target.src = 'https://source.unsplash.com/random/1200x500?nature,travel'; }}
+        />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.7))', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', textAlign: 'center', padding: '20px' }}>
+          <h1 style={{ fontSize: '48px', fontWeight: 'bold', marginBottom: '10px', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+            {wikiData?.title || displayName}
+          </h1>
+          <p style={{ fontSize: '20px', fontWeight: '300', opacity: 0.9 }}>Incredible India</p>
+        </div>
+        
+        <button 
+          onClick={() => navigate(-1)}
+          style={{ position: 'absolute', top: '100px', left: '30px', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', padding: '10px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', color: 'white', cursor: 'pointer' }}
+        >
+          <ArrowLeft size={24} />
+        </button>
+      </div>
+
+      {/* CONTENT */}
+      <div style={{ maxWidth: '1100px', margin: '-80px auto 0', position: 'relative', zIndex: 10, padding: '0 20px' }}>
+        
+        {/* INFO CARD */}
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '40px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', marginBottom: '50px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Info color="#16a34a" size={24} />
+              <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>Overview</h2>
+            </div>
+            {wikiData?.url && (
+              <a 
+                href={wikiData.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#2563eb', textDecoration: 'none', fontSize: '14px', fontWeight: '600' }}
+              >
+                Read on Wikipedia <ExternalLink size={14} />
+              </a>
+            )}
+          </div>
+          
+          <p style={{ fontSize: '18px', lineHeight: '1.8', color: '#4b5563', marginBottom: '0' }}>
+            {description}
+          </p>
+        </div>
+
+        {/* SUB-DESTINATIONS GRID (Only if available in our DB) */}
+        {subDestinations.length > 0 && (
+          <div>
+            <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '30px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <MapPin color="#16a34a" /> 
+              Top Destinations in {displayName}
+            </h3>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+              {subDestinations.map((place, index) => (
+                <div key={index} style={{ backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ height: '200px', overflow: 'hidden', backgroundColor: '#e5e7eb' }}>
+                    <img 
+                      src={`https://source.unsplash.com/random/600x400?${place.name},india`} 
+                      alt={place.name} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => { e.target.src = 'https://source.unsplash.com/random/600x400?travel'; }}
+                    />
+                  </div>
+                  <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <h4 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>
+                      {place.name}
+                    </h4>
+                    <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.6', marginBottom: '20px', flex: 1 }}>
+                      {place.detail}
+                    </p>
+                    <button style={{ color: '#16a34a', fontWeight: '600', fontSize: '14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
+                      Check Availability &rarr;
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

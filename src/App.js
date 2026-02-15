@@ -276,7 +276,7 @@ function App() {
           } />
           
           {/* STATE DETAILS PAGE */}
-          <Route path="/state/:stateCode" element={<StateDetails />} />
+         <Route path="/place/:placeName" element={<StateDetails />} />
 
           {/* 👇 NEW ROUTES FOR HEADER LINKS */}
           <Route path="/plan" element={<PlanTrip />} />

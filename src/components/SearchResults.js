@@ -149,6 +149,7 @@ const SearchResults = ({ searchQuery, searchResults }) => {
 export default SearchResults;
 */
 
+/*
 import React from 'react';
 import { MapPin, Calendar, Users, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -255,7 +256,7 @@ const SearchResults = ({ searchQuery, searchResults }) => {
               backgroundColor: 'white'
             }}>
               
-              {/* Image Container */}
+              {/* Image Container *}
               <div style={{ height: '200px', width: '100%', overflow: 'hidden' }}>
                 <img 
                   src={result.img || `https://source.unsplash.com/random/600x400?${result.name},india,travel`} 
@@ -264,7 +265,7 @@ const SearchResults = ({ searchQuery, searchResults }) => {
                 />
               </div>
 
-              {/* Text Content */}
+              {/* Text Content *}
               <div style={{ padding: '20px' }}>
                 <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '10px', color: '#1f2937' }}>
                   {result.name}
@@ -285,6 +286,99 @@ const SearchResults = ({ searchQuery, searchResults }) => {
 
                 <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>
                   Explore the best sustainable stays and activities in {result.name}.
+                </p>
+
+                <button 
+                  onClick={() => handleViewDetails(result)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    backgroundColor: '#16a34a',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#15803d'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = '#16a34a'}
+                >
+                  View Details <ArrowRight size={16} />
+                </button>
+              </div>
+
+            </div>
+          ))}
+        </div>
+
+      </div>
+    </section>
+  );
+};
+
+export default SearchResults;
+*/
+
+import React from 'react';
+import { Users, Calendar, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+const SearchResults = ({ searchQuery, searchResults }) => {
+  const navigate = useNavigate();
+
+  // If no search query, show nothing
+  if (!searchQuery || searchResults.length === 0) return null;
+
+  const handleViewDetails = (place) => {
+    // Navigate to the generic place route
+    navigate(`/place/${place.name}`);
+  };
+
+  return (
+    <section style={{ padding: '60px 20px', backgroundColor: 'white' }}>
+      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        
+        <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '30px', color: '#111827' }}>
+          Search Results for "<span style={{ color: '#16a34a' }}>{searchQuery}</span>"
+        </h2>
+
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+          gap: '30px'
+        }}>
+          
+          {searchResults.map((result, index) => (
+            <div key={index} style={{
+              border: '1px solid #e5e7eb',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+              backgroundColor: 'white'
+            }}>
+              
+              {/* IMAGE: Uses Unsplash fallback if result.img is missing */}
+              <div style={{ height: '200px', width: '100%', overflow: 'hidden', backgroundColor: '#f3f4f6' }}>
+                <img 
+                  src={result.img || `https://source.unsplash.com/random/600x400?${result.name},india,travel`} 
+                  alt={result.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => { e.target.src = 'https://source.unsplash.com/random/600x400?travel'; }}
+                />
+              </div>
+
+              <div style={{ padding: '20px' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '10px', color: '#1f2937' }}>
+                  {result.name}
+                </h3>
+                
+                <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>
+                  Explore details, history, and travel information for {result.name}.
                 </p>
 
                 <button 

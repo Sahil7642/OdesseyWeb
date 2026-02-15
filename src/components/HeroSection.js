@@ -225,6 +225,7 @@ const HeroSection = ({ onSearch }) => {
 export default HeroSection;
 */
 
+/*
 import React from 'react';
 import SearchBox from './SearchBox';
 
@@ -242,7 +243,7 @@ const HeroSection = ({ onSearch }) => {
       }}
     >
       
-      {/* 1. Background Image Layer */}
+      {/* 1. Background Image Layer *}
       <div style={{
         position: 'absolute',
         top: 0,
@@ -261,7 +262,7 @@ const HeroSection = ({ onSearch }) => {
             objectPosition: 'center'
           }}
         />
-        {/* Dark Overlay */}
+        {/* Dark Overlay *}
         <div style={{
           position: 'absolute',
           top: 0,
@@ -272,7 +273,7 @@ const HeroSection = ({ onSearch }) => {
         }}></div>
       </div>
 
-      {/* 2. Text Content Layer */}
+      {/* 2. Text Content Layer *}
       <div style={{
         position: 'relative', // Keeps it above the image
         zIndex: 10,
@@ -284,7 +285,7 @@ const HeroSection = ({ onSearch }) => {
       }}>
         <span style={{
           display: 'inline-block',
-          padding: '20px 30px',
+          padding: '5px 15px',
           borderRadius: '20px',
           backgroundColor: 'rgba(255, 255, 255, 0.2)',
           border: '1px solid rgba(255, 255, 255, 0.3)',
@@ -315,9 +316,250 @@ const HeroSection = ({ onSearch }) => {
           Discover pristine landscapes, authentic cultural experiences, and eco-friendly lodges that preserve the beauty of India.
         </p>
         
-        {/* Search Box Container */}
+        {/* Search Box Container *}
         <div style={{ marginTop: '20px' }}>
           <SearchBox onSearch={onSearch} />
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default HeroSection;
+*/
+
+import React, { useState, useEffect } from 'react';
+import { Search, MapPin, Calendar, Users } from 'lucide-react';
+import { State, City } from 'country-state-city';
+
+const HeroSection = ({ onSearch }) => {
+  const [searchInput, setSearchInput] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  
+  // 1. CAROUSEL STATE
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // 2. IMAGE LIST
+  const heroImages = [
+    "https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=1920&q=80", // Mountains
+    "https://images.unsplash.com/photo-1506461883276-594a12b11cf3?auto=format&fit=crop&w=1920&q=80", // Kerala Boat
+    "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=1920&q=80", // Goa Beach
+    "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=1920&q=80", // Taj Mahal
+    "https://www.lakshadweeptoursandtravels.com/images/banner-slide-2.jpg", // Lakshadweep
+    "https://www.bandhavgarh-national-park.com/images/Khajuraho_2.jpg", // Madhya Pradesh
+  ];
+
+  // 3. AUTOMATIC SLIDESHOW (Speed Decreased to 8 seconds)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % heroImages.length);
+    }, 3500); //  CHANGED: 3500ms = 3.5 Seconds per slide
+
+    return () => clearInterval(interval);
+  }, [heroImages.length]);
+
+  // --- SEARCH LOGIC ---
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setSearchInput(value);
+
+    if (value.length > 2) {
+      const allStates = State.getStatesOfCountry('IN');
+      const allCities = City.getCitiesOfCountry('IN');
+      const filteredStates = allStates.filter(s => s.name.toLowerCase().includes(value.toLowerCase()));
+      const filteredCities = allCities.filter(c => c.name.toLowerCase().includes(value.toLowerCase()));
+      setSuggestions([...filteredStates, ...filteredCities].slice(0, 10));
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSelect = (place) => {
+    setSearchInput(place.name);
+    setShowSuggestions(false);
+    onSearch(place); 
+  };
+
+  const executeSearch = () => {
+    if (searchInput.trim()) {
+      setShowSuggestions(false);
+      onSearch({ name: searchInput, custom: true });
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      executeSearch();
+    }
+  };
+
+  return (
+    <section style={{
+      position: 'relative',
+      height: '80vh',
+      minHeight: '600px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: 'white',
+      textAlign: 'center',
+      padding: '0 20px',
+      overflow: 'hidden'
+    }}>
+      
+      {/* BACKGROUND CAROUSEL */}
+      {heroImages.map((img, index) => (
+        <div
+          key={index}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: -1,
+            backgroundImage: `url(${img})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            opacity: currentImageIndex === index ? 1 : 0,
+            transition: 'opacity 1.5s ease-in-out'
+          }}
+        />
+      ))}
+
+      {/* Dark Overlay */}
+      <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 0 }}></div>
+
+      {/* 👇 4. NAVIGATION DOTS ADDED HERE */}
+      <div style={{
+        position: 'absolute',
+        bottom: '30px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        display: 'flex',
+        gap: '12px',
+        zIndex: 20
+      }}>
+        {heroImages.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setCurrentImageIndex(index)}
+            style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              border: 'none',
+              backgroundColor: currentImageIndex === index ? 'white' : 'rgba(255, 255, 255, 0.4)',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          />
+        ))}
+      </div>
+
+      <div style={{ maxWidth: '900px', width: '100%', zIndex: 10 }}>
+        
+        <h1 style={{ 
+          fontSize: 'clamp(40px, 5vw, 64px)', 
+          fontWeight: 'bold', 
+          marginBottom: '20px',
+          textShadow: '0 2px 10px rgba(0,0,0,0.3)'
+        }}>
+          Discover the Unseen
+        </h1>
+        <p style={{ 
+          fontSize: 'clamp(18px, 2vw, 24px)', 
+          marginBottom: '40px', 
+          opacity: 0.9 
+        }}>
+          Explore India's most pristine landscapes and authentic experiences.
+        </p>
+
+        {/* SEARCH BAR CONTAINER */}
+        <div style={{
+          backgroundColor: 'white',
+          padding: '10px',
+          borderRadius: '100px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+          maxWidth: '800px',
+          margin: '0 auto',
+          position: 'relative'
+        }}>
+          
+          {/* LOCATION INPUT */}
+          <div style={{ flex: 2, display: 'flex', alignItems: 'center', padding: '0 20px', borderRight: '1px solid #e5e7eb', position: 'relative' }}>
+            <MapPin color="#16a34a" size={20} style={{ marginRight: '10px' }} />
+            <div style={{ flex: 1 }}>
+              <p style={{ color: '#111827', fontSize: '12px', fontWeight: 'bold', textAlign: 'left', marginBottom: '2px' }}>Location</p>
+              <input 
+                type="text" 
+                placeholder="Where are you going?" 
+                value={searchInput}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                style={{ width: '100%', border: 'none', outline: 'none', color: '#4b5563', fontSize: '14px' }}
+              />
+            </div>
+
+            {/* SUGGESTIONS */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div style={{
+                position: 'absolute', top: '60px', left: 0, right: 0,
+                backgroundColor: 'white', borderRadius: '16px',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 100,
+                overflow: 'hidden', textAlign: 'left', maxHeight: '300px', overflowY: 'auto'
+              }}>
+                {suggestions.map((place, idx) => (
+                  <div 
+                    key={idx}
+                    onClick={() => handleSelect(place)}
+                    style={{ padding: '12px 20px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6', color: '#374151', fontSize: '14px' }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#f9fafb'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                  >
+                    {place.name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* DATES INPUT */}
+          <div style={{ flex: 1, display: 'none', mdDisplay: 'flex', alignItems: 'center', padding: '0 20px', borderRight: '1px solid #e5e7eb' }}>
+            <Calendar color="#16a34a" size={20} style={{ marginRight: '10px' }} />
+            <div>
+              <p style={{ color: '#111827', fontSize: '12px', fontWeight: 'bold', textAlign: 'left', marginBottom: '2px' }}>Dates</p>
+              <input type="text" placeholder="Add dates" style={{ width: '100%', border: 'none', outline: 'none', color: '#4b5563', fontSize: '14px' }} />
+            </div>
+          </div>
+
+          {/* GUESTS INPUT */}
+          <div style={{ flex: 1, display: 'none', mdDisplay: 'flex', alignItems: 'center', padding: '0 20px' }}>
+            <Users color="#16a34a" size={20} style={{ marginRight: '10px' }} />
+            <div>
+              <p style={{ color: '#111827', fontSize: '12px', fontWeight: 'bold', textAlign: 'left', marginBottom: '2px' }}>Guests</p>
+              <input type="text" placeholder="Add guests" style={{ width: '100%', border: 'none', outline: 'none', color: '#4b5563', fontSize: '14px' }} />
+            </div>
+          </div>
+
+          {/* SEARCH BUTTON */}
+          <button 
+            onClick={executeSearch}
+            style={{
+              backgroundColor: '#16a34a', color: 'white', border: 'none',
+              borderRadius: '50px', width: '50px', height: '50px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', flexShrink: 0
+            }}
+          >
+            <Search size={24} />
+          </button>
+
         </div>
       </div>
     </section>
