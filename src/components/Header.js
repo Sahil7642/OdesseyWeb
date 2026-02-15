@@ -492,7 +492,7 @@ const Header = () => {
 
 export default Header;
 */
-
+/*
 import React, { useState, useEffect } from 'react';
 import { Menu } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -598,17 +598,17 @@ const Header = () => {
         transition: 'all 0.3s ease'
       }}>
         
-        {/* LEFT SIDE */}
+        {/* LEFT SIDE *}
         <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
           
-          {/* LOGO */}
+          {/* LOGO *}
           <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
             <img 
               src={logoSrc} 
               alt="Odessey Logo" 
               style={{ height: '40px', width: 'auto', objectFit: 'contain' }} 
             />
-            {/* Dynamic Logo Text Color */}
+            {/* Dynamic Logo Text Color *}
             <span style={{ fontSize: '20px', fontWeight: 'bold', color: textColor, transition: 'color 0.3s ease' }}>
               Odessey
             </span>
@@ -629,7 +629,7 @@ const Header = () => {
           </nav>
         </div>
 
-        {/* RIGHT SIDE */}
+        {/* RIGHT SIDE *}
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <nav style={{ display: 'flex', gap: '20px' }}>
             {navLinks.map((link) => (
@@ -645,7 +645,7 @@ const Header = () => {
             ))}
           </nav>
 
-          {/* Dynamic Menu Icon Color */}
+          {/* Dynamic Menu Icon Color *}
           <button style={{ background: 'none', border: 'none', color: textColor, cursor: 'pointer', padding: '4px', transition: 'color 0.3s ease' }}>
             <Menu size={24} />
           </button>
@@ -653,6 +653,319 @@ const Header = () => {
 
       </div>
     </header>
+  );
+};
+
+export default Header;
+*/
+
+import React, { useState, useEffect } from 'react';
+import { Menu, X, ChevronDown, MapPin, Compass, Calendar, Camera, Leaf, MessageCircle, ArrowRight } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+
+// Import your logo
+import logoSrc from '../Odesseylogo/logo_odessey.png'; 
+
+const Header = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // State
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(true); // Controls Slide Up/Down
+  const [isAtTop, setIsAtTop] = useState(true);     // Controls Style (Glass vs White)
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const [openSection, setOpenSection] = useState(null);
+
+  // Toggle Accordion Helper
+  const toggleSection = (section) => {
+    setOpenSection(openSection === section ? null : section);
+  };
+
+  // --- SCROLL LOGIC ---
+  useEffect(() => {
+    const controlNavbar = () => {
+      if (typeof window !== 'undefined') {
+        const currentScrollY = window.scrollY;
+
+        // 1. DETECT IF AT TOP (For Styling)
+        if (currentScrollY < 50) {
+          setIsAtTop(true);  // Hero Section: Transparent/Glass
+        } else {
+          setIsAtTop(false); // Content Section: Solid White
+        }
+
+        // 2. DETECT SCROLL DIRECTION (For Visibility)
+        if (isMenuOpen) {
+          setIsVisible(false); // Hide main header when menu is open
+        } else {
+          if (currentScrollY > lastScrollY && currentScrollY > 100) {
+            // Scrolling DOWN -> Hide
+            setIsVisible(false);
+          } else {
+            // Scrolling UP -> Show
+            setIsVisible(true);
+          }
+        }
+
+        setLastScrollY(currentScrollY);
+      }
+    };
+
+    window.addEventListener('scroll', controlNavbar);
+    return () => window.removeEventListener('scroll', controlNavbar);
+  }, [lastScrollY, isMenuOpen]);
+
+  // Reset when route changes
+  useEffect(() => {
+    setIsMenuOpen(false);
+    setIsVisible(true);
+    // Force check scroll position on route change
+    setIsAtTop(window.scrollY < 50);
+  }, [location]);
+
+  // Prevent background scrolling when menu is open
+  useEffect(() => {
+    document.body.style.overflow = isMenuOpen ? 'hidden' : 'unset';
+  }, [isMenuOpen]);
+
+  // --- NAVIGATION DATA ---
+  const desktopNavLinks = [
+    { name: 'Plan your trip', href: '/plan' },
+    { name: 'Story', href: '/story' },
+    { name: 'Itinerary', href: '/itinerary' },
+    { name: 'Our Lodges', href: '/lodges' },
+    { name: 'Experiences', href: '/experiences' },
+    { name: 'About Us', href: '/about' }
+  ];
+
+  const menuStructure = [
+    {
+      title: "Destinations", icon: MapPin, link: "/",
+      items: ["By Region / State", "Offbeat & Hidden Gems", "Mountains", "Forests & Wildlife", "Coastal Escapes"]
+    },
+    {
+      title: "Experiences", icon: Compass, link: "/experiences",
+      items: ["Adventure (Trekking, Rafting)", "Slow Travel", "Culture & Heritage", "Wellness Retreats", "Workations", "Budget-Friendly Trips"]
+    },
+    {
+      title: "Plan Your Trip", icon: Calendar, link: "/plan",
+      items: ["Itineraries", "Best Time to Travel", "Travel Calendar", "Packing Guides", "Visa & Permits", "FAQs"]
+    },
+    {
+      title: "Inspiration", icon: Camera, link: "/story",
+      items: ["Travel Stories / Blogs", "Photo Journals", "Reels & Shorts", "Community Stories", "Testimonials"]
+    },
+    {
+      title: "About Odessey", icon: Leaf, link: "/about",
+      items: ["Company Profile", "Our Mission", "Our Vision", "Why Odessey", "Sustainability", "Our Team", "Careers"]
+    },
+    {
+      title: "Help & Connect", icon: MessageCircle, link: "#footer",
+      items: ["Contact Us", "WhatsApp / Chat", "Cancellation & Refund", "Terms & Privacy"]
+    }
+  ];
+
+  const handleNavClick = (href) => {
+    if (href.startsWith('/#')) {
+      const id = href.split('#')[1];
+      if (location.pathname !== '/') {
+        navigate('/');
+        setTimeout(() => {
+          document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      } else {
+        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      navigate(href);
+    }
+  };
+
+  // --- DYNAMIC STYLES ---
+  const headerStyle = {
+    position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40,
+    padding: '20px',
+    transition: 'transform 0.4s ease-in-out',
+    transform: isVisible ? 'translateY(0)' : 'translateY(-150%)', // Slide Up/Down logic
+    pointerEvents: isVisible ? 'auto' : 'none'
+  };
+
+  const innerStyle = {
+    maxWidth: '1200px', margin: '0 auto',
+    // Logic: Glass at top, Solid White when scrolled up
+    backgroundColor: isAtTop ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 1)', 
+    backdropFilter: isAtTop ? 'blur(10px)' : 'none',
+    border: isAtTop ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0,0,0,0.05)',
+    boxShadow: isAtTop ? '0 4px 6px rgba(0,0,0,0.05)' : '0 4px 20px rgba(0,0,0,0.1)',
+    borderRadius: '16px',
+    padding: '10px 24px',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    transition: 'background-color 0.3s ease, box-shadow 0.3s ease'
+  };
+
+  const textColor = isAtTop ? 'white' : '#111827';
+  // If your logo is white, invert it when background becomes white (unless it's a full color logo)
+  const logoFilter = isAtTop ? 'none' : 'invert(1)'; 
+
+  return (
+    <>
+      {/* --- MAIN HEADER --- */}
+      <header style={headerStyle}>
+        <div style={innerStyle}>
+          
+          {/* Logo */}
+          <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+            <img 
+              src={logoSrc} 
+              alt="Odessey Logo" 
+              style={{ height: '40px', width: 'auto', objectFit: 'contain', filter: 'none' }} 
+            />
+            <span style={{ fontSize: '20px', fontWeight: 'bold', color: textColor, transition: 'color 0.3s' }}>
+              Odessey
+            </span>
+          </div>
+
+          {/* Desktop Links */}
+          <div className="hidden md:flex items-center gap-6">
+            {desktopNavLinks.map((link) => (
+              <span 
+                key={link.name} 
+                onClick={() => handleNavClick(link.href)} 
+                style={{
+                  color: textColor, fontSize: '14px', fontWeight: '500',
+                  padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'color 0.3s'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = isAtTop ? 'rgba(255,255,255,0.2)' : '#f3f4f6'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+              >
+                {link.name}
+              </span>
+            ))}
+          </div>
+
+          {/* Hamburger Trigger */}
+          <button 
+            onClick={() => setIsMenuOpen(true)}
+            style={{ 
+              background: 'none', border: 'none', 
+              color: textColor, 
+              cursor: 'pointer', padding: '4px',
+              transition: 'color 0.3s'
+            }}
+          >
+            <Menu size={28} />
+          </button>
+        </div>
+      </header>
+
+      {/* --- SLIDE-OUT MENU DRAWER --- */}
+      <div style={{
+        position: 'fixed', top: 0, right: 0, bottom: 0,
+        width: '100%', maxWidth: '400px',
+        backgroundColor: 'white',
+        zIndex: 50,
+        transform: isMenuOpen ? 'translateX(0)' : 'translateX(100%)',
+        transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+        boxShadow: '-10px 0 30px rgba(0,0,0,0.1)',
+        display: 'flex', flexDirection: 'column'
+      }}>
+        
+        {/* DRAWER HEADER */}
+        <div style={{ 
+          padding: '20px 30px', 
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderBottom: '1px solid #f3f4f6'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {/* Force logo text to black inside white drawer */}
+            <img src={logoSrc} alt="Odessey Logo" style={{ height: '35px', width: 'auto', objectFit: 'contain' }} />
+            <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827' }}>Odessey</span>
+          </div>
+          <button 
+            onClick={() => { setIsMenuOpen(false); setIsVisible(true); }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#111827' }}
+          >
+            <X size={28} />
+          </button>
+        </div>
+
+        {/* DRAWER CONTENT */}
+        <div style={{ padding: '30px', overflowY: 'auto', flex: 1 }}>
+
+          {/* CTA Button */}
+          <button 
+            onClick={() => { setIsMenuOpen(false); navigate('/plan'); }}
+            style={{
+              width: '100%', backgroundColor: '#16a34a', color: 'white',
+              border: 'none', padding: '16px', borderRadius: '12px',
+              fontSize: '16px', fontWeight: 'bold',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+              marginBottom: '30px', cursor: 'pointer',
+              boxShadow: '0 4px 15px rgba(22, 163, 74, 0.3)'
+            }}
+          >
+            Plan Your Adventure <ArrowRight size={20} />
+          </button>
+
+          {/* Menu Sections */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {menuStructure.map((section, idx) => (
+              <div key={idx} style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: '15px' }}>
+                <div 
+                  onClick={() => toggleSection(section.title)}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '10px 0' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <section.icon size={20} color="#16a34a" />
+                    <span style={{ fontSize: '18px', fontWeight: '600', color: '#111827' }}>{section.title}</span>
+                  </div>
+                  <ChevronDown size={20} color="#9ca3af" style={{ transform: openSection === section.title ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }} />
+                </div>
+                
+                {openSection === section.title && (
+                  <div style={{ paddingLeft: '32px', marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div 
+                      onClick={() => { setIsMenuOpen(false); navigate(section.link); }} 
+                      style={{ color: '#16a34a', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '5px' }}
+                    >
+                      View All &rarr;
+                    </div>
+                    {section.items.map((item, subIdx) => (
+                      <div 
+                        key={subIdx} 
+                        onClick={() => { setIsMenuOpen(false); navigate(section.link); }}
+                        style={{ fontSize: '15px', color: '#4b5563', cursor: 'pointer', padding: '5px 0' }}
+                      >
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* DRAWER FOOTER */}
+        <div style={{ padding: '20px 30px', backgroundColor: '#f9fafb', borderTop: '1px solid #e5e7eb' }}>
+          <p style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center' }}>© 2024 Odessey. Travel sustainably.</p>
+        </div>
+
+      </div>
+
+      {/* BACKGROUND OVERLAY */}
+      {isMenuOpen && (
+        <div 
+          onClick={() => { setIsMenuOpen(false); setIsVisible(true); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 45,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(3px)'
+          }}
+        />
+      )}
+    </>
   );
 };
 

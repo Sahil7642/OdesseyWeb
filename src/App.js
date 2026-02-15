@@ -240,6 +240,7 @@ import ItinerariesPage from "./pages/ItinerariesPage";
 import LodgesPage from "./pages/LodgesPage";
 import ExperiencesPage from "./pages/ExperiencesPage";
 import MissionPage from "./pages/MissionPage";
+import AboutPage from "./pages/AboutPage";
 
 function App() {
   const [searchResults, setSearchResults] = useState([]);
@@ -285,6 +286,7 @@ function App() {
           <Route path="/lodges" element={<LodgesPage />} />
           <Route path="/experiences" element={<ExperiencesPage />} />
           <Route path="/mission" element={<MissionPage />} />
+          <Route path="/about" element={<AboutPage />} />
 
         </Routes>
 
