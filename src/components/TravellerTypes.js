@@ -541,432 +541,339 @@ export default TravelerTypes;
 */
 
 import React, { useState } from 'react';
-import { Compass, Camera, Image as ImageIcon, X, ArrowLeft, Mountain, MapPin, Activity, Shield, Landmark, Scroll, Sprout } from 'lucide-react';
+import { User, Users, Heart, Backpack, Camera, Coffee, Compass, Briefcase, Smile, Image as ImageIcon, Loader2, X, MapPin, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const TravellerTypes = () => {
-  const [activeModal, setActiveModal] = useState(null); // 'traveller', 'tourist', 'gallery'
-  const [selectedTopic, setSelectedTopic] = useState(null); // The specific topic detail
+  const navigate = useNavigate();
 
-  // ==========================================
-  // 1. DATA: TRAVELLER TOPICS
-  // ==========================================
-  const travellerTopics = [
+  // --- STATE ---
+  const [selectedMainSection, setSelectedMainSection] = useState(null);
+  const [selectedSubPersona, setSelectedSubPersona] = useState(null);
+  const [destinations, setDestinations] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // --- 1. DATA STRUCTURE (Optimized Short Queries) ---
+  const mainSections = [
     {
-      id: 'himalayas',
-      title: 'The Himalayan Arc',
-      subtitle: 'Tectonics, Transcendence, and High-Altitude Endurance',
-      icon: Mountain,
-      color: '#2563eb', // Blue
-      content: (
-        <>
-          <p style={{ fontSize: '18px', lineHeight: '1.8', color: '#374151', marginBottom: '30px' }}>
-            The Himalayas represent the apex of global adventure and spiritual tourism. This mountain range, characterized by its young fold mountains and ongoing tectonic activity, provides a landscape that is both physically punishing and mentally liberating.
-          </p>
-
-          <h3 style={{ fontSize: '22px', fontWeight: 'bold', color: '#1e40af', marginBottom: '15px', borderLeft: '4px solid #2563eb', paddingLeft: '15px' }}>
-            Sikkim & Darjeeling: Vertical Biodiversity
-          </h3>
-          <p style={{ marginBottom: '20px', color: '#4b5563' }}>
-            The Eastern Himalayas offer a unique brand of rejuvenation defined by vertical biodiversity. Unlike the drier western ranges, this region is influenced by the Bay of Bengal, resulting in high humidity and lush landscapes.
-          </p>
-
-          {/* TABLE */}
-          <div style={{ overflowX: 'auto', marginBottom: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-              <thead style={{ backgroundColor: '#f3f4f6' }}>
-                <tr>
-                  <th style={{ padding: '15px', textAlign: 'left', color: '#4b5563' }}>Trek</th>
-                  <th style={{ padding: '15px', textAlign: 'left', color: '#4b5563' }}>Altitude</th>
-                  <th style={{ padding: '15px', textAlign: 'left', color: '#4b5563' }}>Duration</th>
-                  <th style={{ padding: '15px', textAlign: 'left', color: '#4b5563' }}>Difficulty</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}><td style={{ padding: '15px', fontWeight: 'bold' }}>Goecha La</td><td style={{ padding: '15px' }}>4,940m</td><td style={{ padding: '15px' }}>10-12 Days</td><td style={{ padding: '15px' }}>Strenuous</td></tr>
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}><td style={{ padding: '15px', fontWeight: 'bold' }}>Dzongri La</td><td style={{ padding: '15px' }}>4,170m</td><td style={{ padding: '15px' }}>8 Days</td><td style={{ padding: '15px' }}>Moderate</td></tr>
-                <tr><td style={{ padding: '15px', fontWeight: 'bold' }}>Green Lake</td><td style={{ padding: '15px' }}>5,200m</td><td style={{ padding: '15px' }}>14 Days</td><td style={{ padding: '15px' }}>Strenuous</td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <h3 style={{ fontSize: '22px', fontWeight: 'bold', color: '#1e40af', marginBottom: '15px', borderLeft: '4px solid #2563eb', paddingLeft: '15px' }}>
-            Uttarakhand: Sacred Valleys
-          </h3>
-          <p style={{ marginBottom: '20px', color: '#4b5563' }}>
-            In Uttarakhand, trekking is inextricably linked with Hindu pilgrimage. Sites like the Valley of Flowers and Roopkund offer vast, open spaces that facilitate mental expansion.
-          </p>
-        </>
-      )
-    },
-    {
-      id: 'sahyadris',
-      title: 'The Sahyadri Range',
-      subtitle: 'Monsoon Rebirth and Ancient Fortifications',
-      icon: MapPin,
-      color: '#16a34a', // Green
-      content: (
-        <>
-          <p style={{ fontSize: '18px', lineHeight: '1.8', color: '#374151', marginBottom: '30px' }}>
-            While the Himalayas provide vertical grandeur, the Western Ghats (Sahyadris) offer a rejuvenation experience centered on ancient geology and seasonal rebirth. In the Sahyadris, rejuvenation is a seasonal event triggered by the arrival of the southwest monsoon.
-          </p>
-
-          <h3 style={{ fontSize: '22px', fontWeight: 'bold', color: '#166534', marginBottom: '15px', borderLeft: '4px solid #16a34a', paddingLeft: '15px' }}>
-            Monsoon Trekking
-          </h3>
-          <p style={{ marginBottom: '20px', color: '#4b5563' }}>
-            The Andharban Trek (The Dark Forest) descends through a dense canopy so thick that sunlight often fails to reach the forest floor. The Sahyadri forts, such as Rajgad and Harihar, combine this natural beauty with Maratha history.
-          </p>
-
-          {/* TABLE */}
-          <div style={{ overflowX: 'auto', marginBottom: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-              <thead style={{ backgroundColor: '#f0fdf4' }}>
-                <tr>
-                  <th style={{ padding: '15px', textAlign: 'left', color: '#166534' }}>Trek</th>
-                  <th style={{ padding: '15px', textAlign: 'left', color: '#166534' }}>Altitude</th>
-                  <th style={{ padding: '15px', textAlign: 'left', color: '#166534' }}>Difficulty</th>
-                  <th style={{ padding: '15px', textAlign: 'left', color: '#166534' }}>Feature</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}><td style={{ padding: '15px', fontWeight: 'bold' }}>Kalsubai</td><td style={{ padding: '15px' }}>5,400ft</td><td style={{ padding: '15px' }}>Moderate</td><td style={{ padding: '15px' }}>Highest Point</td></tr>
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}><td style={{ padding: '15px', fontWeight: 'bold' }}>Harihar Fort</td><td style={{ padding: '15px' }}>3,676ft</td><td style={{ padding: '15px' }}>Hard</td><td style={{ padding: '15px' }}>Vertical Stairs</td></tr>
-                <tr><td style={{ padding: '15px', fontWeight: 'bold' }}>Andharban</td><td style={{ padding: '15px' }}>2,160ft</td><td style={{ padding: '15px' }}>Easy</td><td style={{ padding: '15px' }}>Deep Forest</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </>
-      )
-    },
-    {
-      id: 'wellness',
-      title: 'Wellness Hubs',
-      subtitle: 'Rishikesh, Kerala, and the Science of Rejuvenation',
-      icon: Activity,
-      color: '#9333ea', // Purple
-      content: (
-        <>
-          <p style={{ fontSize: '18px', lineHeight: '1.8', color: '#374151', marginBottom: '30px' }}>
-             India has established specialized wellness hubs where rejuvenation is approached as a rigorous, ancient science. These hubs utilize structured systems like Yoga, Ayurveda, and Meditation.
-          </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
-            <div style={{ padding: '20px', backgroundColor: '#faf5ff', borderRadius: '12px', border: '1px solid #e9d5ff' }}>
-              <h4 style={{ color: '#6b21a8', fontWeight: 'bold', fontSize: '18px', marginBottom: '10px' }}>Rishikesh</h4>
-              <p style={{ fontSize: '14px', color: '#4b5563' }}>The "Yoga Capital of the World." Rejuvenation is driven by the spiritual energy of the Ganges. Focuses on the "Sattvic" lifestyle.</p>
-            </div>
-            <div style={{ padding: '20px', backgroundColor: '#faf5ff', borderRadius: '12px', border: '1px solid #e9d5ff' }}>
-              <h4 style={{ color: '#6b21a8', fontWeight: 'bold', fontSize: '18px', marginBottom: '10px' }}>Kerala</h4>
-              <p style={{ fontSize: '14px', color: '#4b5563' }}>The cradle of authentic Ayurveda. The tropical climate is optimal for treatments like Abhyanga and Pizhichil to remove toxins.</p>
-            </div>
-          </div>
-
-          <h3 style={{ fontSize: '22px', fontWeight: 'bold', color: '#6b21a8', marginBottom: '15px' }}>Typical Wellness Programs</h3>
-          <div style={{ overflowX: 'auto', marginBottom: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-              <thead style={{ backgroundColor: '#faf5ff' }}>
-                <tr>
-                  <th style={{ padding: '15px', textAlign: 'left', color: '#6b21a8' }}>Program</th>
-                  <th style={{ padding: '15px', textAlign: 'left', color: '#6b21a8' }}>Duration</th>
-                  <th style={{ padding: '15px', textAlign: 'left', color: '#6b21a8' }}>Core Focus</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}><td style={{ padding: '15px', fontWeight: 'bold' }}>Panchakarma</td><td style={{ padding: '15px' }}>14-21 Days</td><td style={{ padding: '15px' }}>Full-body detox</td></tr>
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}><td style={{ padding: '15px', fontWeight: 'bold' }}>Stress Mgmt</td><td style={{ padding: '15px' }}>7 Days</td><td style={{ padding: '15px' }}>Mental clarity</td></tr>
-                <tr><td style={{ padding: '15px', fontWeight: 'bold' }}>Metabolic</td><td style={{ padding: '15px' }}>10 Days</td><td style={{ padding: '15px' }}>Lifestyle disorders</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </>
-      )
-    },
-    {
-      id: 'gujarat',
-      title: 'Gujarat & Offbeat',
-      subtitle: 'Heritage, Adventure, and Naturopathy',
+      id: "traveller",
+      title: "The Traveller",
       icon: Compass,
-      color: '#ea580c', // Orange
-      content: (
-        <>
-          <p style={{ fontSize: '18px', lineHeight: '1.8', color: '#374151', marginBottom: '30px' }}>
-            Gujarat provides a diverse array of traveler sites that blend rugged endurance with the healing power of the forest and the saline desert.
-          </p>
-          
-          <ul style={{ listStyle: 'none', padding: 0, marginBottom: '30px' }}>
-            <li style={{ marginBottom: '15px', paddingLeft: '20px', borderLeft: '3px solid #ea580c' }}>
-              <strong style={{ color: '#c2410c' }}>Girnar:</strong> Ascending 10,000 stone steps to reach the summit shrines is a grueling physical task that serves as a mental purification ritual.
-            </li>
-            <li style={{ marginBottom: '15px', paddingLeft: '20px', borderLeft: '3px solid #ea580c' }}>
-              <strong style={{ color: '#c2410c' }}>Polo Forest:</strong> A hidden gem for "Body Detox" programs, utilizing the silence of the teak forests as a therapeutic tool.
-            </li>
-            <li style={{ marginBottom: '15px', paddingLeft: '20px', borderLeft: '3px solid #ea580c' }}>
-              <strong style={{ color: '#c2410c' }}>Rann of Kutch:</strong> The vast, flat expanse of white salt under a full moon creates a "zen-like" environment for visual rejuvenation.
-            </li>
-          </ul>
-
-          <h3 style={{ fontSize: '22px', fontWeight: 'bold', color: '#c2410c', marginBottom: '15px' }}>Offbeat Solitude</h3>
-          <div style={{ backgroundColor: '#fff7ed', padding: '20px', borderRadius: '12px' }}>
-            <p style={{ marginBottom: '10px' }}><strong>🏝️ Gokarna:</strong> Coastal silence. A digital detox alternative to Goa with yoga retreats on beaches like Kudle and Om.</p>
-            <p><strong>🏚️ Dhanushkodi:</strong> The ghost town. Rejuvenation through reflection on transience at the tip of India.</p>
-          </div>
-        </>
-      )
+      color: "#e0f2fe", iconColor: "#0284c7", // Blue
+      desc: "Soul searchers looking for adventure and rejuvenation in the unknown.",
+      subSections: [
+        { 
+          id: "t1", title: "Backpackers", icon: Backpack, 
+          // Simple query: "Backpacking in India" matches a real Wiki category/page
+          query: "Backpacking in India" 
+        },
+        { 
+          id: "t2", title: "Foodies", icon: Coffee, 
+          query: "Indian cuisine" 
+        },
+        { 
+          id: "t3", title: "Friends (Adventure)", icon: Users, 
+          query: "Adventure sports in India" 
+        },
+        { 
+          id: "t4", title: "Couples (Offbeat)", icon: Heart, 
+          query: "Hill stations in India" 
+        },
+        { 
+          id: "t5", title: "Soul Searchers", icon: User, 
+          query: "Yoga in India" 
+        }
+      ]
+    },
+    {
+      id: "tourist",
+      title: "The Tourist",
+      icon: Camera,
+      color: "#ffedd5", iconColor: "#ea580c", // Orange
+      desc: "Exploring heritage, architecture, and famous landmarks.",
+      subSections: [
+        { 
+          id: "tr1", title: "Family & Kids", icon: Smile, 
+          query: "Tourism in India" 
+        },
+        { 
+          id: "tr2", title: "Friends (Leisure)", icon: Users, 
+          query: "Beaches in India" 
+        },
+        { 
+          id: "tr3", title: "Couples (Honeymoon)", icon: Heart, 
+          query: "Honeymoon destinations in India" 
+        },
+        { 
+          id: "tr4", title: "Solo Sightseeing", icon: User, 
+          query: "Tourist attractions in India" 
+        },
+        { 
+          id: "tr5", title: "Office / Corporate", icon: Briefcase, 
+          query: "Convention centres in India" 
+        }
+      ]
+    },
+    {
+      id: "gallery",
+      title: "Photo Gallery",
+      icon: ImageIcon,
+      color: "#dcfce7", iconColor: "#16a34a", // Green
+      desc: "Share your moments with the community.",
+      subSections: [] 
     }
   ];
 
-  // ==========================================
-  // 2. DATA: TOURIST TOPICS
-  // ==========================================
-  const touristTopics = [
-    {
-      id: 'ancient',
-      title: 'Foundations of Antiquity',
-      subtitle: 'Prehistoric and Proto-Historic Urbanism',
-      icon: Scroll,
-      color: '#b45309', // Amber
-      content: (
-        <>
-          <p style={{ fontSize: '18px', lineHeight: '1.8', color: '#374151', marginBottom: '30px' }}>
-            The genesis of India's cultural trajectory is rooted in the early attempts of human communities to organize space and record experiences.
-          </p>
+  // --- 2. FETCH LOGIC (With Fallback) ---
+  const fetchDestinations = async (query, isGallery = false) => {
+    setLoading(true);
+    setDestinations([]);
 
-          <h3 style={{ fontSize: '22px', fontWeight: 'bold', color: '#92400e', marginBottom: '15px', borderLeft: '4px solid #b45309', paddingLeft: '15px' }}>
-            Key Milestones
-          </h3>
+    // 1. Construct Search Query
+    // We add "India" to ensure context, but keep it simple.
+    let searchTerm = isGallery 
+      ? "Tourism in India" 
+      : `${query} India`; 
 
-          <div style={{ overflowX: 'auto', marginBottom: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-              <thead style={{ backgroundColor: '#fffbeb' }}>
-                <tr>
-                  <th style={{ padding: '15px', textAlign: 'left', color: '#92400e' }}>Site</th>
-                  <th style={{ padding: '15px', textAlign: 'left', color: '#92400e' }}>Era</th>
-                  <th style={{ padding: '15px', textAlign: 'left', color: '#92400e' }}>Significance</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}><td style={{ padding: '15px', fontWeight: 'bold' }}>Bhimbetka</td><td style={{ padding: '15px' }}>Paleolithic</td><td style={{ padding: '15px' }}>Earliest record of human habitation & art.</td></tr>
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}><td style={{ padding: '15px', fontWeight: 'bold' }}>Dholavira</td><td style={{ padding: '15px' }}>3000 BCE</td><td style={{ padding: '15px' }}>Advanced water harvesting in arid land.</td></tr>
-                <tr><td style={{ padding: '15px', fontWeight: 'bold' }}>Lothal</td><td style={{ padding: '15px' }}>2400 BCE</td><td style={{ padding: '15px' }}>World's earliest known dockyard.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </>
-      )
-    },
-    {
-      id: 'temples',
-      title: 'Rock-Cut & Temple Art',
-      subtitle: 'Buddhist, Jain, and Dravidian Innovations',
-      icon: Landmark,
-      color: '#be123c', // Rose
-      content: (
-        <>
-          <p style={{ fontSize: '18px', lineHeight: '1.8', color: '#374151', marginBottom: '30px' }}>
-             The rise of Buddhism and Jainism sparked a radical shift toward permanent, rock-cut structures. Later, the Classical period saw the crystallization of temple architecture.
-          </p>
+    // 2. Define Exclusions (Political/Foreign)
+    // We add these mainly to the 'filter' step, but slight help in query doesn't hurt
+    const exclusions = "-person -biography -film -party -politics";
+
+    try {
+      // Increase limit to 50 to maximize chance of finding valid items
+      const url = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(searchTerm + " " + exclusions)}&gsrlimit=50&prop=pageimages|extracts&pithumbsize=600&exintro&explaintext&exsentences=2&format=json&origin=*`;
+      
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.query && data.query.pages) {
+        let results = Object.values(data.query.pages);
+
+        // FILTER LOGIC
+        results = results.filter(item => {
+          // Must have Thumbnail & Text
+          if (!item.thumbnail || !item.thumbnail.source || !item.extract) return false;
           
-          <ul style={{ listStyle: 'none', padding: 0 }}>
-            <li style={{ marginBottom: '20px', padding: '15px', border: '1px solid #fecdd3', borderRadius: '12px', backgroundColor: '#fff1f2' }}>
-               <strong style={{ color: '#9f1239', display: 'block', fontSize: '18px', marginBottom: '5px' }}>Ajanta Caves</strong>
-               A canvas of spiritual narrative depicting Jataka tales using mineral pigments.
-            </li>
-            <li style={{ marginBottom: '20px', padding: '15px', border: '1px solid #fecdd3', borderRadius: '12px', backgroundColor: '#fff1f2' }}>
-               <strong style={{ color: '#9f1239', display: 'block', fontSize: '18px', marginBottom: '5px' }}>Ellora Caves</strong>
-               A monolithic dialogue of faiths (Hindu, Buddhist, Jain) featuring the massive Kailasa Temple.
-            </li>
-            <li style={{ marginBottom: '20px', padding: '15px', border: '1px solid #fecdd3', borderRadius: '12px', backgroundColor: '#fff1f2' }}>
-               <strong style={{ color: '#9f1239', display: 'block', fontSize: '18px', marginBottom: '5px' }}>Chola Temples</strong>
-               The Brihadisvara Temple represents the pinnacle of Dravidian architecture with its massive 66m vimana.
-            </li>
-          </ul>
-        </>
-      )
-    },
-    {
-      id: 'medieval',
-      title: 'Medieval & Mughal',
-      subtitle: 'Forts, Palaces, and the Indo-Islamic Zenith',
-      icon: Shield,
-      color: '#be123c', // Red
-      content: (
-        <>
-          <p style={{ fontSize: '18px', lineHeight: '1.8', color: '#374151', marginBottom: '30px' }}>
-            The medieval period was defined by the rise of Rajput hill forts and the introduction of the arch and dome by the Delhi Sultanate and Mughals.
-          </p>
-
-          <h3 style={{ fontSize: '22px', fontWeight: 'bold', color: '#9f1239', marginBottom: '15px' }}>Mughal Masterpieces</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
-            <div style={{ padding: '20px', backgroundColor: '#fff1f2', borderRadius: '12px', border: '1px solid #fda4af' }}>
-              <h4 style={{ color: '#881337', fontWeight: 'bold', fontSize: '18px', marginBottom: '10px' }}>The Taj Mahal</h4>
-              <p style={{ fontSize: '14px', color: '#4b5563' }}>A symbol of perfection built using white Makrana marble and Pietra Dura inlay.</p>
-            </div>
-            <div style={{ padding: '20px', backgroundColor: '#fff1f2', borderRadius: '12px', border: '1px solid #fda4af' }}>
-              <h4 style={{ color: '#881337', fontWeight: 'bold', fontSize: '18px', marginBottom: '10px' }}>Fatehpur Sikri</h4>
-              <p style={{ fontSize: '14px', color: '#4b5563' }}>A well-preserved red sandstone ghost city demonstrating Akbar's architectural vision.</p>
-            </div>
-          </div>
-        </>
-      )
-    },
-    {
-      id: 'living',
-      title: 'Living Heritage',
-      subtitle: 'Indigenous Traditions and Biodiversity',
-      icon: Sprout,
-      color: '#047857', // Emerald
-      content: (
-        <>
-          <p style={{ fontSize: '18px', lineHeight: '1.8', color: '#374151', marginBottom: '30px' }}>
-            India's heritage extends to its vast biodiversity and the preservation of indigenous knowledge systems.
-          </p>
+          const text = (item.extract + " " + item.title).toLowerCase();
           
-          <div style={{ overflowX: 'auto', marginBottom: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-              <thead style={{ backgroundColor: '#ecfdf5' }}>
-                <tr>
-                  <th style={{ padding: '15px', textAlign: 'left', color: '#065f46' }}>Site</th>
-                  <th style={{ padding: '15px', textAlign: 'left', color: '#065f46' }}>Region</th>
-                  <th style={{ padding: '15px', textAlign: 'left', color: '#065f46' }}>Significance</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}><td style={{ padding: '15px', fontWeight: 'bold' }}>Living Root Bridges</td><td style={{ padding: '15px' }}>Meghalaya</td><td style={{ padding: '15px' }}>Bio-engineering using Ficus elastica trees.</td></tr>
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}><td style={{ padding: '15px', fontWeight: 'bold' }}>Tawang Monastery</td><td style={{ padding: '15px' }}>Arunachal</td><td style={{ padding: '15px' }}>Largest monastery in India.</td></tr>
-                <tr><td style={{ padding: '15px', fontWeight: 'bold' }}>Majuli Island</td><td style={{ padding: '15px' }}>Assam</td><td style={{ padding: '15px' }}>Neo-Vaishnavite cultural landscape.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </>
-      )
+          // 1. Block Foreign/Political Terms
+          const badKeywords = [
+            "pakistan", "china", "mexico", "usa", "nepal", "bangladesh", "sri lanka",
+            "political party", "ministry", "association", "bjp", "congress", "corporation", 
+            "ltd", "pvt", "government", "election", "parliament", "assembly", "cricket team"
+          ];
+          if (badKeywords.some(kw => text.includes(kw))) return false;
+
+          // 2. Block People (Born/Died/Actor)
+          if (text.includes("born") || text.includes("died") || text.includes("politician") || text.includes("cricketer") || text.includes("actress")) return false;
+
+          // 3. Indian Context (Relaxed check: Title OR Text must mention relevant keywords)
+          // We check for 'India' OR specific states/terms to catch more valid results
+          const indianKeywords = ["india", "state", "pradesh", "kerala", "goa", "delhi", "mumbai", "rajasthan", "himalaya", "bengal", "punjab", "gujarat", "temple", "fort", "lake", "river", "mountain", "peak", "valley", "trek", "resort", "city", "town", "station"];
+          
+          return indianKeywords.some(kw => text.includes(kw));
+        });
+
+        const formatted = results.map(item => ({
+          name: item.title,
+          desc: item.extract,
+          img: item.thumbnail.source
+        }));
+
+        // Shuffle and Slice
+        setDestinations(formatted.sort(() => 0.5 - Math.random()).slice(0, 20));
+      }
+    } catch (error) {
+      console.error("Fetch Error:", error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  // --- HELPERS ---
-  const currentTopics = activeModal === 'traveller' ? travellerTopics : touristTopics;
-  const modalColor = activeModal === 'traveller' ? '#2563eb' : '#ea580c';
+  // --- 3. HANDLERS ---
+  const handleMainSectionClick = (section) => {
+    setSelectedMainSection(section);
+    setSelectedSubPersona(null); 
+    setDestinations([]); 
+
+    if (section.id === 'gallery') {
+      fetchDestinations("", true);
+    }
+  };
+
+  const handleSubPersonaClick = (subPersona) => {
+    setSelectedSubPersona(subPersona);
+    fetchDestinations(subPersona.query, false);
+  };
+
+  const closeModal = () => {
+    setSelectedMainSection(null);
+    setSelectedSubPersona(null);
+    setDestinations([]);
+  };
+
+  const goBackToSubMenu = () => {
+    setSelectedSubPersona(null);
+    setDestinations([]);
+  };
 
   return (
-    <section style={{ padding: '80px 20px', backgroundColor: 'white' }}>
-      
-      {/* SECTION HEADER */}
-      <div style={{ textAlign: 'center', marginBottom: '50px' }}>
-        <h2 style={{ fontSize: '32px', fontWeight: 'bold', color: '#111827', marginBottom: '10px' }}>Find Your Travel Persona</h2>
-        <p style={{ color: '#6b7280' }}>Discover who you are and share your journey.</p>
-      </div>
-
-      {/* MAIN CARDS */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '30px', flexWrap: 'wrap', maxWidth: '1200px', margin: '0 auto' }}>
-        <div onClick={() => setActiveModal('traveller')} style={{ flex: '1', minWidth: '280px', backgroundColor: 'white', borderRadius: '16px', padding: '30px', textAlign: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6', cursor: 'pointer', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-          <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px', color: '#2563eb' }}><Compass size={32} /></div>
-          <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', marginBottom: '10px' }}>The Traveller</h3>
-          <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>Soul searchers looking for rejuvenation in the unknown.</p>
-          <span style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>Explore &rarr;</span>
-        </div>
-
-        <div onClick={() => setActiveModal('tourist')} style={{ flex: '1', minWidth: '280px', backgroundColor: 'white', borderRadius: '16px', padding: '30px', textAlign: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6', cursor: 'pointer', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-          <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px', color: '#ea580c' }}><Camera size={32} /></div>
-          <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', marginBottom: '10px' }}>The Tourist</h3>
-          <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>Exploring heritage, architecture, and national identity.</p>
-          <span style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>Explore &rarr;</span>
-        </div>
-
-        <div onClick={() => setActiveModal('gallery')} style={{ flex: '1', minWidth: '280px', backgroundColor: 'white', borderRadius: '16px', padding: '30px', textAlign: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6', cursor: 'pointer', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-          <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px', color: '#16a34a' }}><ImageIcon size={32} /></div>
-          <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', marginBottom: '10px' }}>Photo Gallery</h3>
-          <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>Share your moments with the community.</p>
-          <span style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>Explore &rarr;</span>
-        </div>
-      </div>
-
-      {/* --- MODAL --- */}
-      {activeModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(5px)' }}>
-          <div style={{ backgroundColor: 'white', width: '90%', maxWidth: '1100px', height: '90vh', borderRadius: '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
-            
-            {/* Close Button */}
-            <button onClick={() => { setActiveModal(null); setSelectedTopic(null); }} style={{ position: 'absolute', top: '20px', right: '20px', width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#f3f4f6', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 50 }}>
-              <X size={20} color="#374151" />
-            </button>
-
-            {/* --- GALLERY MODAL --- */}
-            {activeModal === 'gallery' ? (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <h2 style={{ fontSize: '32px', fontWeight: 'bold', color: '#16a34a', marginBottom: '20px' }}>Community Gallery</h2>
-                <p style={{ color: '#6b7280' }}>Upload and share your travel memories.</p>
+    <section style={{ padding: '80px 20px', backgroundColor: '#f9fafb' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        
+        {/* --- MAIN 3 CARDS GRID --- */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+          {mainSections.map((section) => (
+            <div 
+              key={section.id}
+              onClick={() => handleMainSectionClick(section)}
+              style={{
+                backgroundColor: 'white', borderRadius: '24px', padding: '40px 30px',
+                textAlign: 'center', cursor: 'pointer',
+                border: '1px solid #f3f4f6', transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.02)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-10px)'; e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.08)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,0,0,0.02)'; }}
+            >
+              <div style={{ width: '80px', height: '80px', marginBottom: '25px', backgroundColor: section.color, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: section.iconColor }}>
+                <section.icon size={36} strokeWidth={1.5} />
               </div>
-            ) : (
-              // --- TRAVELLER / TOURIST MODAL ---
-              <>
-                {/* 1. VIEW: TOPIC GRID (If nothing selected) */}
-                {!selectedTopic && (
-                  <div style={{ padding: '40px', overflowY: 'auto', flex: 1 }}>
-                    <div style={{ marginBottom: '40px', textAlign: 'center' }}>
-                      <h2 style={{ fontSize: '36px', fontWeight: 'bold', color: modalColor, marginBottom: '10px' }}>
-                        {activeModal === 'traveller' ? 'The Cartography of Rejuvenation' : 'The Cultural Landscape'}
-                      </h2>
-                      <p style={{ color: '#6b7280', fontSize: '18px' }}>
-                        {activeModal === 'traveller' ? 'Indian trekking ecosystems and wellness hubs.' : 'Heritage, architecture, and national identity.'}
-                      </p>
-                    </div>
+              <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937', marginBottom: '15px' }}>{section.title}</h3>
+              <p style={{ color: '#6b7280', fontSize: '16px', lineHeight: '1.6', marginBottom: '25px', flex: 1 }}>{section.desc}</p>
+              <div style={{ fontSize: '15px', fontWeight: '600', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                Explore <ArrowRight size={16} />
+              </div>
+            </div>
+          ))}
+        </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '30px' }}>
-                      {currentTopics.map((topic) => (
-                        <div 
-                          key={topic.id}
-                          onClick={() => setSelectedTopic(topic)}
-                          style={{ border: '1px solid #e5e7eb', borderRadius: '16px', padding: '30px', cursor: 'pointer', transition: 'all 0.3s', backgroundColor: 'white', position: 'relative', overflow: 'hidden' }}
-                          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(0,0,0,0.1)'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px' }}>
-                            <div style={{ width: '50px', height: '50px', borderRadius: '12px', backgroundColor: `${topic.color}15`, color: topic.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <topic.icon size={24} />
-                            </div>
-                            <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937' }}>{topic.title}</h3>
-                          </div>
-                          <p style={{ color: '#6b7280', lineHeight: '1.6' }}>{topic.desc}</p>
-                          <span style={{ display: 'inline-block', marginTop: '20px', fontSize: '14px', fontWeight: '600', color: topic.color }}>Read Full Article &rarr;</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+      </div>
+
+      {/* --- MODAL SYSTEM --- */}
+      {selectedMainSection && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'white', width: '100%', maxWidth: '1000px',
+            borderRadius: '24px', overflow: 'hidden', position: 'relative',
+            height: '85vh', display: 'flex', flexDirection: 'column',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.2)'
+          }}>
+
+            {/* Modal Header */}
+            <div style={{ padding: '25px 30px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'white' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                {selectedSubPersona && (
+                  <button onClick={goBackToSubMenu} style={{ border: 'none', background: 'none', cursor: 'pointer', marginRight: '5px' }}>
+                    <ArrowRight size={24} style={{ transform: 'rotate(180deg)' }} color="#374151" />
+                  </button>
                 )}
+                <div style={{ padding: '10px', backgroundColor: selectedMainSection.color, borderRadius: '12px', color: selectedMainSection.iconColor }}>
+                  <selectedMainSection.icon size={24} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '22px', fontWeight: 'bold', color: '#111827' }}>
+                    {selectedSubPersona ? selectedSubPersona.title : selectedMainSection.title}
+                  </h2>
+                  <p style={{ fontSize: '13px', color: '#6b7280' }}>
+                    {selectedMainSection.id === 'gallery' ? "Captured moments from across India" : (selectedSubPersona ? "Curated suggestions" : "Select your travel style")}
+                  </p>
+                </div>
+              </div>
+              <button onClick={closeModal} style={{ background: '#f3f4f6', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
+                <X size={20} color="#374151" />
+              </button>
+            </div>
 
-                {/* 2. VIEW: DETAIL PAGE (If topic selected) */}
-                {selectedTopic && (
-                  <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    {/* Header Bar */}
-                    <div style={{ padding: '20px 40px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '20px', backgroundColor: 'white' }}>
-                      <button onClick={() => setSelectedTopic(null)} style={{ display: 'flex', alignItems: 'center', gap: '8px', border: 'none', background: 'none', fontSize: '14px', fontWeight: '600', color: '#6b7280', cursor: 'pointer' }}>
-                        <ArrowLeft size={18} /> Back to Topics
-                      </button>
+            {/* --- MODAL CONTENT AREA --- */}
+            <div style={{ padding: '30px', overflowY: 'auto', backgroundColor: '#f9fafb', flex: 1 }}>
+              
+              {/* VIEW 1: SUB-SECTION SELECTOR */}
+              {!selectedSubPersona && selectedMainSection.id !== 'gallery' && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+                  {selectedMainSection.subSections.map((sub) => (
+                    <div 
+                      key={sub.id}
+                      onClick={() => handleSubPersonaClick(sub)}
+                      style={{
+                        backgroundColor: 'white', padding: '25px', borderRadius: '16px',
+                        border: '1px solid #e5e7eb', cursor: 'pointer',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = selectedMainSection.iconColor; e.currentTarget.style.transform = 'translateY(-3px)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                    >
+                      <div style={{ color: selectedMainSection.iconColor, marginBottom: '15px' }}><sub.icon size={32} /></div>
+                      <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937' }}>{sub.title}</h4>
                     </div>
+                  ))}
+                </div>
+              )}
 
-                    {/* Content Scroll Area */}
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '40px' }}>
-                      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                        
-                        {/* Hero Header for Article */}
-                        <div style={{ marginBottom: '40px', textAlign: 'center' }}>
-                          <div style={{ width: '60px', height: '60px', borderRadius: '16px', backgroundColor: selectedTopic.color, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
-                            <selectedTopic.icon size={32} />
+              {/* VIEW 2: LOADING STATE */}
+              {loading && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                  <Loader2 className="animate-spin" size={40} color={selectedMainSection.iconColor} />
+                  <p style={{ marginTop: '15px', color: '#6b7280', fontWeight: '500' }}>Fetching best spots...</p>
+                </div>
+              )}
+
+              {/* VIEW 3: RESULTS GRID */}
+              {!loading && destinations.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '25px' }}>
+                  {destinations.map((dest, idx) => (
+                    <div 
+                      key={idx}
+                      onClick={() => navigate(`/place/${dest.name}`)}
+                      style={{ 
+                        backgroundColor: 'white', borderRadius: '16px', overflow: 'hidden', 
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.05)', cursor: 'pointer', 
+                        transition: 'transform 0.2s' 
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                      onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                    >
+                      <div style={{ height: '200px', overflow: 'hidden', backgroundColor: '#e5e7eb', position: 'relative' }}>
+                        <img src={dest.img} alt={dest.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        {selectedMainSection.id === 'gallery' && (
+                          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '10px 15px', background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)', color: 'white', fontSize: '14px', fontWeight: '600' }}>
+                            {dest.name}
                           </div>
-                          <h2 style={{ fontSize: '42px', fontWeight: 'bold', color: '#111827', marginBottom: '10px' }}>{selectedTopic.title}</h2>
-                          <p style={{ fontSize: '20px', color: '#6b7280' }}>{selectedTopic.subtitle}</p>
-                        </div>
-
-                        {/* The Actual Content */}
-                        <div style={{ fontSize: '16px', lineHeight: '1.8', color: '#374151' }}>
-                          {selectedTopic.content}
-                        </div>
-                        
+                        )}
                       </div>
+                      
+                      {selectedMainSection.id !== 'gallery' && (
+                        <div style={{ padding: '20px' }}>
+                          <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {dest.name}
+                          </h3>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: selectedMainSection.iconColor, marginBottom: '10px', fontWeight: '500' }}>
+                            <MapPin size={14} /> India
+                          </div>
+                          <p style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {dest.desc}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
-              </>
-            )}
+                  ))}
+                </div>
+              )}
+
+              {/* No Results */}
+              {!loading && destinations.length === 0 && (selectedSubPersona || selectedMainSection.id === 'gallery') && (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>
+                  <p>No destinations found. Please try again later.</p>
+                </div>
+              )}
+
+            </div>
           </div>
         </div>
       )}
