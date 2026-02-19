@@ -845,10 +845,22 @@ const StateDetails = () => {
   const [wikiData, setWikiData] = useState(null);
   const [subDestinations, setSubDestinations] = useState([]);
   const [relatedDestinations, setRelatedDestinations] = useState([]);
+  const [relatedDestinationImages, setRelatedDestinationImages] = useState({});
   const [selectedRelatedDestination, setSelectedRelatedDestination] = useState(null);
   const [selectedRelatedData, setSelectedRelatedData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [summarizing, setSummarizing] = useState(false);
+
+  // --- HELPER: CALCULATE IOU DISTANCE BETWEEN TWO STRINGS ---
+  const calculateIOUDistance = (str1, str2) => {
+    const set1 = new Set(str1.toLowerCase());
+    const set2 = new Set(str2.toLowerCase());
+    
+    const intersection = new Set([...set1].filter(x => set2.has(x)));
+    const union = new Set([...set1, ...set2]);
+    
+    return union.size === 0 ? 0 : intersection.size / union.size;
+  };
 
   // --- HELPER: FIND 3 MATCHING DESTINATIONS ---
   const findRelatedDestinations = (currentDestination) => {
@@ -863,18 +875,23 @@ const StateDetails = () => {
       });
     });
     
-    // Filter out the current destination and get 3 random ones
+    // Filter out the current destination and get 3 closest matches by IOU distance
     const filtered = allDestinations.filter(d => 
       d.name.toLowerCase() !== currentDestination.toLowerCase()
     );
     
-    // Shuffle and take first 3
-    return filtered.sort(() => Math.random() - 0.5).slice(0, 3);
+    // Sort by IOU distance (highest similarity first) and take top 3
+    return filtered
+      .sort((a, b) => calculateIOUDistance(currentDestination, b.name) - calculateIOUDistance(currentDestination, a.name))
+      .slice(0, 3);
   };
 
-  // --- HELPER: SUMMARIZE TEXT USING OLLAMA ---
+  // --- HELPER: SUMMARIZE TEXT USING OLLAMA WITH TIMEOUT ---
   const summarizeWithOllama = async (text) => {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 10 second timeout
+      
       const response = await fetch('http://localhost:5051/api/generate', {
         method: 'POST',
         headers: {
@@ -886,7 +903,10 @@ const StateDetails = () => {
           stream: false,
           temperature: 0.7,
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         console.warn('Ollama API error:', response.status);
@@ -896,12 +916,16 @@ const StateDetails = () => {
       const data = await response.json();
       return data.response || null;
     } catch (error) {
-      console.error('Ollama Summarization Error:', error);
+      if (error.name === 'AbortError') {
+        console.warn('Ollama request timed out');
+      } else {
+        console.error('Ollama Summarization Error:', error);
+      }
       return null;
     }
   };
 
-  // --- HELPER: FETCH WIKIPEDIA DATA ---
+  // --- HELPER: FETCH WIKIPEDIA DATA WITH ALL IMAGES ---
   const fetchWikiData = async (query) => {
     try {
       // 1. Try Direct Search
@@ -909,15 +933,56 @@ const StateDetails = () => {
       let response = await fetch(endpoint);
       let data = await response.json();
       let pages = data.query?.pages;
+      
+      if (!pages) {
+        console.warn("No pages found for query:", query);
+        return null;
+      }
+      
       let pageId = Object.keys(pages)[0];
 
       // 2. If Direct Search Fails (or returns empty), Try Appending "India"
       if (!pageId || pageId === "-1") {
+        console.log("First search failed, trying with ' India' appended");
         endpoint = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&prop=extracts|pageimages&pithumbsize=1200&exintro&explaintext&redirects=1&titles=${encodeURIComponent(query + " India")}`;
         response = await fetch(endpoint);
         data = await response.json();
         pages = data.query?.pages;
+        
+        if (!pages) {
+          console.warn("Still no pages found for query:", query + " India");
+          return null;
+        }
+        
         pageId = Object.keys(pages)[0];
+      }
+
+      // 3. If still no valid page, try a search query to find similar articles
+      if (!pageId || pageId === "-1") {
+        console.log("Trying search instead of direct match");
+        const searchEndpoint = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=0&srlimit=1`;
+        const searchResponse = await fetch(searchEndpoint);
+        const searchData = await searchResponse.json();
+        const searchResults = searchData.query?.search;
+        
+        if (searchResults && searchResults.length > 0) {
+          const firstResult = searchResults[0].title;
+          console.log("Found search result:", firstResult);
+          endpoint = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&prop=extracts|pageimages&pithumbsize=1200&exintro&explaintext&redirects=1&titles=${encodeURIComponent(firstResult)}`;
+          response = await fetch(endpoint);
+          data = await response.json();
+          pages = data.query?.pages;
+          
+          if (!pages) {
+            console.warn("No pages found even after search");
+            return null;
+          }
+          
+          pageId = Object.keys(pages)[0];
+        } else {
+          console.warn("No search results found");
+          return null;
+        }
       }
 
       if (pageId && pageId !== "-1") {
@@ -930,13 +995,52 @@ const StateDetails = () => {
             title: page.title,
             extract: null,
             image: page.thumbnail ? page.thumbnail.source : null,
+            images: page.thumbnail ? [page.thumbnail.source] : [],
             url: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title)}`,
             insufficientContent: true
           };
         }
         
-        // 3. Summarize Wikipedia extract using Ollama
+        // 3. Fetch all images from the article
+        let allImages = [];
+        if (page.thumbnail) {
+          allImages.push(page.thumbnail.source);
+        }
+        
+        try {
+          const imagesEndpoint = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&prop=images&titles=${encodeURIComponent(page.title)}`;
+          const imagesResponse = await fetch(imagesEndpoint);
+          const imagesData = await imagesResponse.json();
+          const imagePage = imagesData.query?.pages?.[pageId];
+          
+          if (imagePage?.images && imagePage.images.length > 0) {
+            // Get info about each image
+            const imageNames = imagePage.images.map(img => img.title).join('|');
+            if (imageNames) {
+              const imageInfoEndpoint = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&prop=imageinfo&iiprop=url&titles=${encodeURIComponent(imageNames)}`;
+              const imageInfoResponse = await fetch(imageInfoEndpoint);
+              const imageInfoData = await imageInfoResponse.json();
+              const imagePages = imageInfoData.query?.pages || {};
+              
+              // Extract image URLs and add to allImages if not already present
+              Object.values(imagePages).forEach((img) => {
+                if (img.imageinfo?.[0]?.url) {
+                  const url = img.imageinfo[0].url;
+                  // Filter out non-image files and svg files
+                  if (!allImages.includes(url) && (url.includes('.jpg') || url.includes('.png') || url.includes('.gif') || url.includes('.webp'))) {
+                    allImages.push(url);
+                  }
+                }
+              });
+            }
+          }
+        } catch (imgError) {
+          console.warn("Error fetching article images:", imgError);
+        }
+        
+        // 4. Summarize Wikipedia extract using Ollama
         let summarizedText = page.extract; // Fallback to original if summarization fails
+        console.log("Original extract length:", page.extract ? page.extract.length : 0);
         if (page.extract) {
           const summary = await summarizeWithOllama(page.extract);
           if (summary) {
@@ -948,6 +1052,7 @@ const StateDetails = () => {
           title: page.title,
           extract: summarizedText,
           image: page.thumbnail ? page.thumbnail.source : null,
+          images: allImages.length > 0 ? allImages : [page.thumbnail?.source].filter(Boolean),
           url: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title)}`,
           insufficientContent: false
         };
@@ -994,6 +1099,22 @@ const StateDetails = () => {
       if (!wikiResult || wikiResult.insufficientContent) {
         const related = findRelatedDestinations(searchName);
         setRelatedDestinations(related);
+        
+        // 5. Fetch Wikipedia images for each related destination
+        const imageMap = {};
+        for (const dest of related) {
+          try {
+            const destWikiData = await fetchWikiData(dest.name);
+            if (destWikiData?.images && destWikiData.images.length > 0) {
+              // Pick a random image from the fetched images
+              const randomImage = destWikiData.images[Math.floor(Math.random() * destWikiData.images.length)];
+              imageMap[dest.name] = randomImage;
+            }
+          } catch (error) {
+            console.warn(`Error fetching images for ${dest.name}:`, error);
+          }
+        }
+        setRelatedDestinationImages(imageMap);
       }
       
       setLoading(false);
@@ -1093,9 +1214,6 @@ const StateDetails = () => {
           
           {!wikiData?.insufficientContent && (
             <div style={{ paddingTop: '16px', borderTop: '1px solid #e5e7eb', fontSize: '12px', color: '#9ca3af' }}>
-              <span style={{ fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                ✨ Content enhanced and formatted using Ollama AI • Source: Wikipedia
-              </span>
             </div>
           )}
         </div>
@@ -1113,10 +1231,10 @@ const StateDetails = () => {
                 <div key={index} style={{ backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
                   <div style={{ height: '200px', overflow: 'hidden', backgroundColor: '#e5e7eb' }}>
                     <img 
-                      src={`https://source.unsplash.com/random/600x400?${place.name},india`} 
+                      src={`https://picsum.photos/600/400?random=${index}`}
                       alt={place.name} 
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      onError={(e) => { e.target.src = 'https://source.unsplash.com/random/600x400?travel'; }}
+                      onError={(e) => { e.target.src = `https://via.placeholder.com/600x400?text=${encodeURIComponent(place.name)}`; }}
                     />
                   </div>
                   <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -1144,41 +1262,52 @@ const StateDetails = () => {
             </h3>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
-              {relatedDestinations.map((place, index) => (
-                <div key={index} style={{ backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', cursor: 'pointer' }}>
-                  <div style={{ height: '200px', overflow: 'hidden', backgroundColor: '#e5e7eb' }}>
-                    <img 
-                      src={`https://source.unsplash.com/random/600x400?${place.name},india`} 
-                      alt={place.name} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      onError={(e) => { e.target.src = 'https://source.unsplash.com/random/600x400?travel'; }}
-                    />
+              {relatedDestinations.map((place, index) => {
+                const wikiImage = relatedDestinationImages[place.name];
+                return (
+                  <div key={index} style={{ backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', cursor: 'pointer' }}>
+                    <div style={{ height: '200px', overflow: 'hidden', backgroundColor: '#e5e7eb', position: 'relative' }}>
+                      <img 
+                        src={wikiImage || `https://picsum.photos/600/400?random=${index}`}
+                        alt={place.name} 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => { 
+                          e.target.src = `https://via.placeholder.com/600x400?text=${encodeURIComponent(place.state)}`; 
+                        }}
+                      />
+                    </div>
+                    <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                      <p style={{ fontSize: '12px', color: '#9ca3af', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0' }}>
+                        {place.state}
+                      </p>
+                      <h4 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>
+                        {place.name}
+                      </h4>
+                      <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.6', marginBottom: '20px', flex: 1 }}>
+                        {place.detail}
+                      </p>
+                      <button 
+                        onClick={async () => {
+                          try {
+                            setSummarizing(true);
+                            const data = await fetchWikiData(place.name);
+                            setSelectedRelatedDestination(place);
+                            setSelectedRelatedData(data);
+                          } catch (error) {
+                            console.error("Error fetching destination:", error);
+                            setSelectedRelatedData(null);
+                          } finally {
+                            setSummarizing(false);
+                          }
+                        }}
+                        style={{ color: '#16a34a', fontWeight: '600', fontSize: '14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}
+                      >
+                        Explore &rarr;
+                      </button>
+                    </div>
                   </div>
-                  <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <p style={{ fontSize: '12px', color: '#9ca3af', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0' }}>
-                      {place.state}
-                    </p>
-                    <h4 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>
-                      {place.name}
-                    </h4>
-                    <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.6', marginBottom: '20px', flex: 1 }}>
-                      {place.detail}
-                    </p>
-                    <button 
-                      onClick={async () => {
-                        setSummarizing(true);
-                        const data = await fetchWikiData(place.name);
-                        setSummarizing(false);
-                        setSelectedRelatedDestination(place);
-                        setSelectedRelatedData(data);
-                      }}
-                      style={{ color: '#16a34a', fontWeight: '600', fontSize: '14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}
-                    >
-                      Explore &rarr;
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* SELECTED RELATED DESTINATION DETAILS */}
@@ -1201,17 +1330,26 @@ const StateDetails = () => {
 
                 {selectedRelatedData ? (
                   <>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '20px', alignItems: 'start' }}>
-                      {selectedRelatedData.image && (
-                        <div style={{ display: 'flex', justifyContent: 'center' }}>
-                          <img 
-                            src={selectedRelatedData.image}
-                            alt={selectedRelatedDestination.name}
-                            style={{ borderRadius: '8px', width: '100%', height: 'auto', maxHeight: '280px', objectFit: 'cover' }}
-                            onError={(e) => { e.target.style.display = 'none'; }}
-                          />
+                    {/* Image Gallery */}
+                    {selectedRelatedData.images && selectedRelatedData.images.length > 0 && (
+                      <div style={{ marginBottom: '30px' }}>
+                        <h4 style={{ fontSize: '18px', fontWeight: 'bold', color: '#15803d', marginBottom: '16px' }}>Gallery</h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                          {selectedRelatedData.images.map((imgUrl, idx) => (
+                            <div key={idx} style={{ borderRadius: '8px', overflow: 'hidden', backgroundColor: '#e5e7eb', height: '200px' }}>
+                              <img 
+                                src={imgUrl}
+                                alt={`${selectedRelatedDestination.name} - Image ${idx + 1}`}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={(e) => { e.target.style.display = 'none'; }}
+                              />
+                            </div>
+                          ))}
                         </div>
-                      )}
+                      </div>
+                    )}
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '30px', marginBottom: '20px', alignItems: 'start' }}>
                       <div>
                         {selectedRelatedData.insufficientContent ? (
                           <div style={{ padding: '16px', backgroundColor: '#fef3c7', borderRadius: '8px', borderLeft: '4px solid #f59e0b', color: '#92400e' }}>
@@ -1220,9 +1358,23 @@ const StateDetails = () => {
                             </p>
                           </div>
                         ) : (
-                          <p style={{ fontSize: '15px', color: '#334155', lineHeight: '1.8', margin: 0 }}>
+                          <ReactMarkdown
+                            components={{
+                              h1: ({ children }) => <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '16px', marginBottom: '12px', color: '#1f2937' }}>{children}</h3>,
+                              h2: ({ children }) => <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '14px', marginBottom: '10px', color: '#1f2937' }}>{children}</h3>,
+                              h3: ({ children }) => <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '12px', marginBottom: '8px', color: '#1f2937' }}>{children}</h4>,
+                              p: ({ children }) => <p style={{ marginBottom: '12px', margin: '12px 0', fontSize: '15px', color: '#334155', lineHeight: '1.8' }}>{children}</p>,
+                              strong: ({ children }) => <strong style={{ fontWeight: 'bold', color: '#16a34a' }}>{children}</strong>,
+                              em: ({ children }) => <em style={{ fontStyle: 'italic', color: '#6b7280' }}>{children}</em>,
+                              ul: ({ children }) => <ul style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'disc' }}>{children}</ul>,
+                              ol: ({ children }) => <ol style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'decimal' }}>{children}</ol>,
+                              li: ({ children }) => <li style={{ marginBottom: '6px', color: '#334155' }}>{children}</li>,
+                              blockquote: ({ children }) => <blockquote style={{ borderLeft: '4px solid #16a34a', paddingLeft: '16px', marginLeft: '0', marginBottom: '12px', fontStyle: 'italic', color: '#6b7280' }}>{children}</blockquote>,
+                              code: ({ children }) => <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '14px' }}>{children}</code>,
+                            }}
+                          >
                             {selectedRelatedData.extract}
-                          </p>
+                          </ReactMarkdown>
                         )}
                       </div>
                     </div>
@@ -1238,7 +1390,7 @@ const StateDetails = () => {
                       </a>
                     )}
                   </>
-                ) : (
+                ) : summarizing ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', gap: '16px' }}>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#16a34a', animation: 'pulse 1.5s infinite' }} />
@@ -1254,6 +1406,14 @@ const StateDetails = () => {
                         50% { opacity: 1; }
                       }
                     `}</style>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', gap: '16px' }}>
+                    <div style={{ padding: '16px', backgroundColor: '#fee2e2', borderRadius: '8px', borderLeft: '4px solid #ef4444', color: '#7f1d1d' }}>
+                      <p style={{ margin: 0, fontSize: '15px', fontWeight: '500' }}>
+                        ⚠️ Unable to fetch information for this destination. Please try again or visit Wikipedia directly.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
