@@ -740,7 +740,7 @@ export default StateDetails;
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { State } from 'country-state-city';
-import { ArrowLeft, MapPin, Info, ExternalLink } from 'lucide-react';
+import { ArrowLeft, MapPin, Info, ExternalLink, Loader2, Building2, Map as MapIcon, Mountain, Landmark, Leaf, Camera, BookOpen, Star, Quote, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 // --- 1. INTERNAL DATABASE (For Top Destinations Grid ONLY) ---
@@ -838,20 +838,36 @@ const placeDatabase = {
 };
 
 const StateDetails = () => {
-  const { placeName } = useParams();
+  const params = useParams();
+  const urlParam = params.stateName || params.placeName; 
   const navigate = useNavigate();
   
+  const [originalSearch, setOriginalSearch] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [isCorrected, setIsCorrected] = useState(false);
+  
+  // State Story & Gallery Data
   const [wikiData, setWikiData] = useState(null);
-  const [subDestinations, setSubDestinations] = useState([]);
-  const [relatedDestinations, setRelatedDestinations] = useState([]);
-  const [relatedDestinationImages, setRelatedDestinationImages] = useState({});
-  const [selectedRelatedDestination, setSelectedRelatedDestination] = useState(null);
-  const [selectedRelatedData, setSelectedRelatedData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [stateGallery, setStateGallery] = useState([]);
+  const [loadingStory, setLoadingStory] = useState(true);
   const [summarizing, setSummarizing] = useState(false);
 
-  // --- HELPER: CALCULATE IOU DISTANCE BETWEEN TWO STRINGS ---
+  // Dynamic Rows Data
+  const [loadingRows, setLoadingRows] = useState(true);
+  const [cities, setCities] = useState([]);
+  const [spots, setSpots] = useState([]);
+  const [offbeat, setOffbeat] = useState([]);
+  const [heritage, setHeritage] = useState([]);
+  const [nature, setNature] = useState([]);
+
+  // Story Modal State
+  const [selectedStory, setSelectedStory] = useState(null);
+  
+  // Global Footprint & Suggestions
+  const [hasGlobalFootprint, setHasGlobalFootprint] = useState(true);
+  const [suggestedDestinations, setSuggestedDestinations] = useState([]);
+
+    // --- HELPER: CALCULATE IOU DISTANCE BETWEEN TWO STRINGS ---
   const calculateIOUDistance = (str1, str2) => {
     const set1 = new Set(str1.toLowerCase());
     const set2 = new Set(str2.toLowerCase());
@@ -886,19 +902,75 @@ const StateDetails = () => {
       .slice(0, 3);
   };
 
-  // --- HELPER: SUMMARIZE TEXT USING OLLAMA WITH TIMEOUT ---
+  // --- 1. ADVANCED SPELL CHECKER & AUTO-CORRECTOR ---
+  const resolveLocationName = async (input) => {
+    // if (!input) return { resolved: "", corrected: false };
+    // const normalizedInput = input.toLowerCase().trim();
+
+    // const commonTypos = {
+    //   "mussuri": "Mussoorie", "musori": "Mussoorie", "musuri": "Mussoorie",
+    //   "banglore": "Bengaluru", "bengaluru": "Bengaluru", "bengalor": "Bengaluru",
+    //   "calcutta": "Kolkata", "bombay": "Mumbai", "madras": "Chennai",
+    //   "pondy": "Puducherry", "pondicherry": "Puducherry",
+    //   "anjta": "Ajanta Caves", "ajnta": "Ajanta Caves", "elora": "Ellora Caves",
+    //   "banaras": "Varanasi", "benares": "Varanasi", "kashi": "Varanasi",
+    //   "mysur": "Mysore", "mysuru": "Mysore", "ooti": "Ooty", "uti": "Ooty", 
+    //   "darjiling": "Darjeeling", "darjeling": "Darjeeling",
+    //   "gujrat": "Gujarat", "gujarath": "Gujarat", "amdavad": "Ahmedabad", "ahmedbad": "Ahmedabad",
+    //   "andman": "Andaman and Nicobar Islands", "lakshdweep": "Lakshadweep",
+    //   "keral": "Kerala", "rajesthan": "Rajasthan", "punjab": "Punjab", "delhi": "New Delhi"
+    // };
+
+    // if (commonTypos[normalizedInput]) {
+    //   return { resolved: commonTypos[normalizedInput], corrected: commonTypos[normalizedInput].toLowerCase() !== normalizedInput };
+    // }
+
+    // if (input.length === 2 && input === input.toUpperCase()) {
+    //   const stateObj = State.getStateByCodeAndCountry(input, 'IN');
+    //   if (stateObj) return { resolved: stateObj.name, corrected: false };
+    // }
+
+    // try {
+    //   let searchUrl = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&list=search&srsearch=${encodeURIComponent(input + " India")}&srlimit=3&srinfo=suggestion`;
+    //   let res = await fetch(searchUrl);
+    //   let data = await res.json();
+
+    //   if (data.query?.searchinfo?.suggestion) {
+    //     return { resolved: data.query.searchinfo.suggestion, corrected: true };
+    //   } 
+    //   if (data.query?.search?.length > 0) {
+    //     const topMatch = data.query.search[0].title;
+    //     return { resolved: topMatch, corrected: topMatch.toLowerCase() !== normalizedInput };
+    //   }
+
+    //   const fuzzyQuery = input.split(' ').map(w => w.length > 3 ? w + '~' : w).join(' ');
+    //   searchUrl = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&list=search&srsearch=${encodeURIComponent(fuzzyQuery + " India")}&srlimit=3`;
+    //   res = await fetch(searchUrl);
+    //   data = await res.json();
+
+    //   if (data.query?.search?.length > 0) {
+    //     const topMatch = data.query.search[0].title;
+    //     return { resolved: topMatch, corrected: true };
+    //   }
+
+    // } catch (e) {
+    //   console.error("Auto-correct failed:", e);
+    // }
+    
+    return { resolved: input, corrected: false };
+  };
+
+  // --- 2. SUMMARIZE TEXT USING OLLAMA ---
   const summarizeWithOllama = async (text) => {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 10 second timeout
+      // const timeoutId = setTimeout(() => controller.abort(), 15000); 
       
       const response = await fetch('http://localhost:5051/api/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gemma3:4b', // or your preferred model (llama2, neural-chat, etc.)
+          model: 'gemma3:4b', 
           prompt: `You are a travel guide expert. Summarize and beautifully format the following Wikipedia text using markdown tags about an Indian destination into 2-3 engaging paragraphs. Focus on culture, attractions, and travel appeal. Exclude text such as 'here is your summary...'. Keep it concise but informative:\n\n${text}`,
           stream: false,
           temperature: 0.7,
@@ -906,238 +978,443 @@ const StateDetails = () => {
         signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        console.warn('Ollama API error:', response.status);
-        return null;
-      }
+      // clearTimeout(timeoutId);
+      if (!response.ok) return null;
 
       const data = await response.json();
       return data.response || null;
     } catch (error) {
-      if (error.name === 'AbortError') {
-        console.warn('Ollama request timed out');
-      } else {
-        console.error('Ollama Summarization Error:', error);
-      }
       return null;
     }
   };
 
-  // --- HELPER: FETCH WIKIPEDIA DATA WITH ALL IMAGES ---
-  const fetchWikiData = async (query) => {
+  // --- 3. FETCH MAIN STORY ---
+  const fetchWikiData = async (exactTitle) => {
     try {
-      // 1. Try Direct Search
-      let endpoint = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&prop=extracts|pageimages&pithumbsize=1200&exintro&explaintext&redirects=1&titles=${encodeURIComponent(query)}`;
+      let endpoint = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&prop=extracts|pageimages&pithumbsize=1200&exintro&explaintext&redirects=1&titles=${encodeURIComponent(exactTitle)}`;
       let response = await fetch(endpoint);
       let data = await response.json();
       let pages = data.query?.pages;
       
-      if (!pages) {
-        console.warn("No pages found for query:", query);
-        return null;
+      let pageId = pages ? Object.keys(pages)[0] : null;
+
+      if (!pageId || pageId === "-1") {
+        return { title: exactTitle, extract: null, image: null, insufficientContent: true };
+      }
+
+      const page = pages[pageId];
+      if (!page.extract || page.extract.trim().length < 100) {
+        return { title: page.title, extract: null, image: page.thumbnail?.source || null, url: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title)}`, insufficientContent: true };
       }
       
-      let pageId = Object.keys(pages)[0];
-
-      // 2. If Direct Search Fails (or returns empty), Try Appending "India"
-      if (!pageId || pageId === "-1") {
-        console.log("First search failed, trying with ' India' appended");
-        endpoint = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&prop=extracts|pageimages&pithumbsize=1200&exintro&explaintext&redirects=1&titles=${encodeURIComponent(query + " India")}`;
-        response = await fetch(endpoint);
-        data = await response.json();
-        pages = data.query?.pages;
-        
-        if (!pages) {
-          console.warn("Still no pages found for query:", query + " India");
-          return null;
-        }
-        
-        pageId = Object.keys(pages)[0];
-      }
-
-      // 3. If still no valid page, try a search query to find similar articles
-      if (!pageId || pageId === "-1") {
-        console.log("Trying search instead of direct match");
-        const searchEndpoint = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=0&srlimit=1`;
-        const searchResponse = await fetch(searchEndpoint);
-        const searchData = await searchResponse.json();
-        const searchResults = searchData.query?.search;
-        
-        if (searchResults && searchResults.length > 0) {
-          const firstResult = searchResults[0].title;
-          console.log("Found search result:", firstResult);
-          endpoint = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&prop=extracts|pageimages&pithumbsize=1200&exintro&explaintext&redirects=1&titles=${encodeURIComponent(firstResult)}`;
-          response = await fetch(endpoint);
-          data = await response.json();
-          pages = data.query?.pages;
-          
-          if (!pages) {
-            console.warn("No pages found even after search");
-            return null;
-          }
-          
-          pageId = Object.keys(pages)[0];
-        } else {
-          console.warn("No search results found");
-          return null;
-        }
-      }
-
-      if (pageId && pageId !== "-1") {
-        const page = pages[pageId];
-        
-        // Check if the extract has sufficient content (minimum 200 characters)
-        const extractLength = page.extract ? page.extract.trim().length : 0;
-        if (extractLength < 200) {
-          return {
-            title: page.title,
-            extract: null,
-            image: page.thumbnail ? page.thumbnail.source : null,
-            images: page.thumbnail ? [page.thumbnail.source] : [],
-            url: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title)}`,
-            insufficientContent: true
-          };
-        }
-        
-        // 3. Fetch all images from the article
-        let allImages = [];
-        if (page.thumbnail) {
-          allImages.push(page.thumbnail.source);
-        }
-        
-        try {
-          const imagesEndpoint = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&prop=images&titles=${encodeURIComponent(page.title)}`;
-          const imagesResponse = await fetch(imagesEndpoint);
-          const imagesData = await imagesResponse.json();
-          const imagePage = imagesData.query?.pages?.[pageId];
-          
-          if (imagePage?.images && imagePage.images.length > 0) {
-            // Get info about each image
-            const imageNames = imagePage.images.map(img => img.title).join('|');
-            if (imageNames) {
-              const imageInfoEndpoint = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&prop=imageinfo&iiprop=url&titles=${encodeURIComponent(imageNames)}`;
-              const imageInfoResponse = await fetch(imageInfoEndpoint);
-              const imageInfoData = await imageInfoResponse.json();
-              const imagePages = imageInfoData.query?.pages || {};
-              
-              // Extract image URLs and add to allImages if not already present
-              Object.values(imagePages).forEach((img) => {
-                if (img.imageinfo?.[0]?.url) {
-                  const url = img.imageinfo[0].url;
-                  // Filter out non-image files and svg files
-                  if (!allImages.includes(url) && (url.includes('.jpg') || url.includes('.png') || url.includes('.gif') || url.includes('.webp'))) {
-                    allImages.push(url);
-                  }
-                }
-              });
-            }
-          }
-        } catch (imgError) {
-          console.warn("Error fetching article images:", imgError);
-        }
-        
-        // 4. Summarize Wikipedia extract using Ollama
-        let summarizedText = page.extract; // Fallback to original if summarization fails
-        console.log("Original extract length:", page.extract ? page.extract.length : 0);
-        if (page.extract) {
-          const summary = await summarizeWithOllama(page.extract);
-          if (summary) {
-            summarizedText = summary;
-          }
-        }
-        
-        return {
-          title: page.title,
-          extract: summarizedText,
-          image: page.thumbnail ? page.thumbnail.source : null,
-          images: allImages.length > 0 ? allImages : [page.thumbnail?.source].filter(Boolean),
-          url: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title)}`,
-          insufficientContent: false
-        };
-      }
+      let summarizedText = page.extract; 
+      setSummarizing(true);
+      const summary = await summarizeWithOllama(page.extract);
+      if (summary) summarizedText = summary;
+      setSummarizing(false);
+      
+      return {
+        title: page.title,
+        extract: summarizedText,
+        image: page.thumbnail ? page.thumbnail.source : null,
+        url: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title)}`,
+        insufficientContent: false
+      };
     } catch (error) {
       console.error("Wiki Fetch Error:", error);
+      return null;
     }
-    return null;
   };
 
-  useEffect(() => {
-    const loadContent = async () => {
-      setLoading(true);
-      setSummarizing(false);
+  // --- 4. FETCH RANDOM GALLERY IMAGES ---
+  const fetchStateGallery = async (stateName) => {
+    try {
+      const queryParams = `action=query&generator=search&gsrsearch=${encodeURIComponent(`"${stateName}" tourist places India`)}&gsrlimit=20&prop=pageimages|extracts&pithumbsize=800&exintro&explaintext&format=json&origin=*`;
       
-      // 1. Resolve State/Place Name
-      let searchName = placeName;
-      // Handle 2-letter codes (e.g., "RJ" -> "Rajasthan")
-      if (placeName.length === 2 && placeName === placeName.toUpperCase()) {
-        const stateObj = State.getStateByCodeAndCountry(placeName, 'IN');
-        if (stateObj) searchName = stateObj.name;
-      }
-      
-      // Fix Naming Quirks
-      if (searchName === "Jammu & Kashmir") searchName = "Jammu and Kashmir";
-      if (searchName.includes("Andaman")) searchName = "Andaman and Nicobar Islands";
-      
-      setDisplayName(searchName);
+      const [wikiRes, voyageRes] = await Promise.all([
+        fetch(`https://en.wikipedia.org/w/api.php?${queryParams}`).then(r => r.json()).catch(() => ({})),
+        fetch(`https://en.wikivoyage.org/w/api.php?${queryParams}`).then(r => r.json()).catch(() => ({}))
+      ]);
 
-      // 2. Fetch Wiki Data (includes Ollama summarization)
-      setSummarizing(true);
-      const wikiResult = await fetchWikiData(searchName);
-      setSummarizing(false);
-      setWikiData(wikiResult);
+      const combined = [
+        ...(wikiRes.query?.pages ? Object.values(wikiRes.query.pages) : []),
+        ...(voyageRes.query?.pages ? Object.values(voyageRes.query.pages) : [])
+      ];
 
-      // 3. Fetch Internal Sub-Destinations (The Grid)
-      const dbKey = Object.keys(placeDatabase).find(k => 
-        k.toLowerCase() === searchName.toLowerCase() || 
-        searchName.toLowerCase().includes(k.toLowerCase())
-      );
-      setSubDestinations(dbKey ? placeDatabase[dbKey] : []);
+      const isAllowedWikiDomain = (url) => {
+        if (!url) return false;
+        const lower = url.toLowerCase();
+        return lower.includes('wikimedia.org') || lower.includes('wikipedia.org') || lower.includes('wikivoyage.org');
+      };
 
-      // 4. If Wikipedia data is null or insufficient, find related destinations
-      if (!wikiResult || wikiResult.insufficientContent) {
-        const related = findRelatedDestinations(searchName);
-        setRelatedDestinations(related);
+      const normalize = (src) => {
+        if (!src) return null;
+        if (src.startsWith('//')) return 'https:' + src;
+        return src;
+      };
+
+      const isBiographyPage = (page) => {
+        if (!page) return false;
+        const title = (page.title || '').toLowerCase();
+        const extract = (page.extract || '').toLowerCase();
         
-        // 5. Fetch Wikipedia images for each related destination
-        const imageMap = {};
-        for (const dest of related) {
-          try {
-            const destWikiData = await fetchWikiData(dest.name);
-            if (destWikiData?.images && destWikiData.images.length > 0) {
-              // Pick a random image from the fetched images
-              const randomImage = destWikiData.images[Math.floor(Math.random() * destWikiData.images.length)];
-              imageMap[dest.name] = randomImage;
-            }
-          } catch (error) {
-            console.warn(`Error fetching images for ${dest.name}:`, error);
-          }
+        // Strong patterns for person pages
+        const personIndicators = ['born ', 'died ', '(actress)', '(actor)', '(singer)', '(dancer)', '(cricketer)', '(footballer)', '(politician)', '(director)', '(author)', '(musician)', '(writer)', '(athlete)'];
+        
+        // Check title for person patterns
+        if (personIndicators.some(p => title.includes(p))) return true;
+        
+        // Check if extract starts with date pattern (birth/death format)
+        if (extract.match(/^[a-z\s]+\([\d\-–]+(?:–|\s*to\s*|to\s)?[\d\-–]*\)/)) return true;
+        
+        // Check extract for strong biography indicators
+        if (extract.includes('born') && (extract.includes('indian') || extract.includes('actress') || extract.includes('actor') || extract.includes('singer') || extract.includes('career'))) return true;
+        
+        // Exclude if extract says "personal life", "career", "early life" without place context
+        if ((extract.includes('personal life') || extract.includes('early life')) && !extract.includes('temple') && !extract.includes('monument') && !extract.includes('place')) return true;
+        
+        return false;
+      };
+
+      const images = combined
+        .filter(p => p.thumbnail && p.thumbnail.source && !isBiographyPage(p))
+        .map(p => normalize(p.thumbnail.source))
+        .filter(src => {
+          if (!src) return false;
+          const lowerStr = src.toLowerCase();
+          if (lowerStr.includes('map') || lowerStr.includes('flag') || lowerStr.includes('logo') || lowerStr.includes('symbol')) return false;
+          return isAllowedWikiDomain(src);
+        });
+
+      const uniqueImages = [...new Set(images)];
+      uniqueImages.sort(() => 0.5 - Math.random());
+      return uniqueImages.slice(0, 6);
+    } catch (error) {
+      return [];
+    }
+  };
+
+  // Small placeholder SVG (data URI) used when no wiki image is available
+  const placeholderDataUri = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="#e5e7eb"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#9ca3af" font-family="Arial,Helvetica,sans-serif" font-size="20">Image not available</text></svg>')}`;
+
+  // Fetch primary thumbnail for a Wikipedia/Wikivoyage page (tries several fallbacks)
+  const fetchWikiImage = async (title) => {
+    if (!title) return null;
+    try {
+      const normalizeUrl = (src) => {
+        if (!src) return null;
+        if (src.startsWith('//')) return 'https:' + src;
+        return src;
+      };
+
+      // Helper: request pageimages for a specific title
+      const pageImageForTitle = async (t, endpoint = 'https://en.wikipedia.org/w/api.php') => {
+        const params = `origin=*&action=query&format=json&prop=pageimages&pithumbsize=800&titles=${encodeURIComponent(t)}`;
+        const res = await fetch(`${endpoint}?${params}`).then(r => r.json()).catch(() => ({}));
+        const pages = res.query?.pages;
+        const pageId = pages ? Object.keys(pages)[0] : null;
+        if (pageId && pageId !== '-1') {
+          const page = pages[pageId];
+          if (page.thumbnail?.source) return normalizeUrl(page.thumbnail.source);
         }
-        setRelatedDestinationImages(imageMap);
+        return null;
+      };
+
+      // 1) Direct lookup on Wikipedia
+      let img = await pageImageForTitle(title, 'https://en.wikipedia.org/w/api.php');
+      if (img) return img;
+
+      // 2) Try the Wikivoyage site by exact title
+      img = await pageImageForTitle(title, 'https://en.wikivoyage.org/w/api.php');
+      if (img) return img;
+
+      // 3) Use search to find best matching Wikipedia page, then fetch image
+      const searchEndpoints = [
+        { url: 'https://en.wikipedia.org/w/api.php', suffix: ' Wikipedia' },
+        { url: 'https://en.wikivoyage.org/w/api.php', suffix: ' Wikivoyage' }
+      ];
+
+      for (const src of searchEndpoints) {
+        try {
+          const sParams = `origin=*&action=query&list=search&srsearch=${encodeURIComponent(title + ' India')}&srlimit=5&format=json`;
+          const sRes = await fetch(`${src.url}?${sParams}`).then(r => r.json()).catch(() => ({}));
+          const hits = sRes.query?.search || [];
+          if (hits.length > 0) {
+            // try the top few matches for thumbnails
+            for (let i = 0; i < Math.min(hits.length, 3); i++) {
+              const candidate = hits[i].title;
+              const candImg = await pageImageForTitle(candidate, src.url);
+              if (candImg) return candImg;
+            }
+          }
+        } catch (e) {
+          // ignore and continue
+        }
       }
+
+      // 4) As a last attempt, try searching without the "India" suffix (some pages are named differently)
+      try {
+        const sParams = `origin=*&action=query&list=search&srsearch=${encodeURIComponent(title)}&srlimit=5&format=json`;
+        const sRes = await fetch(`https://en.wikipedia.org/w/api.php?${sParams}`).then(r => r.json()).catch(() => ({}));
+        const hits = sRes.query?.search || [];
+        for (let i = 0; i < Math.min(hits.length, 3); i++) {
+          const candImg = await pageImageForTitle(hits[i].title, 'https://en.wikipedia.org/w/api.php');
+          if (candImg) return candImg;
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      return null;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // --- 5. FETCH DYNAMIC RECOMMENDATION ROWS ---
+  const fetchCategoryPlaces = async (searchState, queryContext) => {
+    try {
+      const safeQuery = `+"${searchState}" ${queryContext} India -person -biography -politics -election`;
+      const queryParams = `action=query&generator=search&gsrsearch=${encodeURIComponent(safeQuery)}&gsrlimit=12&prop=pageimages|extracts&pithumbsize=600&exintro&explaintext&exsentences=2&format=json&origin=*`;
+
+      const [wikiRes, voyageRes] = await Promise.all([
+        fetch(`https://en.wikipedia.org/w/api.php?${queryParams}`).then(r => r.json()).catch(() => ({})),
+        fetch(`https://en.wikivoyage.org/w/api.php?${queryParams}`).then(r => r.json()).catch(() => ({}))
+      ]);
+
+      const combined = [
+        ...(wikiRes.query?.pages ? Object.values(wikiRes.query.pages) : []),
+        ...(voyageRes.query?.pages ? Object.values(voyageRes.query.pages) : [])
+      ];
+
+      const uniqueMap = new Map();
+      combined.forEach(item => { if (!uniqueMap.has(item.title)) uniqueMap.set(item.title, item); });
+      let results = Array.from(uniqueMap.values());
+
+      results = results.filter(item => {
+        if (!item.thumbnail || !item.extract) return false;
+        const title = item.title.toLowerCase();
+        const text = item.extract.toLowerCase();
+        
+        const badTitles = ["culture of", "history of", "economy of", "timeline", "list of", "demographics", "climate of", "tourism in", "transport in", "politics of"];
+        if (badTitles.some(t => title.includes(t))) return false;
+        
+        const badWords = ["born", "died", "politician", "cricketer", "actress", "singer", "actor"];
+        if (badWords.some(w => text.includes(w))) return false;
+
+        let locationWords = searchState.split(' ').map(w => w.toLowerCase());
+        let primaryWord = locationWords.length > 1 && ["new", "the", "north", "south", "east", "west"].includes(locationWords[0]) 
+                          ? locationWords[1] : locationWords[0];
+                          
+        if (!text.includes(primaryWord) && !title.includes(primaryWord)) return false;
+
+        return true;
+      });
+
+      return results.map(item => ({
+        name: item.title.replace(" (India)", ""),
+        desc: item.extract,
+        img: item.thumbnail.source
+      }));
+    } catch (error) {
+      return [];
+    }
+  };
+
+  // --- 6. MASTER LOAD EFFECT ---
+  useEffect(() => {
+    if (!urlParam) return;
+
+    const loadAllData = async () => {
+      setLoadingStory(true);
+      setLoadingRows(true);
+      setOriginalSearch(urlParam);
       
-      setLoading(false);
+      const { resolved, corrected } = await resolveLocationName(urlParam);
+      setDisplayName(resolved);
+      setIsCorrected(corrected);
+
+      const [wikiResult, galleryResult] = await Promise.all([
+        fetchWikiData(resolved),
+        fetchStateGallery(resolved)
+      ]);
+      setWikiData(wikiResult);
+      setStateGallery(galleryResult);
+      setLoadingStory(false);
+
+      // --- CHECK IF LOCATION WAS FOUND GLOBALLY ---
+      // If wiki data is null or has insufficient content, location doesn't have global footprint
+      if (!wikiResult || wikiResult === null) {
+        setHasGlobalFootprint(false);
+        const rawSuggestions = findRelatedDestinations(resolved);
+        const suggestions = await Promise.all(rawSuggestions.map(async s => ({
+          ...s,
+          img: (await fetchWikiImage(s.name)) || placeholderDataUri
+        })));
+        setSuggestedDestinations(suggestions);
+        setLoadingRows(false);
+        return; // Exit early, don't fetch recommendations
+      }
+
+      const [fetchedCities, fetchedSpots, fetchedOffbeat, fetchedHeritage, fetchedNature] = await Promise.all([
+        fetchCategoryPlaces(resolved, "major cities municipal district"),
+        fetchCategoryPlaces(resolved, "tourist attractions places to visit"),
+        fetchCategoryPlaces(resolved, "offbeat hidden gems rural village hill station"),
+        fetchCategoryPlaces(resolved, "monuments forts temples historical heritage"),
+        fetchCategoryPlaces(resolved, "national park wildlife sanctuary waterfalls")
+      ]);
+
+      // --- CHECK FOR TYPO CORRECTION OR INSUFFICIENT WIKI DATA ---
+      // If typo was corrected OR wiki data is insufficient, use findRelatedDestinations as fallback
+      if (corrected || (wikiResult && wikiResult.insufficientContent)) {
+        const relatedDests = findRelatedDestinations(resolved);
+        
+        // Fetch wiki thumbnails for related destinations
+        const relatedWithImages = await Promise.all(relatedDests.map(async (dest) => ({
+          name: dest.name,
+          desc: dest.detail,
+          img: (await fetchWikiImage(dest.name)) || placeholderDataUri
+        })));
+
+        // If categories are empty, populate them with related destinations
+        const citiesToUse = fetchedCities.length > 0 ? fetchedCities : relatedWithImages.slice(0, 3);
+        const spotsToUse = fetchedSpots.length > 0 ? fetchedSpots : relatedWithImages.slice(0, 3);
+        
+        setCities(citiesToUse);
+        setSpots(spotsToUse);
+        setOffbeat(fetchedOffbeat.length > 0 ? fetchedOffbeat : relatedWithImages);
+        setHeritage(fetchedHeritage.length > 0 ? fetchedHeritage : relatedWithImages);
+        setNature(fetchedNature.length > 0 ? fetchedNature : relatedWithImages);
+      } else {
+        setCities(fetchedCities);
+        setSpots(fetchedSpots);
+        setOffbeat(fetchedOffbeat);
+        setHeritage(fetchedHeritage);
+        setNature(fetchedNature);
+      }
+      setLoadingRows(false);
     };
 
-    loadContent();
-  }, [placeName]);
+    loadAllData();
+  }, [urlParam]);
 
-  if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '20px' }}>
-      <p style={{ fontSize: '18px', color: '#6b7280' }}>Fetching travel details...</p>
-      {summarizing && <p style={{ fontSize: '14px', color: '#9ca3af', fontStyle: 'italic' }}>✨ Summarizing with Ollama AI...</p>}
-    </div>
-  );
+  // --- REUSABLE ROW COMPONENT ---
+  const RecommendationRow = ({ title, icon: Icon, items, color, iconColor }) => {
+    if (!items || items.length === 0) return null;
 
-  // Fallback Values
-  const heroImage = wikiData?.image || `https://source.unsplash.com/random/1200x500?${displayName},india,tourism`;
+    return (
+      <div style={{ marginBottom: '40px' }}>
+        <h3 style={{ fontSize: '22px', fontWeight: 'bold', color: '#111827', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ padding: '8px', backgroundColor: color, borderRadius: '8px', display: 'flex', color: iconColor }}>
+            <Icon size={20} strokeWidth={2.5} />
+          </div>
+          {title}
+        </h3>
+        
+        <div className="hide-scrollbar" style={{ display: 'flex', gap: '20px', overflowX: 'auto', paddingBottom: '15px' }}>
+          {items.map((dest, idx) => (
+            <div 
+              key={idx}
+              onClick={() => navigate(`/place/${dest.name}`)}
+              style={{
+                flex: '0 0 auto', width: '280px', backgroundColor: 'white', borderRadius: '16px', 
+                overflow: 'hidden', border: '1px solid #e5e7eb', cursor: 'pointer', transition: 'transform 0.2s',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              <div style={{ height: '160px', backgroundColor: '#e5e7eb' }}>
+                {
+                  (() => {
+                    const fallback = placeholderDataUri;
+                    let imgSrc = dest.img || fallback;
+                    if (typeof imgSrc === 'string' && imgSrc.startsWith('//')) imgSrc = 'https:' + imgSrc;
+                    return (
+                      <img
+                        src={imgSrc}
+                        loading="lazy"
+                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = fallback; }}
+                        alt={dest.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    );
+                  })()
+                }
+              </div>
+              <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <h4 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {dest.name}
+                </h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#16a34a', marginBottom: '10px', fontWeight: '600' }}>
+                  <MapPin size={12} /> {displayName}, India
+                </div>
+                <p style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', flex: 1 }}>
+                  {dest.desc}
+                </p>
+                <div style={{ color: '#16a34a', fontWeight: '600', fontSize: '13px', marginTop: '15px' }}>
+                  Explore Details &rarr;
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // --- DYNAMIC DATA GENERATORS FOR STORIES & TESTIMONIALS ---
+  const travellerStories = [
+    {
+      title: `Lost in the beauty of ${displayName}`,
+      author: "Raj Patel",
+      excerpt: `I never expected ${displayName} to take my breath away like this. The local food, the warmth of the people, and the hidden gems we found away from the crowds made this the trip of a lifetime.`,
+      fullText: `My journey to ${displayName} started as a spontaneous decision, but it quickly turned into one of the most memorable chapters of my life. \n\nFrom the moment I arrived, I was captivated by the sheer contrast of the landscapes. The mornings were spent wandering through narrow, culturally rich streets, sipping local tea, and chatting with vendors who were always eager to share the history of their home. \n\nWhat truly made this trip special, however, was venturing beyond the standard tourist spots. Thanks to a highly curated itinerary, I found myself in secluded areas where the natural beauty was untouched. The local food was an explosion of flavor—every meal felt like a celebration. \n\nI left ${displayName} not just with photographs, but with a deep sense of connection to its culture. If you are debating whether to visit, take this as your sign to go. It will exceed every expectation.`,
+      img: `https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=800&q=80`,
+      date: "October 2023"
+    },
+    {
+      title: `A cultural deep dive`,
+      author: "Ravikanth Shetty",
+      excerpt: `From the historic streets to the majestic landscapes, exploring ${displayName} felt like stepping into a painting. Every corner has a story to tell, and the architecture is simply stunning.`,
+      fullText: `As a history enthusiast, I have always sought out destinations that feel like living museums. ${displayName} delivered exactly that, and so much more.\n\nEvery day was a masterclass in heritage. I spent hours admiring the intricate details of ancient monuments and trying to comprehend the sheer scale of the historical architecture. The guides provided by our itinerary were phenomenal, offering stories and legends that you simply won't find in standard guidebooks.\n\nEven the evenings were magical. Watching the sunset cast a golden glow over the city while listening to traditional folk music in the background is an experience I will carry with me forever. ${displayName} is a testament to India's rich, diverse past, and I cannot wait to return and uncover more of its secrets.`,
+      img: `https://images.unsplash.com/photo-1514222325250-13f34e5ced2e?auto=format&fit=crop&w=800&q=80`,
+      date: "December 2023"
+    },
+    {
+      title: `Nature's true paradise`,
+      author: "Amit and Sneha",
+      excerpt: `If you want to disconnect from the world, this is the place. Waking up to the serene views of ${displayName} and experiencing the local wildlife was an absolute dream. We will definitely be back.`,
+      fullText: `We were looking for an escape from the relentless pace of city life, and ${displayName} provided the perfect sanctuary. \n\nOur itinerary prioritized nature and relaxation, leading us to breathtaking viewpoints and serene lakes hidden from the usual tourist trails. Waking up to the sound of birds and the crisp, clean air was rejuvenating. We took early morning safaris, hiked through dense, verdant forests, and spent our evenings stargazing by a bonfire.\n\nThe eco-friendly stays recommended to us were incredible—luxurious yet entirely respectful of the surrounding environment. It was the perfect blend of adventure and peace. ${displayName} reminded us of how beautiful the world is when you just take a moment to stop and look.`,
+      img: `https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=800&q=80`,
+      date: "January 2024"
+    }
+  ];
+
+  const testimonials = [
+    {
+      name: "Raj and Simran",
+      text: `Planning our trip to ${displayName} was so overwhelming until we found this platform. The customized itinerary was spot on, hitting both famous spots and offbeat locations we'd never have found ourselves!`,
+    },
+    {
+      name: "Om Makhija",
+      text: `I used this service to plan my solo backpacking trip. Not only did they suggest incredible places to stay, but the local tips saved me so much time and money. Highly recommended!`,
+    },
+    {
+      name: "The Agrawal Family",
+      text: `Traveling with kids is tough, but the itinerary generated for us was perfectly paced. It had the right mix of sightseeing and relaxation. Thank you for making our vacation stress-free.`,
+    }
+  ];
+
+  // --- RENDER ---
+  // Prefer Wikipedia image, then gallery, then placeholder
+  const heroImage = wikiData?.image || stateGallery?.[0] || placeholderDataUri;
   const description = wikiData?.insufficientContent 
-    ? `The destination you searched for does not have global footprint.`
-    : wikiData?.extract || `The destination you searched for does not have global footprint.`;
+    ? `Detailed information for ${displayName} is currently limited.`
+    : wikiData?.extract || `Gathering details for ${displayName}...`;
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', paddingBottom: '80px' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', paddingBottom: '80px', position: 'relative' }}>
       
       {/* HEADER IMAGE */}
       <div style={{ position: 'relative', height: '400px', backgroundColor: '#e5e7eb' }}>
@@ -1145,7 +1422,7 @@ const StateDetails = () => {
           src={heroImage}
           alt={displayName} 
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          onError={(e) => { e.target.src = 'https://source.unsplash.com/random/1200x500?nature,travel'; }}
+          onError={(e) => { e.target.onerror = null; e.target.src = placeholderDataUri; }}
         />
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.7))', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', textAlign: 'center', padding: '20px' }}>
           <h1 style={{ fontSize: '48px', fontWeight: 'bold', marginBottom: '10px', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
@@ -1162,91 +1439,33 @@ const StateDetails = () => {
         </button>
       </div>
 
-      {/* CONTENT */}
-      <div style={{ maxWidth: '1100px', margin: '-80px auto 0', position: 'relative', zIndex: 10, padding: '0 20px' }}>
-        
-        {/* INFO CARD */}
-        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '40px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', marginBottom: '50px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Info color="#16a34a" size={24} />
-              <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>Overview</h2>
-            </div>
-            {wikiData?.url && (
-              <a 
-                href={wikiData.url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#2563eb', textDecoration: 'none', fontSize: '14px', fontWeight: '600' }}
-              >
-                Read on Wikipedia <ExternalLink size={14} />
-              </a>
-            )}
-          </div>
-          
-          <div style={{ fontSize: '18px', lineHeight: '1.8', color: '#4b5563', marginBottom: '20px' }}>
-            {wikiData?.insufficientContent ? (
-              <div style={{ padding: '20px', backgroundColor: '#fef3c7', borderRadius: '8px', borderLeft: '4px solid #f59e0b', color: '#92400e' }}>
-                <p style={{ margin: 0, fontSize: '16px', fontWeight: '500' }}>
-                  ⓘ {description}
-                </p>
-              </div>
-            ) : (
-              <ReactMarkdown
-                components={{
-                  h1: ({ children }) => <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '16px', marginBottom: '12px', color: '#1f2937' }}>{children}</h3>,
-                  h2: ({ children }) => <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '14px', marginBottom: '10px', color: '#1f2937' }}>{children}</h3>,
-                  h3: ({ children }) => <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '12px', marginBottom: '8px', color: '#1f2937' }}>{children}</h4>,
-                  p: ({ children }) => <p style={{ marginBottom: '12px', margin: '12px 0' }}>{children}</p>,
-                  strong: ({ children }) => <strong style={{ fontWeight: 'bold', color: '#16a34a' }}>{children}</strong>,
-                  em: ({ children }) => <em style={{ fontStyle: 'italic', color: '#6b7280' }}>{children}</em>,
-                  ul: ({ children }) => <ul style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'disc' }}>{children}</ul>,
-                  ol: ({ children }) => <ol style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'decimal' }}>{children}</ol>,
-                  li: ({ children }) => <li style={{ marginBottom: '6px' }}>{children}</li>,
-                  blockquote: ({ children }) => <blockquote style={{ borderLeft: '4px solid #16a34a', paddingLeft: '16px', marginLeft: '0', marginBottom: '12px', fontStyle: 'italic', color: '#6b7280' }}>{children}</blockquote>,
-                  code: ({ children }) => <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '14px' }}>{children}</code>,
-                }}
-              >
-                {description}
-              </ReactMarkdown>
-            )}
-          </div>
-          
-          {!wikiData?.insufficientContent && (
-            <div style={{ paddingTop: '16px', borderTop: '1px solid #e5e7eb', fontSize: '12px', color: '#9ca3af' }}>
-            </div>
-          )}
+      {/* TYPO CORRECTION BANNER */}
+      {isCorrected && (
+        <div style={{ backgroundColor: '#fef3c7', color: '#92400e', textAlign: 'center', padding: '12px', fontSize: '15px', borderBottom: '1px solid #fde68a' }}>
+          Showing results for <strong>{displayName}</strong> instead of <em>{originalSearch}</em>.
         </div>
+      )}
 
-        {/* SUB-DESTINATIONS GRID (Only if available in our DB) */}
-        {subDestinations.length > 0 && (
-          <div>
-            <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '30px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <MapPin color="#16a34a" /> 
-              Top Destinations in {displayName}
-            </h3>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
-              {subDestinations.map((place, index) => (
-                <div key={index} style={{ backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ height: '200px', overflow: 'hidden', backgroundColor: '#e5e7eb' }}>
-                    <img 
-                      src={`https://picsum.photos/600/400?random=${index}`}
-                      alt={place.name} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      onError={(e) => { e.target.src = `https://via.placeholder.com/600x400?text=${encodeURIComponent(place.name)}`; }}
-                    />
-                  </div>
-                  <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <h4 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>
-                      {place.name}
-                    </h4>
-                    <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.6', marginBottom: '20px', flex: 1 }}>
-                      {place.detail}
-                    </p>
-                    <button style={{ color: '#16a34a', fontWeight: '600', fontSize: '14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
-                      Check Availability &rarr;
-                    </button>
+      {/* CONTENT */}
+      <div style={{ maxWidth: '1100px', margin: isCorrected ? '40px auto 0' : '-80px auto 0', position: 'relative', zIndex: 10, padding: '0 20px' }}>
+        
+        {/* NO GLOBAL FOOTPRINT MESSAGE */}
+        {!hasGlobalFootprint && (
+          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '50px 40px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', marginBottom: '50px', textAlign: 'center' }}>
+            <div style={{ fontSize: '48px', marginBottom: '20px' }}>🌍</div>
+            <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937', marginBottom: '15px' }}>Location you searched does not have global footprint.</h2>
+            <p style={{ fontSize: '16px', color: '#6b7280', marginBottom: '40px' }}>
+              The destination "<em>{originalSearch}</em>" doesn't have sufficient information in our global database. But here are some similar destinations you might love:
+            </p>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '25px' }}>
+              {suggestedDestinations.map((dest, idx) => (
+                <div key={idx} style={{ backgroundColor: '#f9fafb', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e5e7eb', transition: 'transform 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                  <div style={{ height: '180px', backgroundColor: '#e5e7eb', backgroundImage: `url('${dest.img || placeholderDataUri}')`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                  <div style={{ padding: '20px' }}>
+                    <h4 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>{dest.name}</h4>
+                    <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '10px' }}>{dest.detail}</p>
+                    <p style={{ fontSize: '12px', color: '#16a34a', fontWeight: '600' }}>📍 {dest.state}, India</p>
                   </div>
                 </div>
               ))}
@@ -1254,174 +1473,252 @@ const StateDetails = () => {
           </div>
         )}
 
-        {/* RELATED DESTINATIONS (When Wikipedia fails) */}
-        {(wikiData === null || wikiData?.insufficientContent) && relatedDestinations.length > 0 && (
-          <div style={{ marginTop: '60px' }}>
-            <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '30px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              🗺️ Similar Destinations You Might Like
-            </h3>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
-              {relatedDestinations.map((place, index) => {
-                const wikiImage = relatedDestinationImages[place.name];
-                return (
-                  <div key={index} style={{ backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', cursor: 'pointer' }}>
-                    <div style={{ height: '200px', overflow: 'hidden', backgroundColor: '#e5e7eb', position: 'relative' }}>
-                      <img 
-                        src={wikiImage || `https://picsum.photos/600/400?random=${index}`}
-                        alt={place.name} 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => { 
-                          e.target.src = `https://via.placeholder.com/600x400?text=${encodeURIComponent(place.state)}`; 
-                        }}
-                      />
-                    </div>
-                    <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                      <p style={{ fontSize: '12px', color: '#9ca3af', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0' }}>
-                        {place.state}
-                      </p>
-                      <h4 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>
-                        {place.name}
-                      </h4>
-                      <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.6', marginBottom: '20px', flex: 1 }}>
-                        {place.detail}
-                      </p>
-                      <button 
-                        onClick={async () => {
-                          try {
-                            setSummarizing(true);
-                            const data = await fetchWikiData(place.name);
-                            setSelectedRelatedDestination(place);
-                            setSelectedRelatedData(data);
-                          } catch (error) {
-                            console.error("Error fetching destination:", error);
-                            setSelectedRelatedData(null);
-                          } finally {
-                            setSummarizing(false);
-                          }
-                        }}
-                        style={{ color: '#16a34a', fontWeight: '600', fontSize: '14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}
-                      >
-                        Explore &rarr;
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+        {/* 1. INFO CARD (STORY) */}
+        {hasGlobalFootprint && (
+        <div>
+          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '40px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', marginBottom: '50px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Info color="#16a34a" size={24} />
+                <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>Overview</h2>
+              </div>
+              {wikiData?.url && (
+                <a 
+                  href={wikiData.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#2563eb', textDecoration: 'none', fontSize: '14px', fontWeight: '600' }}
+                >
+                  Read on Wikipedia <ExternalLink size={14} />
+                </a>
+              )}
             </div>
-
-            {/* SELECTED RELATED DESTINATION DETAILS */}
-            {selectedRelatedDestination && (
-              <div style={{ marginTop: '50px', backgroundColor: '#f0fdf4', borderRadius: '16px', padding: '40px', border: '2px solid #16a34a' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '20px', borderBottom: '2px solid #16a34a' }}>
-                  <h3 style={{ fontSize: '28px', fontWeight: 'bold', color: '#15803d', margin: 0 }}>
-                    ✨ {selectedRelatedDestination.name}
-                  </h3>
-                  <button
-                    onClick={() => {
-                      setSelectedRelatedDestination(null);
-                      setSelectedRelatedData(null);
-                    }}
-                    style={{ background: 'none', border: 'none', fontSize: '28px', cursor: 'pointer', color: '#64748b' }}
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {selectedRelatedData ? (
-                  <>
-                    {/* Image Gallery */}
-                    {selectedRelatedData.images && selectedRelatedData.images.length > 0 && (
-                      <div style={{ marginBottom: '30px' }}>
-                        <h4 style={{ fontSize: '18px', fontWeight: 'bold', color: '#15803d', marginBottom: '16px' }}>Gallery</h4>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-                          {selectedRelatedData.images.map((imgUrl, idx) => (
-                            <div key={idx} style={{ borderRadius: '8px', overflow: 'hidden', backgroundColor: '#e5e7eb', height: '200px' }}>
-                              <img 
-                                src={imgUrl}
-                                alt={`${selectedRelatedDestination.name} - Image ${idx + 1}`}
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                onError={(e) => { e.target.style.display = 'none'; }}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '30px', marginBottom: '20px', alignItems: 'start' }}>
-                      <div>
-                        {selectedRelatedData.insufficientContent ? (
-                          <div style={{ padding: '16px', backgroundColor: '#fef3c7', borderRadius: '8px', borderLeft: '4px solid #f59e0b', color: '#92400e' }}>
-                            <p style={{ margin: 0, fontSize: '15px', fontWeight: '500' }}>
-                              ⓘ Limited information available for this destination on Wikipedia. Please refer to the main destination page for more details.
-                            </p>
-                          </div>
-                        ) : (
-                          <ReactMarkdown
-                            components={{
-                              h1: ({ children }) => <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '16px', marginBottom: '12px', color: '#1f2937' }}>{children}</h3>,
-                              h2: ({ children }) => <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '14px', marginBottom: '10px', color: '#1f2937' }}>{children}</h3>,
-                              h3: ({ children }) => <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '12px', marginBottom: '8px', color: '#1f2937' }}>{children}</h4>,
-                              p: ({ children }) => <p style={{ marginBottom: '12px', margin: '12px 0', fontSize: '15px', color: '#334155', lineHeight: '1.8' }}>{children}</p>,
-                              strong: ({ children }) => <strong style={{ fontWeight: 'bold', color: '#16a34a' }}>{children}</strong>,
-                              em: ({ children }) => <em style={{ fontStyle: 'italic', color: '#6b7280' }}>{children}</em>,
-                              ul: ({ children }) => <ul style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'disc' }}>{children}</ul>,
-                              ol: ({ children }) => <ol style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'decimal' }}>{children}</ol>,
-                              li: ({ children }) => <li style={{ marginBottom: '6px', color: '#334155' }}>{children}</li>,
-                              blockquote: ({ children }) => <blockquote style={{ borderLeft: '4px solid #16a34a', paddingLeft: '16px', marginLeft: '0', marginBottom: '12px', fontStyle: 'italic', color: '#6b7280' }}>{children}</blockquote>,
-                              code: ({ children }) => <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '14px' }}>{children}</code>,
-                            }}
-                          >
-                            {selectedRelatedData.extract}
-                          </ReactMarkdown>
-                        )}
-                      </div>
-                    </div>
-
-                    {selectedRelatedData.url && (
-                      <a 
-                        href={selectedRelatedData.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 20px', backgroundColor: '#16a34a', color: 'white', textDecoration: 'none', borderRadius: '8px', fontWeight: '600', fontSize: '14px', marginTop: '16px' }}
-                      >
-                        Read Full Article on Wikipedia
-                      </a>
-                    )}
-                  </>
-                ) : summarizing ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', gap: '16px' }}>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#16a34a', animation: 'pulse 1.5s infinite' }} />
-                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#16a34a', animation: 'pulse 1.5s infinite 0.3s' }} />
-                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#16a34a', animation: 'pulse 1.5s infinite 0.6s' }} />
-                    </div>
-                    <p style={{ margin: 0, fontSize: '15px', color: '#15803d', fontWeight: '600' }}>
-                      Fetching details with Ollama AI...
-                    </p>
-                    <style>{`
-                      @keyframes pulse {
-                        0%, 100% { opacity: 0.3; }
-                        50% { opacity: 1; }
-                      }
-                    `}</style>
+            
+            {loadingStory ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '30px 0' }}>
+                <Loader2 className="animate-spin" size={32} color="#16a34a" />
+                <p style={{ marginTop: '15px', color: '#6b7280' }}>Fetching regional history...</p>
+                {summarizing && <p style={{ fontSize: '13px', color: '#15803d', fontStyle: 'italic', marginTop: '5px' }}>✨ Summarizing with Ollama AI...</p>}
+              </div>
+            ) : (
+              <div style={{ fontSize: '18px', lineHeight: '1.8', color: '#4b5563', marginBottom: '20px' }}>
+                {wikiData?.insufficientContent ? (
+                  <div style={{ padding: '20px', backgroundColor: '#fef3c7', borderRadius: '8px', borderLeft: '4px solid #f59e0b', color: '#92400e' }}>
+                    <p style={{ margin: 0, fontSize: '16px', fontWeight: '500' }}>ⓘ {description}</p>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', gap: '16px' }}>
-                    <div style={{ padding: '16px', backgroundColor: '#fee2e2', borderRadius: '8px', borderLeft: '4px solid #ef4444', color: '#7f1d1d' }}>
-                      <p style={{ margin: 0, fontSize: '15px', fontWeight: '500' }}>
-                        ⚠️ Unable to fetch information for this destination. Please try again or visit Wikipedia directly.
-                      </p>
-                    </div>
-                  </div>
+                  <ReactMarkdown
+                    components={{
+                      h1: ({ children }) => <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '16px', marginBottom: '12px', color: '#1f2937' }}>{children}</h3>,
+                      h2: ({ children }) => <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '14px', marginBottom: '10px', color: '#1f2937' }}>{children}</h3>,
+                      h3: ({ children }) => <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '12px', marginBottom: '8px', color: '#1f2937' }}>{children}</h4>,
+                      p: ({ children }) => <p style={{ marginBottom: '12px', margin: '12px 0' }}>{children}</p>,
+                      strong: ({ children }) => <strong style={{ fontWeight: 'bold', color: '#16a34a' }}>{children}</strong>,
+                      em: ({ children }) => <em style={{ fontStyle: 'italic', color: '#6b7280' }}>{children}</em>,
+                      ul: ({ children }) => <ul style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'disc' }}>{children}</ul>,
+                      ol: ({ children }) => <ol style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'decimal' }}>{children}</ol>,
+                      li: ({ children }) => <li style={{ marginBottom: '6px' }}>{children}</li>,
+                      blockquote: ({ children }) => <blockquote style={{ borderLeft: '4px solid #16a34a', paddingLeft: '16px', marginLeft: '0', marginBottom: '12px', fontStyle: 'italic', color: '#6b7280' }}>{children}</blockquote>,
+                    }}
+                  >
+                    {description}
+                  </ReactMarkdown>
                 )}
               </div>
             )}
           </div>
+
+        {/* 2. RANDOM IMAGE GALLERY */}
+        {!loadingStory && stateGallery.length > 0 && (
+          <div style={{ marginBottom: '60px' }}>
+            <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Camera size={24} color="#16a34a" /> Glimpses of {displayName}
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+              {stateGallery.map((imgUrl, idx) => (
+                <div key={idx} style={{ height: '220px', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                  <img 
+                    src={imgUrl} 
+                    alt={`${displayName} highlight ${idx + 1}`} 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }} 
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 3. DYNAMIC RECOMMENDATIONS AREA */}
+        <div style={{ marginBottom: '60px' }}>
+          <h2 style={{ fontSize: '32px', fontWeight: 'bold', color: '#111827', marginBottom: '30px', paddingBottom: '10px', borderBottom: '2px solid #e5e7eb' }}>
+            Recommendations in {displayName}
+          </h2>
+
+          {loadingRows ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0' }}>
+              <Loader2 className="animate-spin" size={40} color="#16a34a" />
+              <p style={{ marginTop: '15px', color: '#6b7280', fontSize: '16px' }}>Curating top locations across {displayName}...</p>
+            </div>
+          ) : (
+            <div>
+              <RecommendationRow title="Top Cities" icon={Building2} items={cities} color="#e0f2fe" iconColor="#0284c7" />
+              <RecommendationRow title="Famous Tourist Spots" icon={MapIcon} items={spots} color="#ffedd5" iconColor="#ea580c" />
+              <RecommendationRow title="Offbeat & Hidden Gems" icon={Mountain} items={offbeat} color="#dcfce7" iconColor="#16a34a" />
+              <RecommendationRow title="Heritage & Temples" icon={Landmark} items={heritage} color="#fee2e2" iconColor="#dc2626" />
+              <RecommendationRow title="Nature & Wildlife" icon={Leaf} items={nature} color="#f3e8ff" iconColor="#9333ea" />
+              
+              {cities.length === 0 && spots.length === 0 && offbeat.length === 0 && heritage.length === 0 && nature.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '40px', backgroundColor: 'white', borderRadius: '16px', border: '1px dashed #e5e7eb' }}>
+                  <p style={{ color: '#6b7280' }}>No specific spots found in our live database right now.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 4. TRAVELLER STORIES */}
+        <div style={{ marginBottom: '60px' }}>
+          <h2 style={{ fontSize: '32px', fontWeight: 'bold', color: '#111827', marginBottom: '30px', paddingBottom: '10px', borderBottom: '2px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <BookOpen size={30} color="#16a34a" /> Traveller Stories from {displayName}
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+            {travellerStories.map((story, idx) => (
+              <div 
+                key={idx} 
+                onClick={() => setSelectedStory(story)}
+                style={{ backgroundColor: 'white', borderRadius: '20px', overflow: 'hidden', border: '1px solid #e5e7eb', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'transform 0.3s ease', cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-8px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <div style={{ height: '200px', overflow: 'hidden' }}>
+                  <img src={story.img} alt="Travel Story" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+                <div style={{ padding: '25px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <p style={{ fontSize: '13px', color: '#16a34a', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Written by {story.author}</p>
+                  <h4 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', marginBottom: '12px', lineHeight: '1.4' }}>"{story.title}"</h4>
+                  <p style={{ fontSize: '15px', color: '#6b7280', lineHeight: '1.6', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', flex: 1 }}>
+                    {story.excerpt}
+                  </p>
+                  <button 
+                    style={{ background: 'none', border: 'none', color: '#16a34a', fontWeight: '600', padding: 0, marginTop: '15px', cursor: 'pointer', fontSize: '14px', textAlign: 'left' }}
+                  >
+                    Read full story &rarr;
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 5. TESTIMONIALS */}
+        <div style={{ marginBottom: '60px', backgroundColor: '#111827', borderRadius: '24px', padding: '50px 40px', color: 'white', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: '-20px', right: '-20px', opacity: 0.05 }}>
+            <Quote size={200} />
+          </div>
+          
+          <h2 style={{ fontSize: '32px', fontWeight: 'bold', color: 'white', marginBottom: '10px', textAlign: 'center', position: 'relative', zIndex: 2 }}>
+            What Our Travellers Say
+          </h2>
+          <p style={{ textAlign: 'center', color: '#9ca3af', marginBottom: '50px', fontSize: '16px', position: 'relative', zIndex: 2 }}>
+            Real experiences from people who explored {displayName} with our tailored itineraries.
+          </p>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '30px', position: 'relative', zIndex: 2 }}>
+            {testimonials.map((test, idx) => (
+              <div key={idx} style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '30px' }}>
+                <div style={{ display: 'flex', gap: '4px', marginBottom: '15px' }}>
+                  {[...Array(test.rating || 5)].map((_, i) => (
+                    <Star key={i} size={18} fill="#eab308" color="#eab308" />
+                  ))}
+                </div>
+                <p style={{ fontSize: '16px', color: '#d1d5db', lineHeight: '1.7', fontStyle: 'italic', marginBottom: '25px' }}>
+                  "{test.text}"
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '16px' }}>
+                    {test.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h4 style={{ fontWeight: '600', fontSize: '15px', color: 'white' }}>{test.name}</h4>
+                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>Verified Traveller</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        </div>
         )}
 
       </div>
+
+      {/* --- STORY MODAL OVERLAY --- */}
+      {selectedStory && (
+        <div 
+          onClick={() => setSelectedStory(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 100, backgroundColor: 'rgba(17, 24, 39, 0.8)', backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the white box
+            style={{
+              backgroundColor: 'white', width: '100%', maxWidth: '800px', maxHeight: '90vh', 
+              borderRadius: '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', 
+              position: 'relative', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', animation: 'slideUp 0.3s ease-out forwards'
+            }}
+          >
+            {/* Close Button */}
+            <button 
+              onClick={() => setSelectedStory(null)} 
+              style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white', zIndex: 10 }}
+            >
+              <X size={24} />
+            </button>
+
+            {/* Modal Image Header */}
+            <div style={{ height: '300px', flexShrink: 0, position: 'relative' }}>
+              <img src={selectedStory.img} alt={selectedStory.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }} />
+              <div style={{ position: 'absolute', bottom: '30px', left: '40px', right: '40px' }}>
+                <span style={{ backgroundColor: '#16a34a', color: 'white', padding: '6px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', display: 'inline-block' }}>
+                  Travel Diary
+                </span>
+                <h2 style={{ color: 'white', fontSize: '32px', fontWeight: 'bold', lineHeight: '1.2' }}>{selectedStory.title}</h2>
+              </div>
+            </div>
+
+            {/* Modal Scrollable Content */}
+            <div style={{ padding: '40px', overflowY: 'auto', backgroundColor: '#f9fafb' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '30px', borderBottom: '1px solid #e5e7eb', paddingBottom: '20px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '18px' }}>
+                  {selectedStory.author.charAt(0)}
+                </div>
+                <div>
+                  <h4 style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '16px' }}>{selectedStory.author}</h4>
+                  <p style={{ color: '#6b7280', fontSize: '14px' }}>Travelled in {selectedStory.date}</p>
+                </div>
+              </div>
+
+              <div style={{ fontSize: '17px', lineHeight: '1.8', color: '#4b5563', whiteSpace: 'pre-line' }}>
+                {selectedStory.fullText}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Simple Animation for the Story Modal */}
+      <style>{`
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 };
