@@ -540,11 +540,12 @@ const TravelerTypes = () => {
 export default TravelerTypes;
 */
 
+
 import React, { useState } from 'react';
-import { User, Users, Heart, Backpack, Camera, Coffee, Compass, Briefcase, Smile, Image as ImageIcon, Loader2, X, MapPin, ArrowRight } from 'lucide-react';
+import { User, Users, Heart, Backpack, Camera, Coffee, Compass, Briefcase, Smile, Loader2, X, MapPin, ArrowRight, ArrowLeft, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const TravellerTypes = () => {
+const TravelerTypes = () => {
   const navigate = useNavigate();
 
   // --- STATE ---
@@ -552,136 +553,228 @@ const TravellerTypes = () => {
   const [selectedSubPersona, setSelectedSubPersona] = useState(null);
   const [destinations, setDestinations] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // --- 1. DATA STRUCTURE (Optimized Short Queries) ---
+  // --- 1. COMPREHENSIVE DESTINATION DATABASE (For Default Clicks) ---
+  const personaDatabase = {
+    "t1": [ 
+      "Kasol", "Rishikesh", "Hampi", "Gokarna", "Varkala", "Pushkar", "Manali", "McLeod Ganj", 
+      "Spiti Valley", "Jibhi", "Tirthan Valley", "Ziro", "Dharamkot", "Old Manali", "Parvati Valley",
+      "Tosh", "Kheerganga", "Triund", "Bir Billing", "Kodaikanal", "Munnar", "Wayanad", 
+      "Majuli", "Tawang", "Cherrapunji", "Shillong", "Dalhousie", "Auli", "Chopta", "Almora",
+      "Jog Falls", "Dudhsagar Falls", "Athirappilly Waterfalls", "Nohkalikai Falls"
+    ],
+    "t2": [ 
+      "Chandni Chowk", "Amritsar", "Lucknow", "Indore", "Surat", "Kolkata", "Hyderabad", "Chennai", 
+      "Madurai", "Jaipur", "Ahmedabad", "Mumbai", "Pune", "Kochi", "Mysore", "Agra", "Varanasi"
+    ],
+    "t3": [ 
+      "Rohtang Pass", "Solang Valley", "Auli", "Gulmarg", "Rishikesh", "Dandeli", "Kolad", 
+      "Andaman Islands", "Meghalaya", "Chadar Trek", "Sandhan Valley", "Bandhavgarh National Park", 
+      "Ranthambore National Park", "Jim Corbett National Park", "Kaziranga National Park"
+    ],
+    "t4": [ 
+      "Landour", "Khajjiar", "Chikmagalur", "Coonoor", "Gurez Valley", "Dzukou Valley", "Shoja", 
+      "Chitkul", "Narkanda", "Pangot", "Munsiyari", "Mukteshwar", "Chaukori", "Kausani", "Binsar"
+    ],
+    "t5": [ 
+      "Varanasi", "Bodh Gaya", "Auroville", "Haridwar", "Gangotri", "Kedarnath", "Badrinath", 
+      "Yamunotri", "Tiruvannamalai", "Sarnath", "Hemkund Sahib", "Golden Temple", "Shravanabelagola"
+    ],
+    "tr1": [ 
+      "Jaipur", "Udaipur", "Jodhpur", "Jaisalmer", "Agra", "New Delhi", "Mumbai", "Bengaluru", 
+      "Mysore", "Ooty", "Munnar", "Kodaikanal", "Darjeeling", "Gangtok", "Shimla", "Manali"
+    ],
+    "tr2": [ 
+      "Goa", "Gokarna", "Varkala", "Pondicherry", "Alibaug", "Daman", "Diu", 
+      "Tarkarli", "Murud Janjira", "Ganpatipule", "Diveagar", "Guhagar", "Harihareshwar"
+    ],
+    "tr3": [ 
+      "Alleppey", "Kumarakom", "Havelock Island", "Neil Island", "Radhanagar Beach", "Munnar", 
+      "Wayanad", "Kovalam", "Poovar", "Bekal", "Marari Beach", "Cherai Beach", "Gulmarg"
+    ],
+    "tr4": [ 
+      "Qutub Minar", "Red Fort", "Hawa Mahal", "City Palace, Udaipur", "Victoria Memorial, Kolkata", 
+      "Charminar", "Meenakshi Temple", "Konark Sun Temple", "Ajanta Caves", "Ellora Caves", 
+      "Taj Mahal", "Agra Fort", "Fatehpur Sikri", "Elephanta Caves"
+    ],
+    "tr5": [ 
+      "Gurugram", "Pune", "Hyderabad", "Chennai", "Noida", "Navi Mumbai", "Chandigarh", "Ahmedabad", 
+      "Kochi", "Indore", "Vadodara", "Surat", "Nagpur", "Visakhapatnam", "Coimbatore"
+    ]
+  };
+
+  // --- 2. MAIN SECTIONS DATA ---
   const mainSections = [
     {
       id: "traveller",
       title: "The Traveller",
       icon: Compass,
-      color: "#e0f2fe", iconColor: "#0284c7", // Blue
+      color: "#e0f2fe", iconColor: "#0284c7",
       desc: "Soul searchers looking for adventure and rejuvenation in the unknown.",
       subSections: [
-        { 
-          id: "t1", title: "Backpackers", icon: Backpack, 
-          // Simple query: "Backpacking in India" matches a real Wiki category/page
-          query: "Backpacking in India" 
-        },
-        { 
-          id: "t2", title: "Foodies", icon: Coffee, 
-          query: "Indian cuisine" 
-        },
-        { 
-          id: "t3", title: "Friends (Adventure)", icon: Users, 
-          query: "Adventure sports in India" 
-        },
-        { 
-          id: "t4", title: "Couples (Offbeat)", icon: Heart, 
-          query: "Hill stations in India" 
-        },
-        { 
-          id: "t5", title: "Soul Searchers", icon: User, 
-          query: "Yoga in India" 
-        }
+        { id: "t1", title: "Backpackers & Treks", icon: Backpack },
+        { id: "t2", title: "Foodies", icon: Coffee },
+        { id: "t3", title: "Friends (Adventure)", icon: Users },
+        { id: "t4", title: "Couples (Offbeat)", icon: Heart },
+        { id: "t5", title: "Soul Searchers", icon: User }
       ]
     },
     {
       id: "tourist",
       title: "The Tourist",
       icon: Camera,
-      color: "#ffedd5", iconColor: "#ea580c", // Orange
+      color: "#ffedd5", iconColor: "#ea580c",
       desc: "Exploring heritage, architecture, and famous landmarks.",
       subSections: [
-        { 
-          id: "tr1", title: "Family & Kids", icon: Smile, 
-          query: "Tourism in India" 
-        },
-        { 
-          id: "tr2", title: "Friends (Leisure)", icon: Users, 
-          query: "Beaches in India" 
-        },
-        { 
-          id: "tr3", title: "Couples (Honeymoon)", icon: Heart, 
-          query: "Honeymoon destinations in India" 
-        },
-        { 
-          id: "tr4", title: "Solo Sightseeing", icon: User, 
-          query: "Tourist attractions in India" 
-        },
-        { 
-          id: "tr5", title: "Office / Corporate", icon: Briefcase, 
-          query: "Convention centres in India" 
-        }
+        { id: "tr1", title: "Family & Kids", icon: Smile },
+        { id: "tr2", title: "Friends (Leisure)", icon: Users },
+        { id: "tr3", title: "Couples (Honeymoon)", icon: Heart },
+        { id: "tr4", title: "Solo Sightseeing", icon: User },
+        { id: "tr5", title: "Office / Corporate", icon: Briefcase }
       ]
-    },
-    {
-      id: "gallery",
-      title: "Photo Gallery",
-      icon: ImageIcon,
-      color: "#dcfce7", iconColor: "#16a34a", // Green
-      desc: "Share your moments with the community.",
-      subSections: [] 
     }
   ];
 
-  // --- 2. FETCH LOGIC (With Fallback) ---
-  const fetchDestinations = async (query, isGallery = false) => {
+  // --- 3. PHOTO GALLERY COLLAGE DATA ---
+  const collageImages = [
+    "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=800&q=80", 
+    "https://images.unsplash.com/photo-1506461883276-594a12b11cf3?auto=format&fit=crop&w=800&q=80", 
+    "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=800&q=80", 
+    //"https://images.unsplash.com/photo-1514222325250-13f34e5ced2e?auto=format&fit=crop&w=800&q=80", 
+    "https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=800&q=80", 
+    "https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=800&q=80"  
+  ];
+
+  // --- 4. SMART FETCH LOGIC ---
+  const fetchFromAPI = async (baseUrl, queryParams) => {
+    try {
+      const response = await fetch(`${baseUrl}?${queryParams}`);
+      const data = await response.json();
+      return data.query && data.query.pages ? Object.values(data.query.pages) : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
+  // Reusable search logic with Strict Location Enforcement
+  const performSearchQuery = async (safeQuery, enforceLocation = "") => {
+    const queryParams = `action=query&generator=search&gsrsearch=${encodeURIComponent(safeQuery)}&gsrlimit=40&prop=pageimages|extracts&pithumbsize=600&exintro&explaintext&exsentences=3&format=json&origin=*`;
+
+    const [wikiResults, voyageResults] = await Promise.all([
+      fetchFromAPI('https://en.wikipedia.org/w/api.php', queryParams),
+      fetchFromAPI('https://en.wikivoyage.org/w/api.php', queryParams)
+    ]);
+
+    const combinedResults = [...wikiResults, ...voyageResults];
+    const uniqueResultsMap = new Map();
+    combinedResults.forEach(item => { if (!uniqueResultsMap.has(item.title)) uniqueResultsMap.set(item.title, item); });
+    let results = Array.from(uniqueResultsMap.values());
+    
+    return results.filter(item => {
+      if (!item.thumbnail || !item.thumbnail.source || !item.extract) return false;
+      const title = item.title.toLowerCase();
+      const text = item.extract.toLowerCase();
+      
+      // STRICT GEOGRAPHY FILTER: Ensure the search term (e.g., "Vadodara") is ACTUALLY in the text.
+      if (enforceLocation) {
+        // Use just the first word to ensure safe matching (e.g. "New Delhi" -> matches "delhi")
+        const locWord = enforceLocation.split(' ')[0].toLowerCase().trim();
+        if (!title.includes(locWord) && !text.includes(locWord)) {
+          return false;
+        }
+      }
+
+      const badTitles = ["culture of", "history of", "politics of", "economy of", "timeline", "list of", "demographics"];
+      if (badTitles.some(t => title.includes(t))) return false;
+
+      const badKeywords = ["pakistan", "china", "mexico", "usa", "nepal", "bangladesh", "sri lanka", "political party", "ministry", "association", "bjp", "congress"];
+      if (badKeywords.some(kw => text.includes(kw))) return false;
+
+      if (text.includes("born") || text.includes("died") || text.includes("politician") || text.includes("cricketer") || text.includes("actress") || text.includes("singer")) return false;
+
+      return true;
+    }).map(item => ({
+      name: item.title.replace(" (India)", ""),
+      desc: item.extract,
+      img: item.thumbnail.source
+    }));
+  };
+
+  const fetchDestinations = async (subId, userSearch = "") => {
     setLoading(true);
     setDestinations([]);
 
-    // 1. Construct Search Query
-    // We add "India" to ensure context, but keep it simple.
-    let searchTerm = isGallery 
-      ? "Tourism in India" 
-      : `${query} India`; 
-
-    // 2. Define Exclusions (Political/Foreign)
-    // We add these mainly to the 'filter' step, but slight help in query doesn't hurt
-    const exclusions = "-person -biography -film -party -politics";
-
     try {
-      // Increase limit to 50 to maximize chance of finding valid items
-      const url = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(searchTerm + " " + exclusions)}&gsrlimit=50&prop=pageimages|extracts&pithumbsize=600&exintro&explaintext&exsentences=2&format=json&origin=*`;
-      
-      const response = await fetch(url);
-      const data = await response.json();
+      if (userSearch) {
+        // --- SMART FALLBACK SEARCH ---
+        const searchContext = {
+          "t1": "waterfall OR trek OR hill OR forest OR nature OR valley",
+          "t2": "street food OR cuisine OR restaurant OR dish OR sweet OR thali",
+          "t3": "waterfall OR adventure OR camp OR wildlife OR national park OR safari",
+          "t4": "valley OR nature OR resort OR hill station OR offbeat OR village",
+          "t5": "temple OR spiritual OR ashram OR yoga OR river OR shrine",
+          "tr1": "tourist OR family OR sightseeing OR park OR palace OR lake",
+          "tr2": "beach OR lake OR resort OR waterfall OR chill",
+          "tr3": "romantic OR resort OR hill station OR view OR lake OR palace",
+          "tr4": "monument OR heritage OR fort OR palace OR museum OR cave OR architecture",
+          "tr5": "hotel OR resort OR corporate OR convention OR city"
+        };
+        
+        const contextStr = searchContext[subId] || "tourist OR nature";
+        
+        // ATTEMPT 1: Grouped Query -> Requires the Place AND one of the context strings.
+        const query1 = `+"${userSearch}" (${contextStr}) India -person -biography -election`;
+        let formatted = await performSearchQuery(query1, userSearch);
+        
+        // ATTEMPT 2: Broader Context if Attempt 1 fails
+        if (formatted.length === 0) {
+          const query2 = `+"${userSearch}" (tourist OR attraction OR place OR city OR nature) India -person`;
+          formatted = await performSearchQuery(query2, userSearch);
+        }
 
-      if (data.query && data.query.pages) {
-        let results = Object.values(data.query.pages);
+        // ATTEMPT 3: Failsafe -> Just search the city name
+        if (formatted.length === 0) {
+          const query3 = `"${userSearch}" India -person -biography`;
+          formatted = await performSearchQuery(query3, ""); // Don't enforce location filter on failsafe
+        }
 
-        // FILTER LOGIC
+        setDestinations(formatted.slice(0, 20));
+
+      } else {
+        // --- DEFAULT BEHAVIOR: STATIC CURATED LIST ---
+        const list = personaDatabase[subId] || ["India Gate", "Taj Mahal"]; 
+        const shuffled = [...list].sort(() => 0.5 - Math.random());
+        const selectedPlaces = shuffled.slice(0, 25);
+        const titlesQuery = selectedPlaces.join('|');
+
+        const queryParams = `action=query&titles=${encodeURIComponent(titlesQuery)}&prop=pageimages|extracts&pithumbsize=600&exintro&explaintext&exsentences=3&format=json&origin=*`;
+        
+        const [wikiResults, voyageResults] = await Promise.all([
+          fetchFromAPI('https://en.wikipedia.org/w/api.php', queryParams),
+          fetchFromAPI('https://en.wikivoyage.org/w/api.php', queryParams)
+        ]);
+
+        const combinedResults = [...wikiResults, ...voyageResults];
+        const uniqueResultsMap = new Map();
+        combinedResults.forEach(item => { if (!uniqueResultsMap.has(item.title)) uniqueResultsMap.set(item.title, item); });
+        let results = Array.from(uniqueResultsMap.values());
+
         results = results.filter(item => {
-          // Must have Thumbnail & Text
           if (!item.thumbnail || !item.thumbnail.source || !item.extract) return false;
-          
           const text = (item.extract + " " + item.title).toLowerCase();
-          
-          // 1. Block Foreign/Political Terms
-          const badKeywords = [
-            "pakistan", "china", "mexico", "usa", "nepal", "bangladesh", "sri lanka",
-            "political party", "ministry", "association", "bjp", "congress", "corporation", 
-            "ltd", "pvt", "government", "election", "parliament", "assembly", "cricket team"
-          ];
+          const badKeywords = ["pakistan", "china", "ministry", "election", "politician"];
           if (badKeywords.some(kw => text.includes(kw))) return false;
-
-          // 2. Block People (Born/Died/Actor)
-          if (text.includes("born") || text.includes("died") || text.includes("politician") || text.includes("cricketer") || text.includes("actress")) return false;
-
-          // 3. Indian Context (Relaxed check: Title OR Text must mention relevant keywords)
-          // We check for 'India' OR specific states/terms to catch more valid results
-          const indianKeywords = ["india", "state", "pradesh", "kerala", "goa", "delhi", "mumbai", "rajasthan", "himalaya", "bengal", "punjab", "gujarat", "temple", "fort", "lake", "river", "mountain", "peak", "valley", "trek", "resort", "city", "town", "station"];
-          
-          return indianKeywords.some(kw => text.includes(kw));
+          return true;
         });
 
         const formatted = results.map(item => ({
-          name: item.title,
+          name: item.title.replace(", Himachal Pradesh", "").replace(", India", ""), 
           desc: item.extract,
           img: item.thumbnail.source
         }));
 
-        // Shuffle and Slice
-        setDestinations(formatted.sort(() => 0.5 - Math.random()).slice(0, 20));
+        setDestinations(formatted);
       }
     } catch (error) {
       console.error("Fetch Error:", error);
@@ -690,63 +783,102 @@ const TravellerTypes = () => {
     }
   };
 
-  // --- 3. HANDLERS ---
+  // --- 5. HANDLERS ---
   const handleMainSectionClick = (section) => {
     setSelectedMainSection(section);
     setSelectedSubPersona(null); 
     setDestinations([]); 
-
-    if (section.id === 'gallery') {
-      fetchDestinations("", true);
-    }
+    setSearchTerm("");
   };
 
   const handleSubPersonaClick = (subPersona) => {
     setSelectedSubPersona(subPersona);
-    fetchDestinations(subPersona.query, false);
+    setSearchTerm(""); 
+    fetchDestinations(subPersona.id, "");
+  };
+
+  const handleManualSearch = (e) => {
+    e.preventDefault();
+    if (searchTerm.trim() && selectedSubPersona) {
+      fetchDestinations(selectedSubPersona.id, searchTerm);
+    }
   };
 
   const closeModal = () => {
     setSelectedMainSection(null);
     setSelectedSubPersona(null);
     setDestinations([]);
+    setSearchTerm("");
   };
 
   const goBackToSubMenu = () => {
     setSelectedSubPersona(null);
     setDestinations([]);
+    setSearchTerm("");
   };
 
   return (
     <section style={{ padding: '80px 20px', backgroundColor: '#f9fafb' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
-        {/* --- MAIN 3 CARDS GRID --- */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+        {/* --- HEADER --- */}
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <h2 style={{ fontSize: '36px', fontWeight: 'bold', color: '#111827', marginBottom: '10px' }}>
+            Choose Your <span style={{ color: '#16a34a' }}>Travel Persona</span>
+          </h2>
+          <p style={{ fontSize: '16px', color: '#6b7280' }}>
+            Discover destinations tailored to your travel style.
+          </p>
+        </div>
+
+        {/* --- PERSONA CARDS --- */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', marginBottom: '60px' }}>
           {mainSections.map((section) => (
             <div 
               key={section.id}
               onClick={() => handleMainSectionClick(section)}
               style={{
-                backgroundColor: 'white', borderRadius: '24px', padding: '40px 30px',
+                backgroundColor: 'white', borderRadius: '20px', padding: '25px 30px',
                 textAlign: 'center', cursor: 'pointer',
-                border: '1px solid #f3f4f6', transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.02)',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%'
+                border: '1px solid #e5e7eb', transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center'
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-10px)'; e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.08)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,0,0,0.02)'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor = section.iconColor; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.05)'; e.currentTarget.style.borderColor = '#e5e7eb'; }}
             >
-              <div style={{ width: '80px', height: '80px', marginBottom: '25px', backgroundColor: section.color, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: section.iconColor }}>
-                <section.icon size={36} strokeWidth={1.5} />
+              <div style={{ width: '60px', height: '60px', marginBottom: '15px', backgroundColor: section.color, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: section.iconColor }}>
+                <section.icon size={28} strokeWidth={2} />
               </div>
-              <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937', marginBottom: '15px' }}>{section.title}</h3>
-              <p style={{ color: '#6b7280', fontSize: '16px', lineHeight: '1.6', marginBottom: '25px', flex: 1 }}>{section.desc}</p>
-              <div style={{ fontSize: '15px', fontWeight: '600', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                Explore <ArrowRight size={16} />
+              <h3 style={{ fontSize: '22px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>{section.title}</h3>
+              <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.5', marginBottom: '15px' }}>{section.desc}</p>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: section.iconColor, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                Explore styles <ArrowRight size={14} />
               </div>
             </div>
           ))}
+        </div>
+
+        {/* --- PHOTO GALLERY COLLAGE --- */}
+        <div>
+          <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '20px', borderBottom: '2px solid #e5e7eb', paddingBottom: '10px', display: 'inline-block' }}>
+            Photo Gallery
+          </h3>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridAutoRows: '200px', gap: '15px' }}>
+            <div style={{ gridColumn: 'span 2', gridRow: 'span 2', borderRadius: '16px', overflow: 'hidden', position: 'relative' }}>
+              <img src={collageImages[0]} alt="Taj Mahal" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }} onMouseEnter={(e)=>e.currentTarget.style.transform='scale(1.05)'} onMouseLeave={(e)=>e.currentTarget.style.transform='scale(1)'}/>
+            </div>
+            <div style={{ gridColumn: 'span 1', gridRow: 'span 1', borderRadius: '16px', overflow: 'hidden' }}>
+              <img src={collageImages[1]} alt="Kerala" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }} onMouseEnter={(e)=>e.currentTarget.style.transform='scale(1.05)'} onMouseLeave={(e)=>e.currentTarget.style.transform='scale(1)'}/>
+            </div>
+            <div style={{ gridColumn: 'span 1', gridRow: 'span 1', borderRadius: '16px', overflow: 'hidden' }}>
+              <img src={collageImages[2]} alt="Mountains" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }} onMouseEnter={(e)=>e.currentTarget.style.transform='scale(1.05)'} onMouseLeave={(e)=>e.currentTarget.style.transform='scale(1)'}/>
+            </div>
+            <div style={{ gridColumn: 'span 2', gridRow: 'span 1', borderRadius: '16px', overflow: 'hidden' }}>
+              <img src={collageImages[3]} alt="Rajasthan" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }} onMouseEnter={(e)=>e.currentTarget.style.transform='scale(1.05)'} onMouseLeave={(e)=>e.currentTarget.style.transform='scale(1)'}/>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -754,47 +886,61 @@ const TravellerTypes = () => {
       {/* --- MODAL SYSTEM --- */}
       {selectedMainSection && (
         <div style={{
-          position: 'fixed', inset: 0, zIndex: 100,
-          backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)',
+          position: 'fixed', inset: 0, zIndex: 100, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
         }}>
           <div style={{
-            backgroundColor: 'white', width: '100%', maxWidth: '1000px',
-            borderRadius: '24px', overflow: 'hidden', position: 'relative',
-            height: '85vh', display: 'flex', flexDirection: 'column',
-            boxShadow: '0 20px 50px rgba(0,0,0,0.2)'
+            backgroundColor: 'white', width: '100%', maxWidth: '1000px', borderRadius: '24px', overflow: 'hidden', 
+            position: 'relative', height: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 50px rgba(0,0,0,0.2)'
           }}>
 
             {/* Modal Header */}
-            <div style={{ padding: '25px 30px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'white' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                {selectedSubPersona && (
-                  <button onClick={goBackToSubMenu} style={{ border: 'none', background: 'none', cursor: 'pointer', marginRight: '5px' }}>
-                    <ArrowRight size={24} style={{ transform: 'rotate(180deg)' }} color="#374151" />
-                  </button>
-                )}
-                <div style={{ padding: '10px', backgroundColor: selectedMainSection.color, borderRadius: '12px', color: selectedMainSection.iconColor }}>
-                  <selectedMainSection.icon size={24} />
+            <div style={{ padding: '20px 30px', borderBottom: '1px solid #e5e7eb', backgroundColor: 'white' }}>
+              
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: selectedSubPersona ? '15px' : '0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  {selectedSubPersona && (
+                    <button onClick={goBackToSubMenu} style={{ border: 'none', background: 'none', cursor: 'pointer', marginRight: '5px' }}>
+                      <ArrowLeft size={24} color="#374151" />
+                    </button>
+                  )}
+                  <div style={{ padding: '10px', backgroundColor: selectedMainSection.color, borderRadius: '12px', color: selectedMainSection.iconColor }}>
+                    <selectedMainSection.icon size={24} />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827' }}>
+                      {selectedSubPersona ? selectedSubPersona.title : selectedMainSection.title}
+                    </h2>
+                    <p style={{ fontSize: '13px', color: '#6b7280' }}>
+                      {selectedSubPersona ? "Curated suggestions" : "Select your travel style"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 style={{ fontSize: '22px', fontWeight: 'bold', color: '#111827' }}>
-                    {selectedSubPersona ? selectedSubPersona.title : selectedMainSection.title}
-                  </h2>
-                  <p style={{ fontSize: '13px', color: '#6b7280' }}>
-                    {selectedMainSection.id === 'gallery' ? "Captured moments from across India" : (selectedSubPersona ? "Curated suggestions" : "Select your travel style")}
-                  </p>
-                </div>
+                <button onClick={closeModal} style={{ background: '#f3f4f6', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
+                  <X size={20} color="#374151" />
+                </button>
               </div>
-              <button onClick={closeModal} style={{ background: '#f3f4f6', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
-                <X size={20} color="#374151" />
-              </button>
+
+              {/* SEARCH BAR */}
+              {selectedSubPersona && (
+                <form onSubmit={handleManualSearch} style={{ position: 'relative' }}>
+                  <input 
+                    type="text" 
+                    placeholder={`Search a place, city, or state for ${selectedSubPersona.title.toLowerCase()}... (e.g. Vadodara)`}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{ width: '100%', padding: '12px 15px 12px 45px', borderRadius: '12px', border: '1px solid #e5e7eb', fontSize: '14px', outline: 'none', backgroundColor: '#f9fafb' }}
+                  />
+                  <Search size={18} color="#9ca3af" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)' }} />
+                </form>
+              )}
             </div>
 
             {/* --- MODAL CONTENT AREA --- */}
             <div style={{ padding: '30px', overflowY: 'auto', backgroundColor: '#f9fafb', flex: 1 }}>
               
               {/* VIEW 1: SUB-SECTION SELECTOR */}
-              {!selectedSubPersona && selectedMainSection.id !== 'gallery' && (
+              {!selectedSubPersona && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
                   {selectedMainSection.subSections.map((sub) => (
                     <div 
@@ -820,56 +966,44 @@ const TravellerTypes = () => {
               {loading && (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                   <Loader2 className="animate-spin" size={40} color={selectedMainSection.iconColor} />
-                  <p style={{ marginTop: '15px', color: '#6b7280', fontWeight: '500' }}>Fetching best spots...</p>
+                  <p style={{ marginTop: '15px', color: '#6b7280', fontWeight: '500' }}>{searchTerm ? "Searching locations..." : "Curating the best spots..."}</p>
                 </div>
               )}
 
               {/* VIEW 3: RESULTS GRID */}
               {!loading && destinations.length > 0 && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '25px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '25px' }}>
                   {destinations.map((dest, idx) => (
                     <div 
                       key={idx}
                       onClick={() => navigate(`/place/${dest.name}`)}
-                      style={{ 
-                        backgroundColor: 'white', borderRadius: '16px', overflow: 'hidden', 
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.05)', cursor: 'pointer', 
-                        transition: 'transform 0.2s' 
-                      }}
+                      style={{ backgroundColor: 'white', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.2s' }}
                       onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
                       onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                     >
-                      <div style={{ height: '200px', overflow: 'hidden', backgroundColor: '#e5e7eb', position: 'relative' }}>
+                      <div style={{ height: '180px', overflow: 'hidden', backgroundColor: '#e5e7eb' }}>
                         <img src={dest.img} alt={dest.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        {selectedMainSection.id === 'gallery' && (
-                          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '10px 15px', background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)', color: 'white', fontSize: '14px', fontWeight: '600' }}>
-                            {dest.name}
-                          </div>
-                        )}
                       </div>
-                      
-                      {selectedMainSection.id !== 'gallery' && (
-                        <div style={{ padding: '20px' }}>
-                          <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {dest.name}
-                          </h3>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: selectedMainSection.iconColor, marginBottom: '10px', fontWeight: '500' }}>
-                            <MapPin size={14} /> India
-                          </div>
-                          <p style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                            {dest.desc}
-                          </p>
+                      <div style={{ padding: '20px' }}>
+                        <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {dest.name}
+                        </h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: selectedMainSection.iconColor, marginBottom: '10px', fontWeight: '600' }}>
+                          <MapPin size={12} /> India
                         </div>
-                      )}
+                        <p style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {dest.desc}
+                        </p>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
 
               {/* No Results */}
-              {!loading && destinations.length === 0 && (selectedSubPersona || selectedMainSection.id === 'gallery') && (
+              {!loading && destinations.length === 0 && selectedSubPersona && (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>
-                  <p>No destinations found. Please try again later.</p>
+                  <p>No destinations found for "{searchTerm || selectedSubPersona.title}". Please try again.</p>
                 </div>
               )}
 
@@ -881,4 +1015,4 @@ const TravellerTypes = () => {
   );
 };
 
-export default TravellerTypes;
+export default TravelerTypes;

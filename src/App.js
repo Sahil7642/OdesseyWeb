@@ -220,6 +220,7 @@ export default App;
 
 import React, { useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { useNavigate } from 'react-router-dom';
 import "./index.css"; 
 
 // Existing Components
@@ -232,6 +233,7 @@ import ExperienceGrid from "./components/ExperienceGrid";
 import TravelerStories from "./components/TravelerStories";
 import SearchResults from "./components/SearchResults";
 import StateDetails from "./components/StateDetails"; 
+//import Stories from "./components/StoriesPage";
 
 // 👇 NEW PAGES (We will create these next)
 import PlanTrip from "./pages/PlanTrip";
@@ -278,6 +280,7 @@ function App() {
           
           {/* STATE DETAILS PAGE */}
          <Route path="/place/:placeName" element={<StateDetails />} />
+         <Route path="/state/:stateName" element={<StateDetails />} />
 
           {/* 👇 NEW ROUTES FOR HEADER LINKS */}
           <Route path="/plan" element={<PlanTrip />} />
@@ -287,6 +290,7 @@ function App() {
           <Route path="/experiences" element={<ExperiencesPage />} />
           <Route path="/mission" element={<MissionPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/stories" element={<StoriesPage />} />
 
         </Routes>
 

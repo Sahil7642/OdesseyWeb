@@ -672,8 +672,8 @@ const Header = () => {
   
   // State
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isVisible, setIsVisible] = useState(true); // Controls Slide Up/Down
-  const [isAtTop, setIsAtTop] = useState(true);     // Controls Style (Glass vs White)
+  const [isVisible, setIsVisible] = useState(true); 
+  const [isAtTop, setIsAtTop] = useState(true);     
   const [lastScrollY, setLastScrollY] = useState(0);
   const [openSection, setOpenSection] = useState(null);
 
@@ -688,27 +688,23 @@ const Header = () => {
       if (typeof window !== 'undefined') {
         const currentScrollY = window.scrollY;
 
-        // 1. STYLE LOGIC (Glass vs White)
         if (location.pathname === '/') {
-          // On Home Page: Transparent at top, White when scrolled
           if (currentScrollY < 50) {
             setIsAtTop(true); 
           } else {
             setIsAtTop(false);
           }
         } else {
-          // On Other Pages: ALWAYS White
           setIsAtTop(false);
         }
 
-        // 2. VISIBILITY LOGIC (Hide on scroll down, Show on scroll up)
         if (isMenuOpen) {
           setIsVisible(false);
         } else {
           if (currentScrollY > lastScrollY && currentScrollY > 100) {
-            setIsVisible(false); // Hide
+            setIsVisible(false); 
           } else {
-            setIsVisible(true);  // Show
+            setIsVisible(true);  
           }
         }
 
@@ -717,17 +713,14 @@ const Header = () => {
     };
 
     window.addEventListener('scroll', controlNavbar);
-    // Trigger once immediately to set initial state based on route
     controlNavbar();
 
     return () => window.removeEventListener('scroll', controlNavbar);
   }, [lastScrollY, isMenuOpen, location.pathname]); 
 
-  // Reset when route changes
   useEffect(() => {
     setIsMenuOpen(false);
     setIsVisible(true);
-    // Force immediate style update
     if (location.pathname !== '/') {
       setIsAtTop(false); 
     } else {
@@ -776,6 +769,7 @@ const Header = () => {
     }
   ];
 
+  // 👇 FIX: Bulletproof navigation handler
   const handleNavClick = (href) => {
     if (href.startsWith('/#')) {
       const id = href.split('#')[1];
@@ -788,6 +782,7 @@ const Header = () => {
         document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
       }
     } else {
+      // Use standard navigate for /story, /plan, etc.
       navigate(href);
     }
   };
@@ -825,7 +820,6 @@ const Header = () => {
             <img 
               src={logoSrc} 
               alt="Odessey Logo" 
-              // 👇 FIX: Removed the filter property. Now it displays original colors always.
               style={{ height: '40px', width: 'auto', objectFit: 'contain' }} 
             />
             <span style={{ fontSize: '20px', fontWeight: 'bold', color: textColor, transition: 'color 0.3s' }}>
@@ -833,7 +827,7 @@ const Header = () => {
             </span>
           </div>
 
-          {/* Desktop Links */}
+          {/* 👇 FIX: Switched back to functional spans with reliable onClick navigation */}
           <div className="hidden md:flex items-center gap-6">
             {desktopNavLinks.map((link) => (
               <span 

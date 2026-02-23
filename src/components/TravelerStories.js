@@ -193,207 +193,131 @@ const TravelerStories = () => {
 export default TravelerStories;
 */
 
-import React, { useState } from 'react';
-import { User, MapPin, X, Calendar, Camera } from 'lucide-react';
+import React from 'react';
+import { BookOpen, MapPin, ArrowRight, ArrowUpRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-const TravelerStories = () => {
-  const [selectedStory, setSelectedStory] = useState(null);
+const TravellerStories = () => {
+  const navigate = useNavigate();
 
-  // --- MOCK DATA WITH FULL STORIES & GALLERIES ---
-  const stories = [
+  // --- MOCK DATA: TOP 3 TEASER STORIES ---
+  // These should match a few of the stories from your main StoriesPage
+  const topStories = [
     {
       id: 1,
-      name: "Arjun Mehta",
-      location: "Spiti Valley, Himachal",
-      date: "Oct 12, 2023",
-      avatar: "https://randomuser.me/api/portraits/men/32.jpg",
-      image: "https://spitiadventure.com/wp-content/uploads/2025/12/Spiti-Valley-Tour-Guide-.jpg",
-      title: "Finding Silence in the Middle of Nowhere",
-      preview: "The roads to Spiti are not for the faint-hearted. But once you cross the Kunzum Pass, the silence hits you...",
-      fullStory: `The roads to Spiti are not for the faint-hearted. But once you cross the Kunzum Pass, the silence hits you. It’s not just the absence of noise; it’s the presence of peace. 
-      
-      We started our journey from Manali at 4 AM. The drive was treacherous, with the Chenab river roaring beside us. By the time we reached Kaza, the landscape had transformed into a cold desert—stark, barren, yet incredibly beautiful.
-      
-      The highlight was the night sky at Hikkim, the world's highest post office. I have never seen so many stars in my life. It felt like the galaxy was right there, just out of reach. We stayed in a local homestay, eating thukpa and listening to stories from the local lamas. Spiti isn't a vacation; it's a pilgrimage for the soul.`,
-      gallery: [
-        "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEieTitVXYXtwZbtrI2pGViiu7NPoohN9E_Z6aALW45xMcGWdsm1qvcLrqDDub52v5_MMtZbgIvg5YeGjPBE2NChXqcfv_fElFdz6mw6rXHM06TZ5ndmVdeVBNt1kXRTxq8sdVz_ovru_xI/w1200-h630-p-k-no-nu/Geu+Monastery%252C+Spiti+Valley%252C+Himachal+Pradesh%252C+India+%25282+of+5%2529.jpg", // Monastery
-        "https://assets.cntraveller.in/photos/60ba0be8689bf55e0664ec68/master/w_1600%2Cc_limit/astro6-866x1183.jpg", // Night Sky
-        "https://i0.wp.com/lahimalaya.com/wp-content/uploads/2020/03/Visit-Spiti-in-March.jpg?fit=1500%2C915&ssl=1"  // Road
-      ]
+      title: "Chasing the Monsoon in the Abode of Clouds",
+      author: "Priya Sharma",
+      state: "Meghalaya",
+      category: "Nature",
+      img: "https://images.unsplash.com/photo-1571536802807-30451e3955d8?auto=format&fit=crop&w=600&q=80",
+      excerpt: "Walking across the living root bridges while the rain poured down was a spiritual experience. Meghalaya completely transformed my definition of green."
     },
     {
       id: 2,
-      name: "Sara Ali",
-      location: "Varkala, Kerala",
-      date: "Dec 05, 2023",
-      avatar: "https://randomuser.me/api/portraits/women/44.jpg",
-      image: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=800&q=80",
-      title: "Sunsets and Seafood on the Cliffs",
-      preview: "Varkala is unlike any other beach in India. The red cliffs rising above the Arabian Sea create a dramatic backdrop...",
-      fullStory: `Varkala is unlike any other beach in India. The red cliffs rising above the Arabian Sea create a dramatic backdrop that you simply can't find in Goa.
-      
-      My mornings began with yoga on the rooftop of my hostel, watching the fishermen bring in their catch. The vibe here is slow, deliberate. You don't rush in Varkala.
-      
-      The best part? The food. The cliff edge is lined with cafes serving the freshest seafood. I spent hours at Café del Mar, reading a book and sipping iced coffee. Walking down the steps to the Black Beach for a sunset swim became my daily ritual. If you want to disconnect to reconnect, this is the place.`,
-      gallery: [
-        "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/15/c8/f1/cb/varkala-beach.jpg?w=1200&h=-1&s=1", // Cliff View
-        "https://content.jdmagicbox.com/comp/varkala/b2/0471px471.x471.230623210259.v3b2/catalogue/sherly-s-kitchen-temple-road-varkala-kerala-restaurants-sABLOaTZxy.jpg", // Food
-        "https://images.trvl-media.com/place/553248635939591757/6a096070-1539-4a54-85b7-98aec7e7aaa9.jpg"  // Beach
-      ]
+      title: "Lost in the Colors of the Pink City",
+      author: "David Chen",
+      state: "Rajasthan",
+      category: "Culture",
+      img: "https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=600&q=80",
+      excerpt: "From the majestic Amer Fort to the bustling bazaars of Johari Bazaar, Jaipur is an absolute sensory overload in the best way possible."
     },
     {
       id: 3,
-      name: "Rohan Das",
-      location: "Meghalaya, North East",
-      date: "Jan 15, 2024",
-      avatar: "https://randomuser.me/api/portraits/men/46.jpg",
-      image: "https://meghtour.web-assets.org/cdn-cgi/image/format=auto,width=1366,quality=90,fit=scale-down,slow-connection-quality=45/experiences/nature-wildlife.jpg",
-      title: "Walking on Living Roots",
-      preview: "Trekking to the Double Decker Root Bridge was the most physically demanding yet rewarding experience of my life...",
-      fullStory: `Trekking to the Double Decker Root Bridge was the most physically demanding yet rewarding experience of my life. 3,500 steps down into the valley, surrounded by dense jungle.
-      
-      When we finally saw the bridges, it was surreal. To think that these were not built, but grown over centuries by the Khasi people, is mind-blowing. Nature and humanity working in perfect harmony.
-      
-      We took a dip in the crystal clear blue pools underneath the bridge. The water was freezing but refreshing. The hike back up tested our endurance, but the local Maggi and tea stalls kept us going. Meghalaya truly is the abode of clouds.`,
-      gallery: [
-        "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0f/88/e4/8f/noh-ka-likai-falls.jpg?w=500&h=500&s=1", // Waterfall
-        "https://i.guim.co.uk/img/media/e10bf32222cbb2ac446733c89740f2a76d0f9866/0_85_6000_3600/master/6000.jpg?width=1200&height=900&quality=85&auto=format&fit=crop&s=090b63ec9e1d6852d9f7b14b9917092c", // Bridge
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Sacred_forest%2C_Mawphlang%2C_Meghalaya.jpg/1280px-Sacred_forest%2C_Mawphlang%2C_Meghalaya.jpg"  // Jungle
-      ]
+      title: "Finding Silence in the Backwaters",
+      author: "Ananya Desai",
+      state: "Kerala",
+      category: "Relaxation",
+      img: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=600&q=80",
+      excerpt: "Two days on a houseboat in Alleppey taught me the true meaning of slow living. Just water, palm trees, and absolute peace."
     }
   ];
 
   return (
-    <section id="traveler-diaries" style={{ padding: '80px 20px', backgroundColor: 'white' }}>
+    <section style={{ padding: '80px 20px', backgroundColor: '#f9fafb', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
-        {/* SECTION HEADER */}
-        <div style={{ marginBottom: '50px', textAlign: 'center' }}>
-          <h2 style={{ fontSize: '36px', fontWeight: 'bold', color: '#111827', marginBottom: '10px' }}>
-            Traveler <span style={{ color: '#16a34a', fontStyle: 'italic' }}>Diaries</span>
-          </h2>
-          <p style={{ color: '#6b7280', fontSize: '18px' }}>Real stories from the Odessey community.</p>
+        {/* HEADER SECTION */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '20px', marginBottom: '50px' }}>
+          <div style={{ maxWidth: '600px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#16a34a', fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>
+              <BookOpen size={18} /> Travel Diaries
+            </div>
+            <h2 style={{ fontSize: '36px', fontWeight: '800', color: '#111827', lineHeight: '1.2' }}>
+              Real Stories from Real Travellers
+            </h2>
+          </div>
+          
+          {/* VIEW ALL BUTTON (Desktop) */}
+          <button 
+            onClick={() => navigate('/stories')}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '50px', backgroundColor: 'white', border: '1px solid #d1d5db', color: '#374151', fontSize: '15px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#16a34a'; e.currentTarget.style.color = '#16a34a'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#374151'; }}
+          >
+            View All Diaries <ArrowRight size={18} />
+          </button>
         </div>
 
-        {/* CARDS GRID */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '40px' }}>
-          {stories.map((story) => (
+        {/* STORIES GRID */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px' }}>
+          {topStories.map((story) => (
             <div 
               key={story.id} 
-              onClick={() => setSelectedStory(story)}
-              style={{
-                borderRadius: '20px', overflow: 'hidden', backgroundColor: 'white',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6',
-                cursor: 'pointer', transition: 'transform 0.3s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-8px)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              // Clicking the card takes them to the main stories page
+              onClick={() => navigate('/stories')}
+              style={{ backgroundColor: 'white', borderRadius: '24px', overflow: 'hidden', border: '1px solid #e5e7eb', boxShadow: '0 10px 25px rgba(0,0,0,0.03)', transition: 'transform 0.3s ease, box-shadow 0.3s ease', cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.08)'; e.currentTarget.querySelector('.read-more-icon').style.transform = 'translate(4px, -4px)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(0,0,0,0.03)'; e.currentTarget.querySelector('.read-more-icon').style.transform = 'translate(0, 0)'; }}
             >
-              {/* Card Image */}
+              {/* Image & Tags */}
               <div style={{ height: '220px', overflow: 'hidden', position: 'relative' }}>
-                <img src={story.image} alt={story.location} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                <div style={{ position: 'absolute', bottom: '15px', left: '15px', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', backdropFilter: 'blur(4px)' }}>
-                  <MapPin size={12} /> {story.location}
+                <img src={story.img} alt={story.title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }} onMouseEnter={(e)=>e.currentTarget.style.transform='scale(1.05)'} onMouseLeave={(e)=>e.currentTarget.style.transform='scale(1)'}/>
+                <div style={{ position: 'absolute', top: '15px', left: '15px', display: 'flex', gap: '8px' }}>
+                  <span style={{ backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(4px)', color: '#1f2937', padding: '6px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <MapPin size={12} color="#16a34a" /> {story.state}
+                  </span>
                 </div>
               </div>
 
-              {/* Card Content */}
-              <div style={{ padding: '25px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
-                  <img src={story.avatar} alt={story.name} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #e5e7eb' }} />
-                  <div>
-                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#111827' }}>{story.name}</h4>
-                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>{story.date}</span>
+              {/* Content */}
+              <div style={{ padding: '25px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                <div style={{ fontSize: '13px', color: '#16a34a', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+                  By {story.author}
+                </div>
+                <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#111827', marginBottom: '12px', lineHeight: '1.4' }}>
+                  {story.title}
+                </h3>
+                <p style={{ fontSize: '15px', color: '#4b5563', lineHeight: '1.6', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', flex: 1, marginBottom: '20px' }}>
+                  {story.excerpt}
+                </p>
+                
+                {/* Fake Link that animates on hover */}
+                <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#1f2937', fontWeight: '700', fontSize: '14px', marginTop: 'auto' }}>
+                  Read Full Story
+                  <div className="read-more-icon" style={{ transition: 'transform 0.2s', color: '#16a34a' }}>
+                    <ArrowUpRight size={20} />
                   </div>
                 </div>
-                <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', marginBottom: '10px', lineHeight: '1.4' }}>{story.title}</h3>
-                <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6', marginBottom: '20px' }}>{story.preview}</p>
-                <span style={{ color: '#16a34a', fontWeight: '600', fontSize: '14px' }}>Read Full Story &rarr;</span>
               </div>
             </div>
           ))}
         </div>
-      </div>
 
-      {/* --- POP-UP MODAL --- */}
-      {selectedStory && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          backdropFilter: 'blur(5px)', padding: '20px'
-        }}>
-          
-          <div style={{
-            backgroundColor: 'white', width: '100%', maxWidth: '800px',
-            height: '90vh', borderRadius: '24px', overflowY: 'auto',
-            position: 'relative', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            display: 'flex', flexDirection: 'column'
-          }}>
-
-            {/* Close Button */}
-            <button 
-              onClick={() => setSelectedStory(null)}
-              style={{
-                position: 'fixed', top: '20px', right: '20px',
-                backgroundColor: 'white', border: 'none', borderRadius: '50%',
-                width: '40px', height: '40px', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 10px rgba(0,0,0,0.1)', zIndex: 1010
-              }}
-            >
-              <X size={24} color="#374151" />
-            </button>
-
-            {/* Modal Hero Image */}
-            <div style={{ height: '350px', flexShrink: 0 }}>
-              <img 
-                src={selectedStory.image} 
-                alt={selectedStory.title} 
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-              />
-            </div>
-
-            {/* Modal Content */}
-            <div style={{ padding: '40px' }}>
-              
-              {/* Header Info */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' }}>
-                <div>
-                  <h2 style={{ fontSize: '32px', fontWeight: 'bold', color: '#111827', marginBottom: '10px', lineHeight: '1.2' }}>{selectedStory.title}</h2>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', color: '#6b7280', fontSize: '14px' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><MapPin size={16} /> {selectedStory.location}</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><Calendar size={16} /> {selectedStory.date}</span>
-                  </div>
-                </div>
-                <img src={selectedStory.avatar} alt={selectedStory.name} style={{ width: '60px', height: '60px', borderRadius: '50%', border: '3px solid #f3f4f6' }} />
-              </div>
-
-              {/* The Story Text */}
-              <div style={{ fontSize: '18px', lineHeight: '1.8', color: '#374151', marginBottom: '40px', whiteSpace: 'pre-line' }}>
-                {selectedStory.fullStory}
-              </div>
-
-              {/* Photo Gallery Section */}
-              <div>
-                <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Camera color="#16a34a" /> Captured Moments
-                </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
-                  {selectedStory.gallery.map((img, idx) => (
-                    <div key={idx} style={{ borderRadius: '12px', overflow: 'hidden', height: '150px' }}>
-                      <img src={img} alt="Gallery" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s' }} onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'} onMouseLeave={(e) => e.target.style.transform = 'scale(1)'} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-          </div>
+        {/* MOBILE FALLBACK BUTTON */}
+        <div style={{ textAlign: 'center', marginTop: '40px', display: 'block' }}>
+           <button 
+             onClick={() => navigate('/stories')}
+             style={{ padding: '16px 32px', borderRadius: '50px', backgroundColor: '#111827', color: 'white', fontSize: '16px', fontWeight: 'bold', border: 'none', cursor: 'pointer', transition: 'all 0.3s', display: 'inline-flex', alignItems: 'center', gap: '10px' }}
+             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1f2937'}
+             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#111827'}
+           >
+             Explore All Diaries <ArrowRight size={20} />
+           </button>
         </div>
-      )}
+
+      </div>
     </section>
   );
 };
 
-export default TravelerStories;
+export default TravellerStories;
