@@ -902,6 +902,18 @@ const StateDetails = () => {
       .slice(0, 3);
   };
 
+  // --- HELPER: LOOKUP STATE FOR A PLACE NAME ---
+  const getPlaceState = (placeName) => {
+    if (!placeName) return null;
+    const lowerPlace = placeName.toLowerCase();
+    for (const [state, places] of Object.entries(placeDatabase)) {
+      if (places.some(p => p.name.toLowerCase() === lowerPlace || p.name.toLowerCase().includes(lowerPlace))) {
+        return state;
+      }
+    }
+    return null;
+  };
+
   // --- 1. ADVANCED SPELL CHECKER & AUTO-CORRECTOR ---
   const resolveLocationName = async (input) => {
     // if (!input) return { resolved: "", corrected: false };
@@ -1269,11 +1281,12 @@ const StateDetails = () => {
       if (corrected || (wikiResult && wikiResult.insufficientContent)) {
         const relatedDests = findRelatedDestinations(resolved);
         
-        // Fetch wiki thumbnails for related destinations
+        // Fetch wiki thumbnails for related destinations (preserve state info)
         const relatedWithImages = await Promise.all(relatedDests.map(async (dest) => ({
           name: dest.name,
           desc: dest.detail,
-          img: (await fetchWikiImage(dest.name)) || placeholderDataUri
+          img: (await fetchWikiImage(dest.name)) || placeholderDataUri,
+          state: dest.state  // Preserve state info from placeDatabase
         })));
 
         // If categories are empty, populate them with related destinations
@@ -1347,7 +1360,7 @@ const StateDetails = () => {
                   {dest.name}
                 </h4>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#16a34a', marginBottom: '10px', fontWeight: '600' }}>
-                  <MapPin size={12} /> {displayName}, India
+                  <MapPin size={12} /> {dest.state || getPlaceState(dest.name) || displayName}, India
                 </div>
                 <p style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', flex: 1 }}>
                   {dest.desc}
