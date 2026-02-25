@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Navigation, Plus, Trash2, ArrowRight, Clock, Camera, Leaf, Coffee, Compass, GripVertical, Map as MapIcon, CheckCircle2, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-// 👇 REPLACE THIS WITH YOUR REAL BING MAPS API KEY
-const BING_MAPS_KEY = "YOUR_BING_MAPS_API_KEY_HERE"; 
+// 👇 READS SECURELY FROM YOUR .env FILE
+// Note: If using Vite, change this to: import.meta.env.VITE_OLA_MAPS_API_KEY
+const OLA_MAPS_API_KEY = process.env.REACT_APP_OLA_MAPS_API_KEY;
 
 const RoutePlannerPage = () => {
   const navigate = useNavigate();
@@ -23,6 +24,8 @@ const RoutePlannerPage = () => {
   // --- MAP & DRAG/DROP REFS ---
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
+  const olaMapsInstance = useRef(null);
+  const markersRef = useRef([]); 
   const dragItem = useRef();
   const dragOverItem = useRef();
 
@@ -48,7 +51,7 @@ const RoutePlannerPage = () => {
   const placesDatabase = [
     { id: 1, name: "Neemrana Fort", lat: 27.99, lng: 76.38, type: "Heritage", time: "2 Hours", icon: Camera, img: "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=400&q=80", desc: "15th-century heritage palace perfect for a royal lunch stop." },
     { id: 2, name: "Amrik Sukhdev Dhaba", lat: 29.03, lng: 77.07, type: "Food", time: "1 Hour", icon: Coffee, img: "https://images.unsplash.com/photo-1605814545086-455b8beffca2?auto=format&fit=crop&w=400&q=80", desc: "Legendary highway stop famous for hot tandoori parathas." },
-    { id: 3, name: "Sanchi Stupa", lat: 23.48, lng: 77.73, type: "Heritage", time: "2 Hours", icon: Compass, img: "https://static.toiimg.com/thumb/msid-86416954,width-748,height-499,resizemode=4,imgsize-170906/A-complete-guide-to-visiting-Sanchi-Stupa-in-Madhya-Pradesh.jpg", desc: "Ancient Buddhist complex commissioned by Emperor Ashoka." },
+    { id: 3, name: "Sanchi Stupa", lat: 23.48, lng: 77.73, type: "Heritage", time: "2 Hours", icon: Compass, img: "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=400&q=80", desc: "Ancient Buddhist complex commissioned by Emperor Ashoka." },
     { id: 4, name: "Lonavala Viewpoint", lat: 18.74, lng: 73.40, type: "Nature", time: "1.5 Hours", icon: Leaf, img: "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?auto=format&fit=crop&w=400&q=80", desc: "Misty valleys and cascading waterfalls along the expressway." },
     { id: 5, name: "Athirappilly Falls", lat: 10.28, lng: 76.56, type: "Nature", time: "2.5 Hours", icon: Leaf, img: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=400&q=80", desc: "The 'Niagara of India'. A spectacular 80-foot waterfall." },
     { id: 6, name: "Ajanta Caves", lat: 20.55, lng: 75.70, type: "Heritage", time: "3 Hours", icon: Camera, img: "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=400&q=80", desc: "Ancient rock-cut Buddhist cave monuments." },
@@ -60,95 +63,143 @@ const RoutePlannerPage = () => {
     { id: 12, name: "Taj Mahal Viewpoint", lat: 27.17, lng: 78.04, type: "Heritage", time: "2 Hours", icon: Camera, img: "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=400&q=80", desc: "Iconic monument of love. A must-stop on the Northern circuit." }
   ];
 
-  // --- INITIALIZE BING MAPS ---
+  // --- INITIALIZE OLA MAPS ---
   useEffect(() => {
     if (!isSearching) return;
 
-    const loadMap = () => {
+    if (!OLA_MAPS_API_KEY) {
+      console.error("Missing API Key: Please ensure REACT_APP_OLA_MAPS_API_KEY is set in your .env file.");
+    }
+
+    const loadOlaMap = () => {
       if (!mapRef.current || mapInstance.current) return;
       
-      mapInstance.current = new window.Microsoft.Maps.Map(mapRef.current, {
-        zoom: 4,
-        mapTypeId: window.Microsoft.Maps.MapTypeId.road,
-        disableBirdseye: true,
-        disableStreetside: true,
-        showLocateMeButton: false,
-        showMapTypeSelector: false
-      });
+      try {
+        const olaMaps = new window.OlaMapsWebSDK.OlaMaps({ apiKey: OLA_MAPS_API_KEY || '' });
+        olaMapsInstance.current = olaMaps;
+        
+        const map = olaMaps.init({
+          style: "https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json",
+          container: mapRef.current,
+          center: [78.9629, 20.5937], 
+          zoom: 4
+        });
+        
+        mapInstance.current = map;
 
-      updateMapEntities();
+        map.on('load', () => {
+          updateMapEntities();
+        });
+
+      } catch (error) {
+        console.error("Error loading Ola Maps:", error);
+      }
     };
 
-    if (!window.Microsoft) {
+    if (!window.OlaMapsWebSDK) {
+      const link = document.createElement('link');
+      link.href = "https://olamaps.github.io/olamaps-web-sdk/ola-maps-web-sdk.css";
+      link.rel = "stylesheet";
+      document.head.appendChild(link);
+
       const script = document.createElement('script');
-      script.type = 'text/javascript';
-      script.src = `https://www.bing.com/api/maps/mapcontrol?callback=loadBingMap&key=${BING_MAPS_KEY}`;
+      script.src = "https://olamaps.github.io/olamaps-web-sdk/ola-maps-web-sdk.umd.js";
       script.async = true;
-      script.defer = true;
-      window.loadBingMap = loadMap;
+      script.onload = loadOlaMap;
       document.head.appendChild(script);
     } else {
-      loadMap();
+      loadOlaMap();
     }
   }, [isSearching]);
 
   // --- UPDATE MAP PINS & ROUTE ---
   useEffect(() => {
-    if (mapInstance.current && window.Microsoft) {
+    if (mapInstance.current && mapInstance.current.isStyleLoaded()) {
       updateMapEntities();
     }
   }, [routeCoords, itineraryStops]);
 
   const updateMapEntities = () => {
     const map = mapInstance.current;
-    if (!map || !routeCoords.start || !routeCoords.end) return;
+    const olaMaps = olaMapsInstance.current;
+    if (!map || !olaMaps || !routeCoords.start || !routeCoords.end) return;
 
-    map.entities.clear();
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
 
-    const startLoc = new window.Microsoft.Maps.Location(routeCoords.start.lat, routeCoords.start.lng);
-    const endLoc = new window.Microsoft.Maps.Location(routeCoords.end.lat, routeCoords.end.lng);
-    const waypoints = [startLoc];
+    const waypoints = []; 
 
-    // SVG Custom Pins
-    const createCustomPin = (name, color) => {
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="30">
-        <circle cx="15" cy="15" r="6" fill="${color}" stroke="white" stroke-width="2" />
-        <text x="28" y="19" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="#111827" 
-              style="text-shadow: 1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white, 0px 0px 5px white;">
-          ${name}
-        </text>
-      </svg>`;
+    const createMarkerElement = (name, color) => {
+      const el = document.createElement('div');
+      el.innerHTML = `
+        <div style="position: relative; display: flex; align-items: center; justify-content: center; transform: translate(-50%, -50%);">
+          <div style="width: 14px; height: 14px; background-color: ${color}; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); z-index: 2;"></div>
+          <div style="position: absolute; left: 20px; white-space: nowrap; font-family: system-ui; font-size: 13px; font-weight: 700; color: #111827; text-shadow: 1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white; z-index: 1;">
+            ${name}
+          </div>
+        </div>
+      `;
+      return el;
     };
 
-    const startPin = new window.Microsoft.Maps.Pushpin(startLoc, { 
-      icon: createCustomPin(origin.toUpperCase(), '#111827'), anchor: new window.Microsoft.Maps.Point(15, 15) 
-    });
-    map.entities.push(startPin);
+    const startCoordArr = [routeCoords.start.lng, routeCoords.start.lat];
+    waypoints.push(startCoordArr);
+    const startMarker = olaMaps.addMarker({ element: createMarkerElement(origin.toUpperCase(), '#111827') })
+      .setLngLat(startCoordArr)
+      .addTo(map);
+    markersRef.current.push(startMarker);
 
     itineraryStops.forEach((stop) => {
-      const loc = new window.Microsoft.Maps.Location(stop.lat, stop.lng);
-      waypoints.push(loc);
-      const stopPin = new window.Microsoft.Maps.Pushpin(loc, { 
-        icon: createCustomPin(stop.name, '#16a34a'), anchor: new window.Microsoft.Maps.Point(15, 15)
+      const stopCoordArr = [stop.lng, stop.lat];
+      waypoints.push(stopCoordArr);
+      const stopMarker = olaMaps.addMarker({ element: createMarkerElement(stop.name, '#16a34a') })
+        .setLngLat(stopCoordArr)
+        .addTo(map);
+      markersRef.current.push(stopMarker);
+    });
+
+    const endCoordArr = [routeCoords.end.lng, routeCoords.end.lat];
+    waypoints.push(endCoordArr);
+    const endMarker = olaMaps.addMarker({ element: createMarkerElement(destination.toUpperCase(), '#ea580c') })
+      .setLngLat(endCoordArr)
+      .addTo(map);
+    markersRef.current.push(endMarker);
+
+    if (map.getSource('route')) {
+      map.getSource('route').setData({
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'LineString', coordinates: waypoints }
       });
-      map.entities.push(stopPin);
-    });
+    } else {
+      map.addSource('route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'LineString', coordinates: waypoints }
+        }
+      });
+      map.addLayer({
+        id: 'route',
+        type: 'line',
+        source: 'route',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': '#16a34a',
+          'line-width': 4,
+          'line-dasharray': [2, 2] 
+        }
+      });
+    }
 
-    waypoints.push(endLoc);
-    const endPin = new window.Microsoft.Maps.Pushpin(endLoc, { 
-      icon: createCustomPin(destination.toUpperCase(), '#ea580c'), anchor: new window.Microsoft.Maps.Point(15, 15)
-    });
-    map.entities.push(endPin);
-
-    const line = new window.Microsoft.Maps.Polyline(waypoints, {
-      strokeColor: 'rgba(22, 163, 74, 0.8)',
-      strokeThickness: 3,
-      strokeDashArray: [4, 4]
-    });
-    map.entities.push(line);
-
-    const rect = window.Microsoft.Maps.LocationRect.fromLocations(waypoints);
-    map.setView({ bounds: rect, padding: 80 }); 
+    if (window.OlaMapsWebSDK) {
+      const bounds = waypoints.reduce((b, coord) => {
+        return b.extend(coord);
+      }, new window.OlaMapsWebSDK.LngLatBounds(waypoints[0], waypoints[0]));
+      
+      map.fitBounds(bounds, { padding: 80, maxZoom: 12 });
+    }
   };
 
 
@@ -178,7 +229,6 @@ const RoutePlannerPage = () => {
     setIsSearching(true);
   };
 
-  // --- TIMELINE CONTROLS ---
   const addStop = (stop) => {
     if (!itineraryStops.find(s => s.id === stop.id)) {
       setItineraryStops([...itineraryStops, stop]);
@@ -189,26 +239,27 @@ const RoutePlannerPage = () => {
     setItineraryStops(itineraryStops.filter(s => s.id !== id));
   };
 
-  // --- EXACT COORDINATE SEARCH LOGIC ---
+  // --- OLA MAPS EXACT COORDINATE GEOCODING ---
   const handleAddCustomStop = async (e) => {
     e.preventDefault();
     if (!customStopName.trim()) return;
 
-    if (BING_MAPS_KEY === "YOUR_BING_MAPS_API_KEY_HERE") {
-      alert("Error: You need to insert a real Bing Maps API Key at the top of the file to fetch exact coordinates.");
+    if (!OLA_MAPS_API_KEY) {
+      alert("Error: Missing OLA_MAPS_API_KEY. Please add it to your .env file.");
       return;
     }
 
     setIsFindingLocation(true);
 
     try {
-      const response = await fetch(`https://dev.virtualearth.net/REST/v1/Locations?q=${encodeURIComponent(customStopName + ", India")}&key=${BING_MAPS_KEY}`);
+      const response = await fetch(`https://api.olamaps.io/places/v1/geocode?address=${encodeURIComponent(customStopName + ", India")}&api_key=${OLA_MAPS_API_KEY}`);
       const data = await response.json();
 
-      if (data?.resourceSets?.[0]?.resources?.length > 0) {
-        const exactLocation = data.resourceSets[0].resources[0];
-        const [exactLat, exactLng] = exactLocation.point.coordinates;
-        const officialName = exactLocation.name; 
+      if (data?.geocodingResults && data.geocodingResults.length > 0) {
+        const exactLocation = data.geocodingResults[0];
+        const exactLat = exactLocation.geometry.location.lat;
+        const exactLng = exactLocation.geometry.location.lng;
+        const officialName = exactLocation.name || customStopName; 
 
         const customStop = {
           id: Date.now(), 
@@ -309,12 +360,11 @@ const RoutePlannerPage = () => {
 
       {/* 2. THREE-COLUMN DASHBOARD */}
       {isSearching && (
-        <div style={{ maxWidth: '1400px', margin: '40px auto', padding: '0 20px', display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) minmax(300px, 1fr) minmax(350px, 1.2fr)', gap: '30px', animation: 'fadeIn 0.5s ease-out' }}>
+        <div style={{ maxWidth: '1400px', margin: '40px auto', padding: '0 20px', display: 'grid', gridTemplateColumns: 'minmax(300px, 1.1fr) minmax(300px, 1fr) minmax(350px, 1.1fr)', gap: '30px', animation: 'fadeIn 0.5s ease-out' }}>
           
           {/* COLUMN 1: TIMELINE & CUSTOM SEARCH */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', position: 'sticky', top: '100px', height: 'fit-content' }}>
             
-            {/* The Timeline Card */}
             <div style={{ backgroundColor: 'white', borderRadius: '24px', padding: '30px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' }}>
               <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#111827', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Clock color="#16a34a" /> Route Timeline
@@ -329,7 +379,6 @@ const RoutePlannerPage = () => {
                   <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', textTransform: 'capitalize' }}>{origin}</p>
                 </div>
 
-                {/* Dynamic DRAGGABLE Stops */}
                 {itineraryStops.map((stop, index) => (
                   <div 
                     key={stop.id} draggable onDragStart={(e) => handleDragStart(e, index)} onDragEnter={(e) => handleDragEnter(e, index)} onDragEnd={handleDragEnd} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}
@@ -358,7 +407,6 @@ const RoutePlannerPage = () => {
               </button>
             </div>
 
-            {/* Custom Search Box Row */}
             <div style={{ backgroundColor: 'white', borderRadius: '24px', padding: '25px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' }}>
               <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#111827', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Search size={18} color="#0284c7" /> Search Exact Location
@@ -376,21 +424,24 @@ const RoutePlannerPage = () => {
                   {isFindingLocation ? 'Locating...' : 'Plot on Map'}
                 </button>
               </form>
+              {!OLA_MAPS_API_KEY && (
+                <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '10px' }}>*API Key missing in .env file.</p>
+              )}
             </div>
 
           </div>
 
-          {/* COLUMN 2: REAL BING MAP WIDGET */}
+          {/* COLUMN 2: OLA MAP WIDGET */}
           <div style={{ backgroundColor: '#e0f2fe', borderRadius: '24px', overflow: 'hidden', position: 'sticky', top: '100px', height: 'calc(100vh - 150px)', minHeight: '500px', border: '1px solid #bae6fd', boxShadow: 'inset 0 0 50px rgba(0,0,0,0.05)' }}>
             <div ref={mapRef} style={{ width: '100%', height: '100%' }}>
-              {!window.Microsoft && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#0284c7', fontWeight: 'bold', textAlign: 'center', padding: '20px' }}>Enter a valid API key at the top of the file to load Bing Maps.</div>}
+              {!OLA_MAPS_API_KEY && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#ef4444', fontWeight: 'bold', textAlign: 'center', padding: '20px' }}>No API Key Provided.<br/>Please add REACT_APP_OLA_MAPS_API_KEY to your .env file.</div>}
             </div>
             <div style={{ position: 'absolute', bottom: '20px', left: '20px', backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(5px)', padding: '10px 15px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 'bold', color: '#1f2937', zIndex: 30 }}>
-              <MapIcon size={18} color="#0284c7" /> Live GPS Map
+              <MapIcon size={18} color="#0284c7" /> Powered by Ola Maps
             </div>
           </div>
 
-          {/* 👇 COLUMN 3: CIRCULAR / PILL RECOMMENDATIONS */}
+          {/* COLUMN 3: CIRCULAR / PILL RECOMMENDATIONS */}
           <div style={{ overflowY: 'auto', paddingRight: '10px' }} className="hide-scrollbar">
             <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#111827', marginBottom: '5px' }}>Route Suggestions</h2>
             <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '25px', textTransform: 'capitalize' }}>
@@ -411,12 +462,10 @@ const RoutePlannerPage = () => {
                       position: 'relative' 
                     }}
                   >
-                    {/* Perfect Circle Image */}
                     <div style={{ width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: '2px solid #f3f4f6' }}>
                       <img src={rec.img} alt={rec.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
 
-                    {/* Content Section */}
                     <div style={{ flex: 1, overflow: 'hidden' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#6b7280', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>
                         <rec.icon size={12} /> {rec.type}
@@ -429,7 +478,6 @@ const RoutePlannerPage = () => {
                       </p>
                     </div>
                     
-                    {/* Circular Action Button */}
                     <button 
                       onClick={() => isAdded ? removeStop(rec.id) : addStop(rec)} 
                       title={isAdded ? "Remove from Route" : "Add to Route"}
