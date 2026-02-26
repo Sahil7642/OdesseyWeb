@@ -1,5 +1,231 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, X, ArrowRight, ArrowLeft, MapPin, Mountain, Coffee, Map, Landmark, Compass, User, Smile, Globe, Home, Users, Calendar, Wallet, Loader2, Utensils, Search, AlertCircle, RefreshCw } from 'lucide-react';
+/*import React, { useState } from 'react';
+import { ChevronLeft, ChevronRight, Utensils, Trees, Building2 } from 'lucide-react';
+
+const ExperienceGrid = () => {
+  // --- CAROUSEL DATA (Right Side) ---
+  const carouselImages = [
+    "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=800&q=80", // India Fort
+    "https://images.unsplash.com/photo-1506461883276-594a12b11cf3?auto=format&fit=crop&w=800&q=80", // Kerala Boat
+    "https://images.unsplash.com/photo-1562979314-bee7453e911c?auto=format&fit=crop&w=800&q=80", // Mumbai City
+    "https://images.unsplash.com/photo-1517244683847-7456b63c5969?auto=format&fit=crop&w=800&q=80"  // Indian Food
+  ];
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const nextImage = () => {
+    setCurrentIndex((prev) => (prev + 1) % carouselImages.length);
+  };
+
+  const prevImage = () => {
+    setCurrentIndex((prev) => (prev === 0 ? carouselImages.length - 1 : prev - 1));
+  };
+
+  // --- CATEGORY DATA (Left Side) ---
+  const categories = [
+    {
+      title: "Food",
+      icon: Utensils,
+      color: "#fef3c7", // Light yellow bg
+      textColor: "#d97706", // Dark yellow text
+      desc: "Taste the authentic spices and flavors of local cuisines."
+    },
+    {
+      title: "Nature",
+      icon: Trees,
+      color: "#dcfce7", // Light green bg
+      textColor: "#16a34a", // Dark green text
+      desc: "Connect with the wild, from lush forests to calm rivers."
+    },
+    {
+      title: "Cities",
+      icon: Building2,
+      color: "#e0f2fe", // Light blue bg
+      textColor: "#0284c7", // Dark blue text
+      desc: "Explore the heritage and vibrant life of ancient cities."
+    }
+  ];
+
+  return (
+    <section style={{ padding: '80px 20px', backgroundColor: '#fff' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        
+        {/* Main Heading *}
+        <h2 style={{ fontSize: '32px', fontWeight: 'bold', color: '#111827', marginBottom: '40px', textAlign: 'center' }}>
+          Curated <span style={{ color: '#16a34a', fontStyle: 'italic' }}>Experiences</span>
+        </h2>
+
+        {/* --- MAIN FLEX CONTAINER --- *}
+        <div style={{ 
+          display: 'flex', 
+          flexWrap: 'wrap', // Wraps on mobile
+          gap: '30px', 
+          height: 'auto',
+          minHeight: '500px' // Ensures consistent height
+        }}>
+
+          {/* === LEFT SIDE: CATEGORIES (60%) === *}
+          <div style={{ 
+            flex: '3', // Takes up 3 parts of space
+            minWidth: '300px',
+            display: 'flex',
+            gap: '20px',
+            justifyContent: 'space-between'
+          }}>
+            {categories.map((cat, index) => (
+              <div key={index} style={{ 
+                flex: 1, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '15px' 
+              }}>
+                
+                {/* 1. TOP BOX (The Card) *}
+                <div style={{
+                  flex: '1', // Fills available height
+                  backgroundColor: cat.color,
+                  borderRadius: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: cat.textColor,
+                  minHeight: '200px',
+                  boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                  <cat.icon size={48} style={{ marginBottom: '15px' }} />
+                  <h3 style={{ fontSize: '20px', fontWeight: 'bold' }}>{cat.title}</h3>
+                </div>
+
+                {/* 2. BOTTOM BOX (The Text) *}
+                <div style={{
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '16px',
+                  padding: '20px',
+                  textAlign: 'center',
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  lineHeight: '1.5',
+                  height: '120px', // Fixed height for alignment
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {cat.desc}
+                </div>
+
+              </div>
+            ))}
+          </div>
+
+          {/* === RIGHT SIDE: CAROUSEL (40%) === *}
+          <div style={{ 
+            flex: '2', // Takes up 2 parts of space
+            minWidth: '300px',
+            position: 'relative',
+            borderRadius: '24px',
+            overflow: 'hidden',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
+          }}>
+            
+            {/* The Image *}
+            <img 
+              src={carouselImages[currentIndex]} 
+              alt="Experience Gallery"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                position: 'absolute',
+                top: 0, 
+                left: 0,
+                transition: 'opacity 0.5s ease-in-out'
+              }} 
+            />
+
+            {/* Overlay Gradient *}
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.4), transparent)' }}></div>
+
+            {/* Left Arrow *}
+            <button 
+              onClick={prevImage}
+              style={{
+                position: 'absolute',
+                left: '20px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '40px', 
+                height: '40px',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}
+            >
+              <ChevronLeft size={24} color="#1f2937" />
+            </button>
+
+            {/* Right Arrow *}
+            <button 
+              onClick={nextImage}
+              style={{
+                position: 'absolute',
+                right: '20px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '40px', 
+                height: '40px',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}
+            >
+              <ChevronRight size={24} color="#1f2937" />
+            </button>
+
+            {/* Dots Indicator *}
+            <div style={{
+              position: 'absolute',
+              bottom: '20px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              gap: '8px'
+            }}>
+              {carouselImages.map((_, idx) => (
+                <div 
+                  key={idx}
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: idx === currentIndex ? 'white' : 'rgba(255,255,255,0.5)',
+                    transition: 'background 0.3s'
+                  }}
+                />
+              ))}
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default ExperienceGrid;
+*/
+
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, X, ArrowRight, ArrowLeft, MapPin, Mountain, Coffee, Map, Landmark, Compass, User, Smile, Globe, Home, Users, Calendar, Wallet, Loader2, Utensils, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const ExperienceGrid = () => {
@@ -15,221 +241,119 @@ const ExperienceGrid = () => {
   const [selectedSubCategory, setSelectedSubCategory] = useState(null);
   const [dynamicDestinations, setDynamicDestinations] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [retryCount, setRetryCount] = useState(0);
   
   // Search State
   const [searchTerm, setSearchTerm] = useState("");
-  
-  // Cache and Refs
-  const cache = useRef(new Map());
-  const searchTimeoutRef = useRef(null);
 
-  // --- 1. ENHANCED SEARCH QUERY MAPPING ---
-  // Using more specific Wikipedia categories and search terms for better relevance
+  // --- 1. SEARCH QUERY MAPPING ---
   const queryMap = {
-    "Mountains / Hills": { term: "Hill station", category: "Hill_stations_in_India", keywords: ["hill station", "mountain", "altitude", "scenic"] },
-    "Beaches / Coastline": { term: "Beach", category: "Beaches_of_India", keywords: ["beach", "coast", "sea", "shore", "ocean"] },
-    "Forests / Jungles": { term: "National park", category: "National_parks_of_India", keywords: ["forest", "jungle", "wildlife", "sanctuary", "national park"] },
-    "Deserts": { term: "Desert", category: "Deserts_of_India", keywords: ["desert", "sand", "dunes", "arid"] },
-    "Lakes & Rivers": { term: "Lake", category: "Lakes_of_India", keywords: ["lake", "river", "water", "reservoir"] },
-    "Snow / Glaciers": { term: "Snow", category: "Ski_areas_and_resorts_in_India", keywords: ["snow", "ski", "glacier", "winter", "himalaya"] },
-    "Valleys & Meadows": { term: "Valley", category: "Valleys_of_India", keywords: ["valley", "meadow", "grassland"] },
-    "Islands": { term: "Island", category: "Islands_of_India", keywords: ["island", "archipelago"] },
-    "Metro City": { term: "Metropolitan city", category: "Metropolitan_cities_in_India", keywords: ["city", "metropolitan", "urban", "capital"] },
-    "Heritage City": { term: "Heritage city", category: "Historic_sites_in_India", keywords: ["heritage", "historic", "ancient", "old city"] },
-    "Small Town": { term: "Town", category: "Towns_in_India", keywords: ["town", "small city", "municipality"] },
-    "Village Life": { term: "Village", category: "Villages_in_India", keywords: ["village", "rural", "countryside"] },
-    "Historical Monuments": { term: "Monument", category: "Monuments_and_memorials_in_India", keywords: ["monument", "memorial", "fort", "palace"] },
-    "Temples / Spiritual Sites": { term: "Temple", category: "Hindu_temples_in_India", keywords: ["temple", "shrine", "spiritual", "pilgrimage"] },
-    "Trekking / Hiking": { term: "Trekking", category: "Hiking_trails_in_India", keywords: ["trek", "hiking", "trail", "climb"] },
-    "Rafting / Kayaking": { term: "River rafting", category: "Rivers_of_India", keywords: ["rafting", "kayaking", "water sports", "rapids"] },
-    "Yoga & Meditation": { term: "Yoga", category: "Yoga", keywords: ["yoga", "meditation", "ashram", "spiritual"] },
-    "Street Food": { term: "Street food", category: "Indian_street_food", keywords: ["street food", "snack", "chaat", "vendor"] },
-    "Local Cuisine": { term: "Indian cuisine", category: "Indian_cuisine", keywords: ["cuisine", "dish", "food", "recipe", "traditional"] },
-    "Seafood": { term: "Seafood", category: "Indian_seafood_dishes", keywords: ["seafood", "fish", "prawn", "crab", "coastal"] },
-    "Vegetarian / Vegan Friendly": { term: "Vegetarian food", category: "Indian_vegetarian_dishes", keywords: ["vegetarian", "vegan", "plant-based", "dal", "paneer"] }
-  };
-  
-  // --- SUGGESTED SEARCH TERMS ---
-  const getSuggestedTerms = (subCat, isFood) => {
-    const suggestions = {
-      "Mountains / Hills": ["Shimla", "Manali", "Ooty", "Darjeeling", "Munnar"],
-      "Beaches / Coastline": ["Goa", "Kerala", "Andaman", "Gokarna", "Puri"],
-      "Forests / Jungles": ["Jim Corbett", "Ranthambore", "Bandhavgarh", "Kaziranga"],
-      "Temples / Spiritual Sites": ["Varanasi", "Tirupati", "Golden Temple", "Madurai"],
-      "Street Food": ["Chaat", "Vada Pav", "Pani Puri", "Samosa"],
-      "Local Cuisine": ["Biryani", "Thali", "Dosa", "Butter Chicken"]
-    };
-    return suggestions[subCat] || (isFood ? ["Paneer", "Curry", "Naan"] : ["Mumbai", "Delhi", "Jaipur"]);
+    "Mountains / Hills": "Hill stations",
+    "Beaches / Coastline": "Beaches",
+    "Forests / Jungles": "National parks",
+    "Deserts": "Desert tourist places",
+    "Lakes & Rivers": "Lakes",
+    "Snow / Glaciers": "Ski resorts",
+    "Valleys & Meadows": "Valleys",
+    "Islands": "Islands",
+    "Metro City": "Tourist places",
+    "Heritage City": "Heritage sites",
+    "Small Town": "Scenic towns",
+    "Village Life": "Rural tourism",
+    "Historical Monuments": "Monuments",
+    "Temples / Spiritual Sites": "Temples",
+    "Trekking / Hiking": "Trekking trails",
+    "Rafting / Kayaking": "River rafting",
+    "Yoga & Meditation": "Yoga centers",
+    "Street Food": "Street food",
+    "Local Cuisine": "Traditional cuisine",
+    "Seafood": "Seafood dishes",
+    "Vegetarian / Vegan Friendly": "Vegetarian food"
   };
 
-  // --- 2. RELEVANCE SCORING FUNCTION ---
-  const calculateRelevance = (item, searchTerm, queryConfig) => {
-    let score = 0;
-    const title = item.title.toLowerCase();
-    const text = item.extract.toLowerCase();
-    const search = searchTerm.toLowerCase();
-    
-    // Exact title match (highest priority)
-    if (search && title === search) score += 100;
-    if (search && title.includes(search)) score += 50;
-    
-    // Keyword matching
-    if (queryConfig && queryConfig.keywords) {
-      const matches = queryConfig.keywords.filter(kw => text.includes(kw) || title.includes(kw));
-      score += matches.length * 10;
-    }
-    
-    // Length penalty (prefer concise, specific articles)
-    if (text.length < 500) score += 5;
-    if (text.length > 2000) score -= 5;
-    
-    // Title length (prefer shorter, specific titles)
-    if (title.split(' ').length <= 3) score += 5;
-    
-    return score;
-  };
-
-  // --- 3. ENHANCED FETCH FUNCTION WITH RETRY & CACHING ---
-  const performWikiSearch = async (subCat, userSearch = "", attempt = 0) => {
-    const MAX_RETRIES = 2;
-    const isFood = selectedCategory?.title.includes("Food");
-    
-    // Check cache first
-    const cacheKey = `${subCat}-${userSearch}-${isFood}`;
-    if (cache.current.has(cacheKey)) {
-      setDynamicDestinations(cache.current.get(cacheKey));
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    
+  // --- 2. UNIFIED FETCH FUNCTION ---
+  // Handles both Auto-Load (random) and Manual Search
+  const performWikiSearch = async (subCat, userSearch = "") => {
     setLoading(true);
-    setError(null);
     setDynamicDestinations([]);
 
-    const queryConfig = queryMap[subCat] || { term: subCat, keywords: [] };
-    const coreTerm = queryConfig.term || subCat;
+    // A. Construct the Query
+    let finalQuery = "";
+    const isFood = selectedCategory?.title.includes("Food");
+    const coreTerm = queryMap[subCat] || subCat;
+
+    if (userSearch) {
+      // USER SEARCH: "Vadodara" + "Mountains" + "India"
+      finalQuery = `${userSearch} ${coreTerm} India`;
+    } else {
+      // AUTO LOAD: "Hill Stations" + "India"
+      finalQuery = isFood 
+        ? `Famous ${coreTerm} India` 
+        : `${coreTerm} in India`;
+    }
+
+    // B. Add Safety Exclusions
+    const exclusions = "-person -biography -film -actor -actress -party -politics -ministry -organization -company -limited -corporation -association";
+    const apiQuery = `${finalQuery} ${exclusions}`;
 
     try {
-      let url;
+      // C. Call Wikipedia API
+      const url = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(apiQuery)}&gsrlimit=50&prop=pageimages|extracts&pithumbsize=500&exintro&explaintext&exsentences=2&format=json&origin=*`;
       
-      if (userSearch) {
-        // USER SEARCH: Enhanced query with location context
-        const searchQuery = `${userSearch} ${coreTerm} India tourism travel`;
-        const exclusions = "-person -biography -film -actor -actress -party -politics -ministry";
-        const apiQuery = `${searchQuery} ${exclusions}`;
-        url = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(apiQuery)}&gsrlimit=30&prop=pageimages|extracts&pithumbsize=500&exintro&explaintext&exsentences=2&format=json&origin=*`;
-      } else {
-        // AUTO LOAD: Try category-based search first, fallback to text search
-        if (queryConfig.category) {
-          // Use Wikipedia category for precise results
-          url = `https://en.wikipedia.org/w/api.php?action=query&generator=categorymembers&gcmtitle=Category:${queryConfig.category}&gcmlimit=30&prop=pageimages|extracts&pithumbsize=500&exintro&explaintext&exsentences=2&format=json&origin=*`;
-        } else {
-          // Fallback to enhanced search
-          const searchQuery = isFood 
-            ? `${coreTerm} Indian dish cuisine recipe`
-            : `${coreTerm} India tourist destination place`;
-          const exclusions = "-person -biography -film -actor";
-          url = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(searchQuery + ' ' + exclusions)}&gsrlimit=30&prop=pageimages|extracts&pithumbsize=500&exintro&explaintext&exsentences=2&format=json&origin=*`;
-        }
-      }
-      
-      const response = await fetch(url, { 
-        signal: AbortSignal.timeout(10000) // 10 second timeout
-      });
-      
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      
+      const response = await fetch(url);
       const data = await response.json();
 
       if (data.query && data.query.pages) {
         let results = Object.values(data.query.pages);
 
-        // ENHANCED FILTERING
+        // D. Strict Filtering
         results = results.filter(item => {
           if (!item.thumbnail || !item.thumbnail.source || !item.extract) return false;
 
           const title = item.title.toLowerCase();
           const text = item.extract.toLowerCase();
           
-          // Block meta/overview articles
-          const badTitles = ["culture of", "history of", "politics of", "economy of", "timeline", "list of", "demographics", "climate of", "outline of", "index of"];
+          // Block Irrelevant Titles
+          const badTitles = ["culture of", "history of", "politics of", "economy of", "timeline", "list of", "demographics", "climate of"];
           if (badTitles.some(t => title.includes(t))) return false;
 
-          // Block non-India content (except for user search)
-          if (!userSearch) {
-            const foreignCountries = ["pakistan", "china", "nepal", "bangladesh", "sri lanka", "myanmar"];
-            if (foreignCountries.some(c => title.includes(c) && !title.includes("india"))) return false;
-          }
+          // Block Foreign/Political
+          const badWords = ["pakistan", "china", "mexico", "usa", "nepal", "bangladesh", "political party", "ministry", "association", "bjp", "congress", "corporation"];
+          if (badWords.some(kw => text.includes(kw))) return false;
 
-          // Block people/organizations
-          const personIndicators = ["born", "died", "actress", "actor", "politician", "biography", "cricketer", "footballer"];
-          if (personIndicators.some(p => text.includes(" " + p + " "))) return false;
+          // Block People
+          if (text.includes("born") || text.includes("died") || text.includes("actress") || text.includes("politician")) return false;
 
-          // Context validation
-          const indianKeywords = ["india", "indian", "pradesh", "state", "city", "town", "village"];
+          // Context Check
+          const indianKeywords = ["india", "state", "pradesh", "kerala", "goa", "delhi", "mumbai", "rajasthan", "himalaya", "bengal", "punjab", "gujarat", "tamil", "karnataka", "maharashtra"];
           const contextKeywords = isFood 
-            ? ["dish", "food", "cuisine", "curry", "snack", "sweet", "recipe", "prepared", "served"]
-            : ["located", "situated", "district", "region", "tourist", "destination", "place", "known for"];
+            ? ["dish", "food", "cuisine", "curry", "snack", "sweet", "spice", "recipe"]
+            : ["located", "situated", "city", "town", "village", "district", "park", "temple", "fort", "lake", "mountain", "river", "resort", "station"];
 
-          const hasIndiaContext = indianKeywords.some(kw => text.includes(kw) || title.includes(kw));
-          const hasRelevantContext = contextKeywords.some(kw => text.includes(kw));
+          const hasIndia = indianKeywords.some(kw => text.includes(kw) || title.includes(kw));
+          const hasContext = contextKeywords.some(kw => text.includes(kw));
 
-          return hasIndiaContext || hasRelevantContext;
+          return hasIndia && hasContext;
         });
 
-        // RELEVANCE SCORING & SORTING
-        const scored = results.map(item => ({
+        // E. Format & Shuffle
+        const formatted = results.map(item => ({
           name: item.title,
           desc: item.extract,
           img: item.thumbnail.source,
-          isFood: isFood,
-          relevanceScore: calculateRelevance(item, userSearch, queryConfig)
+          isFood: isFood
         }));
 
-        // Sort by relevance (keep Wikipedia's order if no user search)
-        const sorted = userSearch 
-          ? scored.sort((a, b) => b.relevanceScore - a.relevanceScore)
-          : scored;
-        
-        const finalResults = sorted.slice(0, 24); // Top 24 results
-        
-        // Cache the results
-        cache.current.set(cacheKey, finalResults);
-        setDynamicDestinations(finalResults);
-        setError(null);
-        setRetryCount(0);
-        
-      } else {
-        // No results found
-        setDynamicDestinations([]);
-        setError(null);
+        // If user searched, don't shuffle too much (relevance matters). If auto-load, shuffle.
+        setDynamicDestinations(userSearch ? formatted.slice(0, 20) : formatted.sort(() => 0.5 - Math.random()).slice(0, 20));
       }
     } catch (error) {
       console.error("Wiki Fetch Error:", error);
-      
-      // RETRY LOGIC
-      if (attempt < MAX_RETRIES) {
-        setRetryCount(attempt + 1);
-        setTimeout(() => performWikiSearch(subCat, userSearch, attempt + 1), 1000 * (attempt + 1));
-        return;
-      }
-      
-      // Show user-friendly error
-      setError({
-        message: "Unable to load destinations. Please check your connection and try again.",
-        retry: () => performWikiSearch(subCat, userSearch, 0)
-      });
     } finally {
-      if (attempt >= MAX_RETRIES || error === null) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   };
 
-  // --- 4. EFFECTS & HANDLERS ---
+  // --- 3. EFFECTS & HANDLERS ---
 
   // Auto-load when entering a sub-category
   useEffect(() => {
@@ -239,67 +363,14 @@ const ExperienceGrid = () => {
     }
   }, [selectedSubCategory]);
 
-  // Debounced search handler
-  const debouncedSearch = useCallback((term) => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    
-    searchTimeoutRef.current = setTimeout(() => {
-      if (term.trim()) {
-        performWikiSearch(selectedSubCategory, term);
-      }
-    }, 600); // 600ms delay
-  }, [selectedSubCategory]);
-
-  const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    
-    // Auto-search as user types (debounced)
-    if (value.length >= 3) {
-      debouncedSearch(value);
-    } else if (value.length === 0) {
-      // Reset to default results when search is cleared
-      performWikiSearch(selectedSubCategory, "");
-    }
-  };
-
   const handleManualSearch = (e) => {
     e.preventDefault();
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
     if (searchTerm.trim()) {
       performWikiSearch(selectedSubCategory, searchTerm);
     }
   };
-  
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, []);
 
-  // --- 5. LOADING SKELETON COMPONENT ---
-  const LoadingSkeleton = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px' }}>
-      {[...Array(6)].map((_, i) => (
-        <div key={i} style={{ backgroundColor: 'white', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-          <div style={{ height: '160px', backgroundColor: '#e5e7eb', animation: 'pulse 2s infinite' }} />
-          <div style={{ padding: '15px' }}>
-            <div style={{ height: '16px', backgroundColor: '#e5e7eb', borderRadius: '4px', marginBottom: '8px', animation: 'pulse 2s infinite' }} />
-            <div style={{ height: '12px', backgroundColor: '#f3f4f6', borderRadius: '4px', width: '60%', animation: 'pulse 2s infinite' }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-
-  // --- 6. DATA: CATEGORIES LIST ---
+  // --- 4. DATA: CATEGORIES LIST ---
   const categories = [
     {
       id: 1, title: "Nature & Landscape", icon: Mountain,
@@ -375,7 +446,7 @@ const ExperienceGrid = () => {
     }
   ];
 
-  // --- 7. HELPERS & HANDLERS ---
+  // --- 5. HELPERS & HANDLERS ---
   const getSafeIndex = (index, length) => ((index % length) + length) % length;
   const visibleCards = [categories[getSafeIndex(cardScrollIndex, categories.length)], categories[getSafeIndex(cardScrollIndex + 1, categories.length)], categories[getSafeIndex(cardScrollIndex + 2, categories.length)]];
   const activeCategory = categories[getSafeIndex(activeCategoryIndex, categories.length)];
@@ -497,7 +568,7 @@ const ExperienceGrid = () => {
                       type="text" 
                       placeholder={`Search in ${selectedSubCategory}... (e.g. "${selectedCategory.title.includes('Food') ? 'Paneer' : 'Vadodara'}")`}
                       value={searchTerm}
-                      onChange={handleSearchChange}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                       style={{ width: '100%', padding: '12px 15px 12px 45px', borderRadius: '12px', border: '1px solid #e5e7eb', fontSize: '14px', outline: 'none', backgroundColor: '#f9fafb' }}
                     />
                     <Search size={18} color="#9ca3af" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)' }} />
@@ -505,37 +576,13 @@ const ExperienceGrid = () => {
                 </div>
 
                 <div style={{ padding: '30px', overflowY: 'auto', backgroundColor: '#f9fafb', flex: 1 }}>
-                  {/* ERROR STATE */}
-                  {error && (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', padding: '20px' }}>
-                      <AlertCircle size={48} color="#dc2626" style={{ marginBottom: '15px' }} />
-                      <p style={{ color: '#374151', fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>Oops! Something went wrong</p>
-                      <p style={{ color: '#6b7280', fontSize: '14px', textAlign: 'center', marginBottom: '20px', maxWidth: '400px' }}>{error.message}</p>
-                      <button onClick={error.retry} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: '#16a34a', color: 'white', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
-                        <RefreshCw size={16} /> Try Again
-                      </button>
-                    </div>
-                  )}
+                  {loading && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px' }}><Loader2 className="animate-spin" size={40} color="#16a34a" /><p style={{ marginTop: '10px', color: '#6b7280' }}>Exploring...</p></div>}
                   
-                  {/* LOADING STATE */}
-                  {loading && !error && (
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', padding: '20px' }}>
-                        <Loader2 className="animate-spin" size={32} color="#16a34a" style={{ marginRight: '10px' }} />
-                        <p style={{ color: '#6b7280', fontSize: '14px' }}>Discovering amazing places{retryCount > 0 ? ` (Retry ${retryCount}/${2})` : ''}...</p>
-                      </div>
-                      <LoadingSkeleton />
-                    </div>
-                  )}
-                  
-                  {/* RESULTS */}
-                  {!loading && !error && dynamicDestinations.length > 0 && (
+                  {!loading && dynamicDestinations.length > 0 && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px' }}>
                       {dynamicDestinations.map((dest, idx) => (
                         <div key={idx} onClick={() => handleDestinationClick(dest.name)} style={{ backgroundColor: 'white', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                          <div style={{ height: '160px', overflow: 'hidden', backgroundColor: '#e5e7eb', position: 'relative' }}>
-                            <img src={dest.img} alt={dest.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                          </div>
+                          <div style={{ height: '160px', overflow: 'hidden', backgroundColor: '#e5e7eb' }}><img src={dest.img} alt={dest.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
                           <div style={{ padding: '15px' }}>
                             <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1f2937', marginBottom: '5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dest.name}</h3>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#6b7280' }}>{dest.isFood ? <Utensils size={12} /> : <MapPin size={12} />} {dest.isFood ? "Indian Dish" : "India"}</div>
@@ -546,22 +593,9 @@ const ExperienceGrid = () => {
                     </div>
                   )}
 
-                  {/* EMPTY STATE WITH SUGGESTIONS */}
-                  {!loading && !error && dynamicDestinations.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '60px 20px', color: '#6b7280' }}>
-                      <Search size={48} color="#d1d5db" style={{ marginBottom: '15px', display: 'inline-block' }} />
-                      <p style={{ fontSize: '18px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>No results found</p>
-                      <p style={{ fontSize: '14px', marginBottom: '20px' }}>We couldn't find any matches for "{searchTerm || selectedSubCategory}"</p>
-                      <div style={{ marginTop: '20px' }}>
-                        <p style={{ fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '10px' }}>Try searching for:</p>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
-                          {getSuggestedTerms(selectedSubCategory, selectedCategory?.title.includes('Food')).map((term, i) => (
-                            <button key={i} onClick={() => { setSearchTerm(term); performWikiSearch(selectedSubCategory, term); }} style={{ padding: '6px 12px', backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '13px', color: '#374151', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.backgroundColor = selectedCategory.color; e.target.style.borderColor = 'transparent'; }} onMouseLeave={(e) => { e.target.style.backgroundColor = 'white'; e.target.style.borderColor = '#e5e7eb'; }}>
-                              {term}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                  {!loading && dynamicDestinations.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                      <p>No results found for "{searchTerm || selectedSubCategory}". Try a different search!</p>
                     </div>
                   )}
                 </div>

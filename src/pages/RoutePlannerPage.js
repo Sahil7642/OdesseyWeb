@@ -18,7 +18,6 @@ const RoutePlannerPage = () => {
   const [itineraryStops, setItineraryStops] = useState([]);
   const [suggestedPlaces, setSuggestedPlaces] = useState([]);
   const [routeCoords, setRouteCoords] = useState({ start: null, end: null });
-  
   const [routeLegs, setRouteLegs] = useState([]);
   
   const [customStopName, setCustomStopName] = useState('');
@@ -54,7 +53,6 @@ const RoutePlannerPage = () => {
   const dragItem = useRef();
   const dragOverItem = useRef();
 
-  // Used only if Wikipedia doesn't have an image for a specific location
   const placeholderImages = [
     "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=400&q=80",
     "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=400&q=80",
@@ -74,25 +72,56 @@ const RoutePlannerPage = () => {
     setItineraryStops(itineraryStops.filter(s => s.id !== id));
   };
 
-  // --- ROBUST GEOCODING HELPER ---
+  // --- 🌟 UPGRADED GEOCODING: FETCHES WIKIPEDIA EXTRACTS 🌟 ---
   const getCoordinates = async (placeName) => {
     try {
+      let lat = null, lng = null, name = placeName, defaultAddress = "";
+
+      // 1. Geocode with Ola Maps
       if (OLA_MAPS_API_KEY) {
         const res = await fetch(`https://api.olamaps.io/places/v1/geocode?address=${encodeURIComponent(placeName)}&api_key=${OLA_MAPS_API_KEY}`);
         const data = await res.json();
         if (data?.geocodingResults?.[0]?.geometry?.location) {
-          return {
-            lat: data.geocodingResults[0].geometry.location.lat,
-            lng: data.geocodingResults[0].geometry.location.lng,
-            name: data.geocodingResults[0].name || placeName
-          };
+          const result = data.geocodingResults[0];
+          lat = result.geometry.location.lat;
+          lng = result.geometry.location.lng;
+          name = result.name || placeName;
+          defaultAddress = result.formatted_address || "";
         }
       }
-      const osmRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeName)}`);
-      const osmData = await osmRes.json();
-      if (osmData && osmData.length > 0) {
-        return { lat: parseFloat(osmData[0].lat), lng: parseFloat(osmData[0].lon), name: osmData[0].name || placeName };
+      
+      // 2. Fallback to OSM
+      if (!lat || !lng) {
+        const osmRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeName)}`);
+        const osmData = await osmRes.json();
+        if (osmData && osmData.length > 0) {
+          lat = parseFloat(osmData[0].lat);
+          lng = parseFloat(osmData[0].lon);
+          name = osmData[0].name || placeName;
+          defaultAddress = osmData[0].display_name || "";
+        }
       }
+
+      if (!lat || !lng) return null;
+
+      // 3. Fetch Wikipedia Extract for the Place Overview
+      let wikiDesc = defaultAddress || "Coordinates acquired. Information currently unavailable.";
+      try {
+        const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(name)}&gsrlimit=1&prop=extracts&exintro=1&explaintext=1&exchars=180&format=json&origin=*`;
+        const wikiRes = await fetch(wikiUrl);
+        const wikiData = await wikiRes.json();
+        if (wikiData?.query?.pages) {
+          const pages = Object.values(wikiData.query.pages);
+          if (pages.length > 0 && pages[0].extract) {
+            wikiDesc = pages[0].extract.trim();
+            if (!wikiDesc.endsWith('.')) wikiDesc += '...'; // Smooth trail off
+          }
+        }
+      } catch (e) {
+        console.error("Wikipedia text fetch failed:", e);
+      }
+
+      return { lat, lng, name, desc: wikiDesc };
     } catch (e) { console.error("Geocoding failed:", e); }
     return null;
   };
@@ -129,7 +158,7 @@ const RoutePlannerPage = () => {
     }
   };
 
-  // --- 2. DYNAMIC ROUTE SCANNER (NOW WITH REAL WIKIPEDIA IMAGES) ---
+  // --- 2. DYNAMIC ROUTE SCANNER WITH WIKIPEDIA IMAGES ---
   useEffect(() => {
     if (!routeCoords.start || !routeCoords.end) return;
 
@@ -149,11 +178,10 @@ const RoutePlannerPage = () => {
           }
         }
 
-        // 👇 Upgraded Wikipedia Generator API Call
-        // Fetches coordinates, pageimages (thumbnails), and brief descriptions all at once!
+        // Fetch landmarks with extracts and images
         const fetchWiki = async ({lat, lng}) => {
           try {
-            const url = `https://en.wikipedia.org/w/api.php?action=query&generator=geosearch&ggsradius=10000&ggslimit=3&ggscoord=${lat}|${lng}&prop=coordinates|pageimages|description&piprop=thumbnail&pithumbsize=400&format=json&origin=*`;
+            const url = `https://en.wikipedia.org/w/api.php?action=query&generator=geosearch&ggsradius=10000&ggslimit=3&ggscoord=${lat}|${lng}&prop=coordinates|pageimages|extracts&exintro=1&explaintext=1&exchars=120&piprop=thumbnail&pithumbsize=400&format=json&origin=*`;
             const res = await fetch(url);
             const data = await res.json();
             if (data?.query?.pages) {
@@ -174,12 +202,9 @@ const RoutePlannerPage = () => {
           }
         });
 
-        // Map the rich Wikipedia data to our UI
         const dynamicPlaces = Array.from(uniquePlaces.values()).slice(0, 10).map((page, index) => {
-          // Extract real image or use fallback
           const realImageUrl = page.thumbnail?.source || placeholderImages[index % placeholderImages.length];
-          // Extract real description or use generic
-          const desc = page.description ? (page.description.charAt(0).toUpperCase() + page.description.slice(1)) : `A notable landmark discovered near your route.`;
+          const desc = page.extract ? page.extract.trim() + (page.extract.endsWith('.') ? '' : '...') : `A notable real-world landmark discovered near your route.`;
           
           return {
             id: page.pageid,
@@ -276,7 +301,7 @@ const RoutePlannerPage = () => {
     const endMarker = new window.maplibregl.Marker({ element: createMarkerElement(destination.toUpperCase(), '#ea580c') }).setLngLat(endCoord).addTo(map);
     markersRef.current.push(endMarker);
 
-    // 4. FETCH REAL ROAD GEOMETRY AND ETAs FROM OSRM
+    // 4. FETCH REAL ROAD GEOMETRY FROM OSRM
     try {
       const coordsString = waypoints.map(wp => `${wp[0]},${wp[1]}`).join(';');
       const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`);
@@ -298,11 +323,9 @@ const RoutePlannerPage = () => {
       console.error("Error fetching road geometry:", error);
     }
 
-    if (currentMapStyle !== 'street-3d') {
-      const bounds = new window.maplibregl.LngLatBounds(waypoints[0], waypoints[0]);
-      waypoints.forEach(coord => bounds.extend(coord));
-      map.fitBounds(bounds, { padding: 80, maxZoom: 12 });
-    }
+    const bounds = new window.maplibregl.LngLatBounds(waypoints[0], waypoints[0]);
+    waypoints.forEach(coord => bounds.extend(coord));
+    map.fitBounds(bounds, { padding: 80, maxZoom: 12 });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeCoords, itineraryStops, destination, origin, currentMapStyle]);
@@ -355,31 +378,25 @@ const RoutePlannerPage = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSearching]);
 
+  // --- UPDATE MAP STYLE WHEN SWITCHED ---
   useEffect(() => {
     if (mapInstance.current && window.maplibregl) {
       const map = mapInstance.current;
-
-      if (currentMapStyle === 'street-3d') {
-        map.setStyle(mapLayouts['street']);
-        map.once('styledata', () => {
-          map.flyTo({ pitch: 75, zoom: 16.5, duration: 2000, essential: true });
-          updateMapEntities();
-        });
-      } else {
-        map.setStyle(mapLayouts[currentMapStyle]);
-        map.once('styledata', () => {
-          map.easeTo({ pitch: 0, duration: 1000 });
-          updateMapEntities();
-          if (routeGeometryRef.current && routeGeometryRef.current.coordinates) {
-            const bounds = new window.maplibregl.LngLatBounds(
-              routeGeometryRef.current.coordinates[0], 
-              routeGeometryRef.current.coordinates[0]
-            );
-            routeGeometryRef.current.coordinates.forEach(coord => bounds.extend(coord));
-            map.fitBounds(bounds, { padding: 80, maxZoom: 12 });
-          }
-        });
-      }
+      map.setStyle(mapLayouts[currentMapStyle]);
+      
+      map.once('styledata', () => {
+        map.easeTo({ pitch: 0, duration: 1000 });
+        updateMapEntities();
+        
+        if (routeGeometryRef.current && routeGeometryRef.current.coordinates) {
+          const bounds = new window.maplibregl.LngLatBounds(
+            routeGeometryRef.current.coordinates[0], 
+            routeGeometryRef.current.coordinates[0]
+          );
+          routeGeometryRef.current.coordinates.forEach(coord => bounds.extend(coord));
+          map.fitBounds(bounds, { padding: 80, maxZoom: 12 });
+        }
+      });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [updateMapEntities, currentMapStyle]);
@@ -403,7 +420,7 @@ const RoutePlannerPage = () => {
           type: "Custom Stop",
           time: "Flexible",
           icon: MapPin,
-          desc: "A personalized location added by you.",
+          desc: locationData.desc || "A personalized location added by you.",
           img: placeholderImages[0]
         };
         setItineraryStops([...itineraryStops, customStop]);
@@ -462,8 +479,6 @@ const RoutePlannerPage = () => {
       </div>
     );
   };
-
-  const isCompact = suggestedPlaces.length > 5;
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', fontFamily: 'system-ui, -apple-system, sans-serif', paddingBottom: '80px', overflowX: 'hidden' }}>
@@ -570,34 +585,69 @@ const RoutePlannerPage = () => {
             </div>
           </div>
 
-          {/* COLUMN 2: MAP WIDGET WITH CONTROLS */}
-          <div style={{ backgroundColor: '#e0f2fe', borderRadius: '24px', overflow: 'hidden', position: 'sticky', top: '100px', height: 'calc(100vh - 150px)', minHeight: '500px', border: '1px solid #bae6fd', boxShadow: 'inset 0 0 50px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ backgroundColor: 'white', padding: '12px 20px', borderBottom: '1px solid #bae6fd', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 'bold', color: '#111827' }}>
-                <Layers size={18} color="#0284c7" /> Map Layout
+          {/* COLUMN 2: MAP WIDGET & PLACES OVERVIEW */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', position: 'sticky', top: '100px', height: 'calc(100vh - 150px)' }}>
+            
+            {/* The Map Component */}
+            <div style={{ flex: 1, backgroundColor: '#e0f2fe', borderRadius: '24px', overflow: 'hidden', position: 'relative', border: '1px solid #bae6fd', boxShadow: 'inset 0 0 50px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', minHeight: '300px' }}>
+              <div style={{ backgroundColor: 'white', padding: '12px 20px', borderBottom: '1px solid #bae6fd', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 'bold', color: '#111827' }}>
+                  <Layers size={18} color="#0284c7" /> Map Layout
+                </div>
+                <select 
+                  value={currentMapStyle} 
+                  onChange={(e) => setCurrentMapStyle(e.target.value)}
+                  style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', fontWeight: '600', backgroundColor: '#f9fafb', cursor: 'pointer', outline: 'none' }}
+                >
+                  <option value="street">Street View (Standard)</option>
+                  <option value="satellite">Satellite Imagery</option>
+                  <option value="terrain">Topographic / Terrain</option>
+                </select>
               </div>
-              <select 
-                value={currentMapStyle} 
-                onChange={(e) => setCurrentMapStyle(e.target.value)}
-                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', fontWeight: '600', backgroundColor: '#f9fafb', cursor: 'pointer', outline: 'none' }}
-              >
-                <option value="street">Street View (Top Down)</option>
-                <option value="street-3d">3D Navigation View</option>
-                <option value="satellite">Satellite Imagery</option>
-                <option value="terrain">Topographic / Terrain</option>
-              </select>
+
+              <div ref={mapContainerRef} style={{ width: '100%', flex: 1, position: 'relative' }}>
+                {!window.maplibregl && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#0284c7', fontWeight: 'bold', textAlign: 'center', padding: '20px' }}>Loading Map Engine...</div>}
+              </div>
+              
+              <div style={{ position: 'absolute', bottom: '20px', left: '20px', backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(5px)', padding: '10px 15px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 'bold', color: '#1f2937', zIndex: 30, pointerEvents: 'none' }}>
+                <MapIcon size={18} color="#0284c7" /> Live GPS Road Map
+              </div>
             </div>
 
-            <div ref={mapContainerRef} style={{ width: '100%', flex: 1, position: 'relative' }}>
-              {!window.maplibregl && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#0284c7', fontWeight: 'bold', textAlign: 'center', padding: '20px' }}>Loading Map Engine...</div>}
+            {/* 👇 NEW: Places Overview (Brief Descriptions below the Map) */}
+            <div style={{ flex: '0 0 auto', maxHeight: '35%', backgroundColor: 'white', borderRadius: '24px', padding: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb', overflowY: 'auto' }} className="hide-scrollbar">
+              <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#111827', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <MapPin size={18} color="#0284c7" /> Places Overview
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                
+                {routeCoords.start && (
+                  <div>
+                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#111827' }}>{origin} <span style={{ color: '#6b7280', fontWeight: 'normal', fontSize: '12px' }}>(Start)</span></h4>
+                    <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0', lineHeight: '1.4' }}>{routeCoords.start.desc}</p>
+                  </div>
+                )}
+                
+                {itineraryStops.map((stop, i) => (
+                  <div key={stop.id}>
+                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#111827' }}>{stop.name} <span style={{ color: '#6b7280', fontWeight: 'normal', fontSize: '12px' }}>(Stop {i + 1})</span></h4>
+                    <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0', lineHeight: '1.4' }}>{stop.desc}</p>
+                  </div>
+                ))}
+                
+                {routeCoords.end && (
+                  <div>
+                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#111827' }}>{destination} <span style={{ color: '#6b7280', fontWeight: 'normal', fontSize: '12px' }}>(End)</span></h4>
+                    <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0', lineHeight: '1.4' }}>{routeCoords.end.desc}</p>
+                  </div>
+                )}
+
+              </div>
             </div>
-            
-            <div style={{ position: 'absolute', bottom: '20px', left: '20px', backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(5px)', padding: '10px 15px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 'bold', color: '#1f2937', zIndex: 30, pointerEvents: 'none' }}>
-              <MapIcon size={18} color="#0284c7" /> Live GPS Road Map
-            </div>
+
           </div>
 
-          {/* COLUMN 3: DYNAMIC VERTICAL CAPSULE RECOMMENDATIONS */}
+          {/* COLUMN 3: CAPSULE RECOMMENDATIONS (Standard 1-Column) */}
           <div style={{ overflowY: 'auto', paddingRight: '10px' }} className="hide-scrollbar">
             <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#111827', marginBottom: '5px' }}>Route Suggestions</h2>
             
@@ -609,63 +659,54 @@ const RoutePlannerPage = () => {
               )}
             </div>
 
-            <div style={{ 
-              display: isCompact ? 'grid' : 'flex', 
-              flexDirection: isCompact ? 'unset' : 'column', 
-              gridTemplateColumns: isCompact ? 'repeat(2, 1fr)' : 'none', 
-              gap: '15px' 
-            }}>
+            {/* 👇 DYNAMIC CAPSULE LAYOUT: Strict single column of horizontal pills */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               {suggestedPlaces.length > 0 ? suggestedPlaces.map((rec) => {
                 const isAdded = itineraryStops.find(s => s.id === rec.id);
                 return (
                   <div key={rec.id} style={{ 
                     backgroundColor: 'white', 
-                    borderRadius: '24px', 
-                    padding: isCompact ? '15px 10px' : '10px', 
+                    borderRadius: '50px', 
+                    padding: '10px', 
                     display: 'flex', 
-                    flexDirection: isCompact ? 'column' : 'row',
                     alignItems: 'center', 
-                    gap: '10px', 
+                    gap: '15px', 
                     border: isAdded ? '2px solid #16a34a' : '1px solid #e5e7eb', 
                     boxShadow: '0 4px 15px rgba(0,0,0,0.03)', 
                     transition: 'all 0.2s', 
-                    opacity: isSuggesting ? 0.5 : 1,
-                    minWidth: 0 
+                    opacity: isSuggesting ? 0.5 : 1
                   }}>
                     
-                    <div style={{ width: isCompact ? '60px' : '80px', height: isCompact ? '60px' : '80px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: '2px solid #f3f4f6' }}>
+                    <div style={{ width: '70px', height: '70px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: '2px solid #f3f4f6' }}>
                       <img src={rec.img} alt={rec.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
 
-                    <div style={{ flex: 1, overflow: 'hidden', width: '100%', textAlign: isCompact ? 'center' : 'left' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: isCompact ? 'center' : 'flex-start', gap: '4px', color: '#6b7280', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>
+                    <div style={{ flex: 1, overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#6b7280', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>
                         <rec.icon size={12} /> {rec.type}
                       </div>
-                      <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#111827', marginBottom: '2px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'normal' }}>
+                      <h4 style={{ fontSize: '15px', fontWeight: 'bold', color: '#111827', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {rec.name}
                       </h4>
-                      {!isCompact && (
-                        <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{rec.desc}</p>
-                      )}
+                      <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{rec.desc}</p>
                     </div>
                     
                     <button onClick={() => isAdded ? removeStop(rec.id) : addStop(rec)} title={isAdded ? "Remove" : "Add"} style={{ 
-                      width: isCompact ? '100%' : '45px', 
-                      height: isCompact ? '32px' : '45px', 
-                      borderRadius: isCompact ? '10px' : '50%', 
+                      width: '45px', 
+                      height: '45px', 
+                      borderRadius: '50%', 
                       flexShrink: 0, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                       transition: 'all 0.2s', 
+                      marginRight: '5px',
                       backgroundColor: isAdded ? '#f0fdf4' : '#f3f4f6', 
-                      color: isAdded ? '#15803d' : '#374151',
-                      fontSize: '12px', fontWeight: 'bold'
+                      color: isAdded ? '#15803d' : '#374151'
                     }}>
-                      {isAdded ? <CheckCircle2 size={16} /> : <Plus size={16} />}
-                      {isCompact && (isAdded ? 'Added' : 'Add Stop')}
+                      {isAdded ? <CheckCircle2 size={20} /> : <Plus size={20} />}
                     </button>
                   </div>
                 )
               }) : !isSuggesting && (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280', backgroundColor: 'white', borderRadius: '20px', border: '1px dashed #d1d5db', gridColumn: '1 / -1' }}>
+                <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280', backgroundColor: 'white', borderRadius: '20px', border: '1px dashed #d1d5db' }}>
                   No automatic suggestions found. Use the search box!
                 </div>
               )}
