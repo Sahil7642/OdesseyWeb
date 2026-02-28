@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MapPin, Navigation, Plus, Trash2, ArrowRight, Clock, Map as MapIcon, CheckCircle2, Search, Loader2, GripVertical, Camera, Layers, CloudSun, AlertTriangle, Route } from 'lucide-react';
+import { MapPin, Navigation, Plus, Trash2, ArrowRight, Clock, Map as MapIcon, CheckCircle2, Search, Loader2, GripVertical, Camera, Layers, CloudSun, AlertTriangle, Route, ChevronLeft, ChevronRight, RotateCcw, Bed, Utensils, Fuel, Landmark, Compass, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const OLA_MAPS_API_KEY = process.env.REACT_APP_OLA_MAPS_API_KEY || ""; 
@@ -16,10 +16,111 @@ const getWeatherBackground = (condition = "") => {
   return 'url(https://images.unsplash.com/photo-1517685352821-92cf88aee5a5?auto=format&fit=crop&w=400&q=80)'; 
 };
 
+const getAQIDetails = (index) => {
+  switch(index) {
+    case 1: return { text: 'Good', color: '#4ade80' }; 
+    case 2: return { text: 'Moderate', color: '#facc15' }; 
+    case 3: return { text: 'Unhealthy (Sens.)', color: '#fb923c' }; 
+    case 4: return { text: 'Unhealthy', color: '#f87171' }; 
+    case 5: return { text: 'Very Unhealthy', color: '#a855f7' }; 
+    case 6: return { text: 'Hazardous', color: '#9f1239' }; 
+    default: return { text: 'N/A', color: '#9ca3af' }; 
+  }
+};
+
+const getIconForCategory = (cat) => {
+  switch(cat) {
+    case 'Stays': return Bed;
+    case 'Food': return Utensils;
+    case 'Amenities': return Fuel;
+    case 'Monuments': return Landmark;
+    case 'Cities': return Building2;
+    case 'Hidden Gems': return Compass;
+    default: return Camera;
+  }
+};
+
+// 👇 SUPER STRICT TAG & KEYWORD CATEGORIZER
+const getCategoryStrict = (f, forcedCat) => {
+  const key = f.properties.osm_key || '';
+  const val = f.properties.osm_value || '';
+  const name = (f.properties.name || '').toLowerCase();
+  
+  if (key === 'tourism' && val.match(/hotel|hostel|motel|resort|guest_house/)) return 'Stays';
+  if (name.match(/hotel|resort|lodge|hostel|homestay|bhavan/)) return 'Stays';
+  
+  if (key === 'amenity' && val.match(/restaurant|cafe|bar|fast_food|food_court/)) return 'Food';
+  if (name.match(/restaurant|cafe|dhaba|bhojnalaya|eatery/)) return 'Food';
+  
+  if (key === 'historic') return 'Monuments';
+  if (name.match(/monument|fort|palace|temple|mosque|church|tomb|mahal/)) return 'Monuments';
+  
+  if (key === 'place' && val.match(/city|town|municipality/)) return 'Cities';
+  if (name.match(/city|town/)) return 'Cities';
+  
+  if (key === 'amenity' && val.match(/fuel|hospital|atm|bank|parking|clinic/)) return 'Amenities';
+  if (name.match(/petrol|fuel|hospital|clinic|parking/)) return 'Amenities';
+  
+  if (key === 'natural' && val.match(/waterfall|peak|lake|beach/)) return 'Hidden Gems';
+  if (key === 'tourism' && val.match(/viewpoint|museum|attraction|gallery/)) return 'Hidden Gems';
+  if (name.match(/waterfall|lake|trek|sanctuary|park|museum|viewpoint/)) return 'Hidden Gems';
+
+  return forcedCat; 
+};
+
+// --- STRICT INDIA AUTOCOMPLETE ---
+const SearchAutocomplete = ({ value, onChange, placeholder, Icon, iconColor, disabled, inputStyle }) => {
+  const [suggestions, setSuggestions] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    if (!value || value.length < 2) { setSuggestions([]); return; }
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        if (OLA_MAPS_API_KEY) {
+          const res = await fetch(`https://api.olamaps.io/places/v1/autocomplete?input=${encodeURIComponent(value)}&api_key=${OLA_MAPS_API_KEY}`);
+          const data = await res.json();
+          if (data?.predictions) { setSuggestions(data.predictions.map(p => p.description)); return; }
+        }
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(value)}&limit=15`);
+        const data = await res.json();
+        if (data?.features) {
+          const parsed = data.features.filter(f => f.properties.country === 'India' || f.properties.countrycode === 'IN')
+            .map(f => [f.properties.name, f.properties.state, f.properties.country].filter(Boolean).join(', '));
+          setSuggestions([...new Set(parsed)].slice(0, 5));
+        }
+      } catch(e) {}
+    }, 400); 
+    return () => clearTimeout(delayDebounceFn);
+  }, [value]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setShowDropdown(false); };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={wrapperRef} style={{ flex: '1 1 250px', position: 'relative' }}>
+      {Icon && <Icon size={20} color={iconColor || "#9ca3af"} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', zIndex: 10 }} />}
+      <input type="text" placeholder={placeholder} value={value} onChange={(e) => { onChange(e.target.value); setShowDropdown(true); }} onFocus={() => { if(suggestions.length > 0) setShowDropdown(true); }} disabled={disabled} style={{ width: '100%', boxSizing: 'border-box', padding: '16px 16px 16px 45px', borderRadius: '12px', outline: 'none', fontSize: '15px', fontWeight: 'bold', ...inputStyle }} />
+      {showDropdown && suggestions.length > 0 && (
+        <ul style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', listStyle: 'none', margin: '8px 0 0 0', padding: '5px 0', zIndex: 50, maxHeight: '220px', overflowY: 'auto', border: '1px solid #e5e7eb' }}>
+          {suggestions.map((s, i) => (
+            <li key={i} onClick={() => { onChange(s); setShowDropdown(false); }} style={{ padding: '12px 15px', cursor: 'pointer', borderBottom: i === suggestions.length - 1 ? 'none' : '1px solid #f3f4f6', fontSize: '14px', color: '#374151', transition: 'background 0.2s', display: 'flex', alignItems: 'center', gap: '8px' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}>
+              <MapPin size={16} color="#16a34a" style={{ flexShrink: 0 }} /> <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 const RoutePlannerPage = () => {
   const navigate = useNavigate();
 
-  // --- CORE STATE ---
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -31,7 +132,6 @@ const RoutePlannerPage = () => {
   const [suggestedPlaces, setSuggestedPlaces] = useState([]);
   const [routeCoords, setRouteCoords] = useState({ start: null, end: null });
   
-  // --- ALTERNATIVE ROUTES STATE ---
   const [routeOptions, setRouteOptions] = useState([]);
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [routeLegs, setRouteLegs] = useState([]);
@@ -39,13 +139,17 @@ const RoutePlannerPage = () => {
   const [customStopName, setCustomStopName] = useState('');
   const [isFindingLocation, setIsFindingLocation] = useState(false);
 
-  // --- WEATHER STATE ---
   const [weatherData, setWeatherData] = useState([]);
   const [weatherAlerts, setWeatherAlerts] = useState([]);
   const [isWeatherLoading, setIsWeatherLoading] = useState(false);
 
-  // --- MAP STYLES & LAYOUT STATE ---
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [recPage, setRecPage] = useState(0);
+  const ITEMS_PER_PAGE = 4;
+  const categories = ['All', 'Cities', 'Monuments', 'Hidden Gems', 'Stays', 'Food', 'Amenities'];
+
   const [currentMapStyle, setCurrentMapStyle] = useState('street');
+  const [mapRenderTrigger, setMapRenderTrigger] = useState(0); 
 
   const mapLayouts = {
     street: { version: 8, sources: { 'osm-tiles': { type: 'raster', tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '© OpenStreetMap' } }, layers: [{ id: 'osm-tiles-layer', type: 'raster', source: 'osm-tiles', minzoom: 0, maxzoom: 19 }] },
@@ -70,7 +174,13 @@ const RoutePlannerPage = () => {
   const addStop = (stop) => { if (!itineraryStops.find(s => s.id === stop.id)) setItineraryStops([...itineraryStops, stop]); };
   const removeStop = (id) => setItineraryStops(itineraryStops.filter(s => s.id !== id));
 
-  // --- ROBUST GEOCODING HELPER ---
+  const handleReset = () => {
+    setOrigin(''); setDestination(''); setIsSearching(false); setItineraryStops([]); setSuggestedPlaces([]);
+    setRouteCoords({ start: null, end: null }); setRouteOptions([]); setRouteLegs([]); setWeatherData([]);
+    setWeatherAlerts([]); setCustomStopName(''); setActiveCategory('All'); setRecPage(0);
+    if (mapInstance.current) { mapInstance.current.remove(); mapInstance.current = null; }
+  };
+
   const getCoordinates = async (placeName) => {
     try {
       let lat = null, lng = null, name = placeName, defaultAddress = "";
@@ -83,75 +193,51 @@ const RoutePlannerPage = () => {
         }
       }
       if (!lat || !lng) {
-        const osmRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeName)}`);
+        const osmRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeName + ", India")}&countrycodes=in`);
         const osmData = await osmRes.json();
         if (osmData && osmData.length > 0) {
           lat = parseFloat(osmData[0].lat); lng = parseFloat(osmData[0].lon); name = osmData[0].name || placeName; defaultAddress = osmData[0].display_name || "";
         }
       }
       if (!lat || !lng) return null;
-
-      let wikiDesc = defaultAddress || "Coordinates acquired. Information currently unavailable.";
-      try {
-        const wikiRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(name)}&gsrlimit=1&prop=extracts&exintro=1&explaintext=1&exchars=180&format=json&origin=*`);
-        const wikiData = await wikiRes.json();
-        if (wikiData?.query?.pages) {
-          const pages = Object.values(wikiData.query.pages);
-          if (pages.length > 0 && pages[0].extract) { wikiDesc = pages[0].extract.trim() + (pages[0].extract.endsWith('.') ? '' : '...'); }
-        }
-      } catch (e) { console.error("Wikipedia text fetch failed:", e); }
-      return { lat, lng, name, desc: wikiDesc };
+      return { lat, lng, name, desc: defaultAddress || "Coordinates acquired." };
     } catch (e) { console.error("Geocoding failed:", e); }
     return null;
   };
 
-  // --- 1. INITIAL SEARCH ---
   const handleSearchRoutes = async (e) => {
     e.preventDefault();
     if (!origin || !destination) return;
-    setIsLoading(true); setIsSearching(false); setItineraryStops([]);
+    setIsLoading(true); setIsSearching(false); setItineraryStops([]); setActiveCategory('All'); setRecPage(0);
 
     try {
       setLoadingText('Locating Origin...'); const startLoc = await getCoordinates(origin);
       setLoadingText('Locating Destination...'); const endLoc = await getCoordinates(destination);
 
-      if (!startLoc || !endLoc) {
-        alert("Could not find exact coordinates for those cities. Try adding a state name.");
-        setIsLoading(false); return;
-      }
+      if (!startLoc || !endLoc) { alert("Could not find exact coordinates for those cities."); setIsLoading(false); return; }
       setRouteCoords({ start: startLoc, end: endLoc });
       setIsSearching(true);
-    } catch (error) { console.error("Search Error:", error); alert("Error generating route."); } 
-    finally { setIsLoading(false); }
+    } catch (error) { alert("Error generating route."); } finally { setIsLoading(false); }
   };
 
-  // --- 2. FETCH OSRM ROUTES ---
-  // Retrieves the actual road geometry for the map and calculations
   useEffect(() => {
     if (!routeCoords.start || !routeCoords.end) return;
-
     const fetchRoutes = async () => {
       const waypoints = [routeCoords.start, ...itineraryStops, routeCoords.end];
       const coordsString = waypoints.map(wp => `${wp.lng},${wp.lat}`).join(';');
       try {
         const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson&alternatives=3`);
         const data = await res.json();
-        
         if (data.routes && data.routes.length > 0) {
-          setRouteOptions(data.routes);
-          setSelectedRouteIndex(0); 
-          setRouteLegs(data.routes[0].legs || []);
+          setRouteOptions(data.routes); setSelectedRouteIndex(0); setRouteLegs(data.routes[0].legs || []);
         }
       } catch (error) { console.error("Error fetching OSRM routes:", error); }
     };
-
     fetchRoutes();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeCoords.start?.lat, routeCoords.start?.lng, routeCoords.end?.lat, routeCoords.end?.lng, itineraryStops]);
 
-
-  // --- 3. DYNAMIC ROUTE SCANNER (ALONG ACTUAL HIGHWAYS) ---
-  // We wait for the road coordinates (routeOptions) to generate accurate points
+  // --- 3. DYNAMIC ROUTE SCANNER: HYBRID PARALLEL FETCH ---
   useEffect(() => {
     if (routeOptions.length === 0 || !routeOptions[selectedRouteIndex]) return;
 
@@ -159,46 +245,83 @@ const RoutePlannerPage = () => {
       setIsSuggesting(true);
       try {
         const currentRoute = routeOptions[selectedRouteIndex];
-        const coords = currentRoute.geometry.coordinates; // Array of [lng, lat] along the road
+        const coords = currentRoute.geometry.coordinates;
 
-        // Sample 12 points evenly spaced across the entire route length
+        // Take 4 strategic points along the route
         const searchCoords = [];
-        const numSamples = 12;
+        const numSamples = 4; 
         const step = Math.max(1, Math.floor(coords.length / numSamples));
-
-        for (let i = 0; i < coords.length; i += step) {
-          searchCoords.push({ lat: coords[i][1], lng: coords[i][0] });
-        }
-        // Ensure final destination is checked
+        for (let i = 0; i < coords.length; i += step) searchCoords.push({ lat: coords[i][1], lng: coords[i][0] });
         searchCoords.push({ lat: coords[coords.length - 1][1], lng: coords[coords.length - 1][0] });
 
-        const fetchWiki = async ({lat, lng}) => {
-          try {
-            // Wikipedia has a 10km radius limit, but because we sample points directly on the highway,
-            // this effectively blankets the entire physical route in 10km search zones!
-            const url = `https://en.wikipedia.org/w/api.php?action=query&generator=geosearch&ggsradius=10000&ggslimit=3&ggscoord=${lat}|${lng}&prop=coordinates|pageimages|extracts&exintro=1&explaintext=1&exchars=120&piprop=thumbnail&pithumbsize=400&format=json&origin=*`;
-            const res = await fetch(url); const data = await res.json();
-            if (data?.query?.pages) return Object.values(data.query.pages);
-            return [];
-          } catch (e) { return []; }
-        };
+        // Targeted queries to GUARANTEE varied data
+        const queries = [
+          { term: 'hotel', defaultCat: 'Stays' },
+          { term: 'restaurant', defaultCat: 'Food' },
+          { term: 'fuel', defaultCat: 'Amenities' },
+          { term: 'monument', defaultCat: 'Monuments' },
+          { term: 'fort', defaultCat: 'Monuments' }, // Extra specific for India
+          { term: 'temple', defaultCat: 'Monuments' }, // Extra specific for India
+          { term: 'waterfall', defaultCat: 'Hidden Gems' },
+          { term: 'viewpoint', defaultCat: 'Hidden Gems' },
+          { term: 'city', defaultCat: 'Cities' },
+        ];
 
-        const resultsArray = await Promise.all(searchCoords.map(fetchWiki));
+        const fetchPromises = [];
         
-        // Filter out duplicates and places already in the itinerary
-        const uniquePlaces = new Map();
-        resultsArray.flat().forEach(page => {
-          const isAdded = itineraryStops.some(s => s.id === page.pageid || s.name === page.title);
-          if (!isAdded && !uniquePlaces.has(page.pageid)) uniquePlaces.set(page.pageid, page);
+        searchCoords.forEach(c => {
+          queries.forEach(q => {
+            fetchPromises.push(
+              fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q.term)}&lat=${c.lat}&lon=${c.lng}&limit=4`)
+                .then(r => r.json())
+                .then(data => (data.features || []).map(f => ({ feature: f, forcedCat: q.defaultCat })))
+                .catch(() => [])
+            );
+          });
         });
 
-        const dynamicPlaces = Array.from(uniquePlaces.values()).slice(0, 15).map((page, idx) => ({
-          id: page.pageid, name: page.title, lat: page.coordinates?.[0]?.lat || 0, lng: page.coordinates?.[0]?.lon || 0, type: "Landmark", time: "1-2 Hours", icon: Camera,
-          desc: page.extract ? page.extract.trim() + (page.extract.endsWith('.') ? '' : '...') : `A notable landmark located right along your driving route.`,
-          img: page.thumbnail?.source || placeholderImages[idx % placeholderImages.length]
-        }));
+        // Fire all 40+ micro-requests instantly in parallel
+        const allResults = await Promise.all(fetchPromises);
+        const flatResults = allResults.flat();
         
+        const uniquePlaces = new Map();
+        
+        flatResults.forEach(item => {
+          const f = item.feature;
+          // Drop if unnamed or not in India
+          if (!f.properties.name || (f.properties.countrycode !== 'IN' && f.properties.country !== 'India')) return;
+          
+          // Drop junk using strict text parsing
+          const cat = getCategoryStrict(f, item.forcedCat);
+          if (!cat) return;
+
+          const id = f.properties.osm_id || f.properties.name;
+          if (!uniquePlaces.has(id) && !itineraryStops.some(s => s.name === f.properties.name)) {
+            uniquePlaces.set(id, {
+              id: id,
+              name: f.properties.name,
+              lat: f.geometry.coordinates[1],
+              lng: f.geometry.coordinates[0],
+              type: cat,
+              category: cat,
+              time: "Route Stop",
+              icon: getIconForCategory(cat),
+              desc: [f.properties.street, f.properties.city, f.properties.state].filter(Boolean).join(', ') || `A notable ${cat.toLowerCase()} near your route.`,
+              img: placeholderImages[uniquePlaces.size % placeholderImages.length]
+            });
+          }
+        });
+
+        const dynamicPlaces = Array.from(uniquePlaces.values());
+        
+        // Sort so the 'All' tab looks organized and prioritizes Monuments/Cities
+        dynamicPlaces.sort((a, b) => {
+          const rank = { 'Cities': 1, 'Monuments': 2, 'Hidden Gems': 3, 'Food': 4, 'Stays': 5, 'Amenities': 6 };
+          return rank[a.category] - rank[b.category];
+        });
+
         setSuggestedPlaces(dynamicPlaces);
+        setRecPage(0); 
       } catch (error) { console.error("Suggestion Error:", error); } finally { setIsSuggesting(false); }
     };
     
@@ -219,9 +342,12 @@ const RoutePlannerPage = () => {
       ];
       try {
         const weatherPromises = pointsToFetch.map(async (pt) => {
-          const res = await fetch(`https://api.weatherapi.com/v1/forecast.json?key=${WEATHER_API_KEY}&q=${pt.lat},${pt.lng}&days=1&alerts=yes`);
+          const res = await fetch(`https://api.weatherapi.com/v1/forecast.json?key=${WEATHER_API_KEY}&q=${pt.lat},${pt.lng}&days=1&alerts=yes&aqi=yes`);
           const data = await res.json();
-          return { ptType: pt.type, name: pt.displayName, temp: data.current?.temp_c, condition: data.current?.condition?.text || "Clear", icon: data.current?.condition?.icon, alerts: data.alerts?.alert || [] };
+          return { 
+            ptType: pt.type, name: pt.displayName, temp: data.current?.temp_c, condition: data.current?.condition?.text || "Clear", 
+            icon: data.current?.condition?.icon, aqiIndex: data.current?.air_quality?.['us-epa-index'], alerts: data.alerts?.alert || [] 
+          };
         });
         const results = await Promise.all(weatherPromises);
         setWeatherData(results);
@@ -233,32 +359,25 @@ const RoutePlannerPage = () => {
           }
         });
         setWeatherAlerts(allAlerts);
-      } catch (error) { console.error("Error fetching weather:", error); } finally { setIsWeatherLoading(false); }
+      } catch (error) {} finally { setIsWeatherLoading(false); }
     };
     const debounceWeather = setTimeout(() => { fetchWeather(); }, 800);
     return () => clearTimeout(debounceWeather);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeCoords.start?.lat, routeCoords.start?.lng, routeCoords.end?.lat, routeCoords.end?.lng, itineraryStops]);
 
-  // --- 5. INITIALIZE MAPLIBRE SAFELY ---
+  // INITIALIZE MAPLIBRE SAFELY
   useEffect(() => {
     if (!isSearching || !mapContainerRef.current) return;
 
     const initMap = () => {
       if (mapInstance.current) return; 
-      
       const map = new window.maplibregl.Map({
-        container: mapContainerRef.current,
-        style: mapLayouts[currentMapStyle], 
-        center: [routeCoords.start.lng, routeCoords.start.lat],
+        container: mapContainerRef.current, style: mapLayouts[currentMapStyle], center: [routeCoords.start.lng, routeCoords.start.lat],
         zoom: 5, attributionControl: false
       });
-
       map.addControl(new window.maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
-      
-      map.on('load', () => { 
-        mapInstance.current = map; 
-      });
+      map.on('load', () => { mapInstance.current = map; setMapRenderTrigger(prev => prev + 1); });
     };
 
     if (!window.maplibregl) {
@@ -274,21 +393,18 @@ const RoutePlannerPage = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSearching]);
 
-  // --- 6. HANDLE MAP STYLE SWITCHING ---
   useEffect(() => {
     if (mapInstance.current && window.maplibregl) {
       mapInstance.current.setStyle(mapLayouts[currentMapStyle]);
+      mapInstance.current.once('styledata', () => setMapRenderTrigger(prev => prev + 1));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentMapStyle]);
 
-  // --- 7. DRAW MAP ENTITIES (MARKERS & MULTIPLE ROUTES) ---
-  // This cleanly handles the data drawn ON TOP of the map style
   const updateMapEntities = useCallback(() => {
     const map = mapInstance.current;
     if (!map || !map.isStyleLoaded() || !routeCoords.start || !routeCoords.end || !window.maplibregl) return;
 
-    // Draw Markers
     markersRef.current.forEach(m => m.remove());
     markersRef.current = [];
 
@@ -308,12 +424,9 @@ const RoutePlannerPage = () => {
     itineraryStops.forEach(stop => markersRef.current.push(new window.maplibregl.Marker({ element: createMarkerEl(stop.name, '#16a34a') }).setLngLat([stop.lng, stop.lat]).addTo(map)));
     markersRef.current.push(new window.maplibregl.Marker({ element: createMarkerEl(destination.toUpperCase(), '#ea580c') }).setLngLat([routeCoords.end.lng, routeCoords.end.lat]).addTo(map));
 
-    // Draw Routes & Alternatives
     if (routeOptions.length > 0) {
       const features = routeOptions.map((route, idx) => ({
-        type: 'Feature',
-        properties: { routeIndex: idx, isSelected: idx === selectedRouteIndex },
-        geometry: route.geometry
+        type: 'Feature', properties: { routeIndex: idx, isSelected: idx === selectedRouteIndex }, geometry: route.geometry
       }));
 
       features.sort((a, b) => (a.properties.isSelected ? 1 : -1));
@@ -321,22 +434,10 @@ const RoutePlannerPage = () => {
 
       if (!map.getSource('routes-source')) {
         map.addSource('routes-source', { type: 'geojson', data: geojson });
-        
+        map.addLayer({ id: 'route-casing', type: 'line', source: 'routes-source', filter: ['==', 'isSelected', true], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#0284c7', 'line-width': 8, 'line-opacity': 0.3 } });
         map.addLayer({
-          id: 'route-casing', type: 'line', source: 'routes-source',
-          filter: ['==', 'isSelected', true],
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: { 'line-color': '#0284c7', 'line-width': 8, 'line-opacity': 0.3 }
-        });
-
-        map.addLayer({
-          id: 'route-lines', type: 'line', source: 'routes-source',
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: {
-            'line-color': ['case', ['==', ['get', 'isSelected'], true], '#3b82f6', '#9ca3af'],
-            'line-width': ['case', ['==', ['get', 'isSelected'], true], 5, 4],
-            'line-opacity': ['case', ['==', ['get', 'isSelected'], true], 1.0, 0.6]
-          }
+          id: 'route-lines', type: 'line', source: 'routes-source', layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': ['case', ['==', ['get', 'isSelected'], true], '#3b82f6', '#9ca3af'], 'line-width': ['case', ['==', ['get', 'isSelected'], true], 5, 4], 'line-opacity': ['case', ['==', ['get', 'isSelected'], true], 1.0, 0.6] }
         });
 
         if (!map.hasRouteClickListener) {
@@ -355,16 +456,12 @@ const RoutePlannerPage = () => {
       }
 
       setRouteLegs(routeOptions[selectedRouteIndex].legs || []);
-
-      // Fit map to selected route bounds
       const bounds = new window.maplibregl.LngLatBounds();
       routeOptions[selectedRouteIndex].geometry.coordinates.forEach(coord => bounds.extend(coord));
       map.fitBounds(bounds, { padding: 80, maxZoom: 12 });
     }
+  }, [routeOptions, selectedRouteIndex, mapRenderTrigger, currentMapStyle, origin, destination, itineraryStops, routeCoords]);
 
-  }, [routeOptions, selectedRouteIndex, currentMapStyle, origin, destination, itineraryStops, routeCoords]);
-
-  // Wait for style loads to trigger the drawing function safely
   useEffect(() => {
     const map = mapInstance.current;
     if (map) {
@@ -373,7 +470,6 @@ const RoutePlannerPage = () => {
     }
   }, [updateMapEntities, currentMapStyle]);
 
-  // --- EXACT COORDINATE CUSTOM SEARCH ---
   const handleAddCustomStop = async (e) => {
     e.preventDefault();
     if (!customStopName.trim()) return;
@@ -385,8 +481,7 @@ const RoutePlannerPage = () => {
         const customStop = {
           id: Date.now(), name: locationData.name, lat: locationData.lat, lng: locationData.lng,     
           type: "Custom Stop", time: "Flexible", icon: MapPin,
-          desc: locationData.desc || "A personalized location added by you.",
-          img: placeholderImages[0]
+          desc: locationData.desc || "A personalized location added by you.", img: placeholderImages[0]
         };
         setItineraryStops([...itineraryStops, customStop]);
         setCustomStopName(''); 
@@ -394,7 +489,6 @@ const RoutePlannerPage = () => {
     } catch (error) { console.error("Error:", error); } finally { setIsFindingLocation(false); }
   };
 
-  // --- DRAG AND DROP ---
   const handleDragStart = (e, position) => { dragItem.current = position; e.target.style.opacity = 0.5; };
   const handleDragEnter = (e, position) => { e.preventDefault(); dragOverItem.current = position; };
   const handleDrop = (e) => {
@@ -410,7 +504,6 @@ const RoutePlannerPage = () => {
 
   const handleFinalize = () => { navigate('/plan', { state: { prefillPackage: { title: `Custom Drive: ${origin} to ${destination}`, location: `${origin} to ${destination}` } } }); };
 
-  // ETAs
   const totalDistMeters = routeLegs.reduce((sum, leg) => sum + leg.distance, 0);
   const totalDurSeconds = routeLegs.reduce((sum, leg) => sum + leg.duration, 0);
   const totalDistKm = (totalDistMeters / 1000).toFixed(1);
@@ -438,6 +531,10 @@ const RoutePlannerPage = () => {
     );
   };
 
+  const filteredPlaces = activeCategory === 'All' ? suggestedPlaces : suggestedPlaces.filter(p => p.category === activeCategory);
+  const totalPages = Math.ceil(filteredPlaces.length / ITEMS_PER_PAGE);
+  const currentDisplayedRecs = filteredPlaces.slice(recPage * ITEMS_PER_PAGE, (recPage + 1) * ITEMS_PER_PAGE);
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', fontFamily: 'system-ui, -apple-system, sans-serif', paddingBottom: '80px', overflowX: 'hidden' }}>
       
@@ -455,18 +552,40 @@ const RoutePlannerPage = () => {
           )}
 
           <form onSubmit={handleSearchRoutes} style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', backgroundColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)', padding: '15px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.2)', marginTop: isSearching ? '10px' : '0' }}>
-            <div style={{ flex: '1 1 250px', position: 'relative' }}>
-              <Navigation size={20} color="#9ca3af" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input type="text" placeholder="Start (e.g. Delhi)" value={origin} onChange={(e)=>setOrigin(e.target.value)} required disabled={isLoading} style={{ width: '100%', boxSizing: 'border-box', padding: '16px 16px 16px 45px', borderRadius: '12px', border: 'none', outline: 'none', fontSize: '15px', fontWeight: 'bold' }} />
-            </div>
+            
+            <SearchAutocomplete 
+              value={origin} 
+              onChange={setOrigin} 
+              placeholder="Start (e.g. Delhi)" 
+              Icon={Navigation} 
+              iconColor="#9ca3af" 
+              disabled={isLoading}
+              inputStyle={{ border: 'none' }}
+            />
+            
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 10px', color: 'white' }}><ArrowRight size={20} /></div>
-            <div style={{ flex: '1 1 250px', position: 'relative' }}>
-              <MapPin size={20} color="#16a34a" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input type="text" placeholder="End (e.g. Ahmedabad)" value={destination} onChange={(e)=>setDestination(e.target.value)} required disabled={isLoading} style={{ width: '100%', boxSizing: 'border-box', padding: '16px 16px 16px 45px', borderRadius: '12px', border: 'none', outline: 'none', fontSize: '15px', fontWeight: 'bold' }} />
+            
+            <SearchAutocomplete 
+              value={destination} 
+              onChange={setDestination} 
+              placeholder="End (e.g. Ahmedabad)" 
+              Icon={MapPin} 
+              iconColor="#16a34a" 
+              disabled={isLoading}
+              inputStyle={{ border: 'none' }}
+            />
+            
+            <div style={{ display: 'flex', gap: '10px', flex: '0 1 auto' }}>
+              <button type="submit" disabled={isLoading} style={{ flex: '1', padding: '0 30px', borderRadius: '12px', backgroundColor: '#16a34a', color: 'white', fontWeight: 'bold', fontSize: '16px', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', height: '54px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                {isLoading ? <><Loader2 size={18} className="animate-spin" /> {loadingText}</> : 'Map Route'}
+              </button>
+              
+              {(isSearching || origin || destination) && (
+                <button type="button" onClick={handleReset} style={{ flex: '0 0 auto', padding: '0 20px', borderRadius: '12px', backgroundColor: 'transparent', color: 'white', fontWeight: 'bold', fontSize: '16px', border: '1px solid rgba(255,255,255,0.5)', cursor: 'pointer', height: '54px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s', backdropFilter: 'blur(5px)' }}>
+                  <RotateCcw size={18} /> Reset
+                </button>
+              )}
             </div>
-            <button type="submit" disabled={isLoading} style={{ flex: '0 1 auto', padding: '0 30px', borderRadius: '12px', backgroundColor: '#16a34a', color: 'white', fontWeight: 'bold', fontSize: '16px', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', height: '54px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {isLoading ? <><Loader2 size={18} className="animate-spin" /> {loadingText}</> : 'Map Route'}
-            </button>
           </form>
         </div>
       </div>
@@ -551,7 +670,7 @@ const RoutePlannerPage = () => {
                 </div>
               </div>
 
-              <button onClick={handleFinalize} disabled={itineraryStops.length === 0} style={{ width: '100%', padding: '16px', borderRadius: '12px', backgroundColor: itineraryStops.length > 0 ? '#111827' : '#e5e7eb', color: itineraryStops.length > 0 ? 'white' : '#9ca3af', fontSize: '16px', fontWeight: 'bold', border: 'none', cursor: itineraryStops.length > 0 ? 'pointer' : 'not-allowed', marginTop: '30px', transition: 'all 0.3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <button onClick={handleFinalize} style={{ width: '100%', padding: '16px', borderRadius: '12px', backgroundColor: '#111827', color: 'white', fontSize: '16px', fontWeight: 'bold', border: 'none', cursor: 'pointer', marginTop: '30px', transition: 'all 0.3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                 Finalize Trip Details <ArrowRight size={18} />
               </button>
             </div>
@@ -560,12 +679,18 @@ const RoutePlannerPage = () => {
               <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#111827', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Search size={18} color="#0284c7" /> Add a Custom Stop
               </h3>
-              <form onSubmit={handleAddCustomStop} style={{ display: 'flex', gap: '10px' }}>
-                <input type="text" placeholder="Search exact place..." value={customStopName} onChange={(e) => setCustomStopName(e.target.value)} disabled={isFindingLocation} style={{ flex: 1, padding: '12px 15px', borderRadius: '10px', border: '1px solid #d1d5db', outline: 'none', fontSize: '14px', minWidth: '0' }} />
-                <button type="submit" disabled={isFindingLocation} style={{ padding: '0 15px', borderRadius: '10px', backgroundColor: '#0284c7', color: 'white', fontWeight: 'bold', border: 'none', cursor: isFindingLocation ? 'not-allowed' : 'pointer' }}>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <SearchAutocomplete 
+                  value={customStopName} 
+                  onChange={setCustomStopName} 
+                  placeholder="Search exact place..." 
+                  disabled={isFindingLocation}
+                  inputStyle={{ border: '1px solid #d1d5db', padding: '12px 15px', fontSize: '14px' }}
+                />
+                <button onClick={handleAddCustomStop} disabled={isFindingLocation || !customStopName} style={{ padding: '0 20px', borderRadius: '10px', backgroundColor: '#0284c7', color: 'white', fontWeight: 'bold', border: 'none', cursor: isFindingLocation || !customStopName ? 'not-allowed' : 'pointer' }}>
                   {isFindingLocation ? <Loader2 size={16} className="animate-spin" /> : 'Add'}
                 </button>
-              </form>
+              </div>
             </div>
           </div>
 
@@ -597,7 +722,7 @@ const RoutePlannerPage = () => {
               </div>
             </div>
 
-            {/* Places Overview (With Wikipedia Extracts) */}
+            {/* Places Overview */}
             <div style={{ flex: '0 0 auto', maxHeight: '35%', backgroundColor: 'white', borderRadius: '24px', padding: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb', overflowY: 'auto' }} className="hide-scrollbar">
               <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#111827', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <MapPin size={18} color="#0284c7" /> Places Overview
@@ -625,10 +750,10 @@ const RoutePlannerPage = () => {
             </div>
           </div>
 
-          {/* COLUMN 3: WEATHER & RECOMMENDATIONS */}
+          {/* COLUMN 3: WEATHER & CATEGORIZED RECOMMENDATIONS */}
           <div style={{ overflowY: 'auto', paddingRight: '10px' }} className="hide-scrollbar">
             
-            {/* DYNAMIC WEATHER WIDGET WITH PHOTO BACKGROUNDS */}
+            {/* DYNAMIC WEATHER WIDGET */}
             {weatherData.length > 0 && (
               <div style={{ marginBottom: '30px' }}>
                 <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#111827', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -641,27 +766,38 @@ const RoutePlannerPage = () => {
                   </div>
                 ) : (
                   <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px' }} className="hide-scrollbar">
-                    {weatherData.map((w, idx) => (
-                      <div key={idx} style={{ 
-                        minWidth: '130px', borderRadius: '16px', padding: '15px', border: '1px solid #e5e7eb', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', textAlign: 'center', flexShrink: 0,
-                        backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.75)), ${getWeatherBackground(w.condition)}`,
-                        backgroundSize: 'cover', backgroundPosition: 'center', color: 'white'
-                      }}>
-                        <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase', fontWeight: 'bold', margin: '0 0 4px 0' }}>{w.ptType}</p>
-                        <h4 style={{ fontSize: '13px', fontWeight: 'bold', color: 'white', margin: '0 0 5px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{w.name}</h4>
-                        {w.icon ? (
-                          <img src={w.icon} alt={w.condition} style={{ width: '48px', height: '48px', margin: '0 auto', filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.5))' }} />
-                        ) : (
-                          <CloudSun size={32} color="white" style={{ margin: '8px auto' }} />
-                        )}
-                        <div style={{ fontSize: '22px', fontWeight: '900', color: 'white', textShadow: '0px 2px 4px rgba(0,0,0,0.5)' }}>{w.temp}°C</div>
-                        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.9)', margin: '2px 0 0 0', lineHeight: '1.2', fontWeight: '500' }}>{w.condition}</p>
-                      </div>
-                    ))}
+                    {weatherData.map((w, idx) => {
+                      const aqiInfo = getAQIDetails(w.aqiIndex);
+
+                      return (
+                        <div key={idx} style={{ 
+                          minWidth: '130px', borderRadius: '16px', padding: '15px', border: '1px solid #e5e7eb', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', textAlign: 'center', flexShrink: 0,
+                          backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.75)), ${getWeatherBackground(w.condition)}`,
+                          backgroundSize: 'cover', backgroundPosition: 'center', color: 'white'
+                        }}>
+                          <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase', fontWeight: 'bold', margin: '0 0 4px 0' }}>{w.ptType}</p>
+                          <h4 style={{ fontSize: '13px', fontWeight: 'bold', color: 'white', margin: '0 0 5px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{w.name}</h4>
+                          {w.icon ? (
+                            <img src={w.icon} alt={w.condition} style={{ width: '48px', height: '48px', margin: '0 auto', filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.5))' }} />
+                          ) : (
+                            <CloudSun size={32} color="white" style={{ margin: '8px auto' }} />
+                          )}
+                          <div style={{ fontSize: '22px', fontWeight: '900', color: 'white', textShadow: '0px 2px 4px rgba(0,0,0,0.5)' }}>{w.temp}°C</div>
+                          <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.9)', margin: '2px 0 0 0', lineHeight: '1.2', fontWeight: '500' }}>{w.condition}</p>
+                          
+                          {w.aqiIndex && (
+                            <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(0,0,0,0.4)', padding: '3px 8px', borderRadius: '12px' }}>
+                              <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: aqiInfo.color, boxShadow: `0 0 4px ${aqiInfo.color}` }}></div>
+                              <span style={{ fontSize: '9px', color: 'white', fontWeight: 'bold', textTransform: 'uppercase' }}>AQI: {aqiInfo.text}</span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
 
-                {/* CLIMATE & TRAVEL ALERTS DASHBOARD */}
+                {/* CLIMATE ALERTS */}
                 {weatherAlerts.length > 0 && !isWeatherLoading && (
                   <div style={{ marginTop: '15px' }}>
                     <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#ef4444', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -680,26 +816,48 @@ const RoutePlannerPage = () => {
               </div>
             )}
 
-            {/* Existing Route Suggestions */}
-            <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#111827', marginBottom: '5px' }}>Route Suggestions</h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '25px' }}>
+            {/* ROUTE SUGGESTIONS WITH CATEGORIES & PAGINATION */}
+            <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#111827', marginBottom: '10px' }}>Route Suggestions</h2>
+            
+            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '15px', paddingBottom: '5px' }} className="hide-scrollbar">
+              {categories.map(cat => (
+                <button 
+                  key={cat}
+                  onClick={() => { setActiveCategory(cat); setRecPage(0); }}
+                  style={{
+                    padding: '6px 14px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold', whiteSpace: 'nowrap', cursor: 'pointer', transition: 'all 0.2s', border: 'none',
+                    backgroundColor: activeCategory === cat ? '#0284c7' : '#f3f4f6',
+                    color: activeCategory === cat ? 'white' : '#4b5563',
+                    boxShadow: activeCategory === cat ? '0 2px 8px rgba(2, 132, 199, 0.3)' : 'none'
+                  }}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
               {isSuggesting ? (
                 <><Loader2 size={16} color="#0284c7" className="animate-spin" /><span style={{ fontSize: '14px', color: '#0284c7', fontWeight: '600' }}>Scanning your entire route...</span></>
               ) : (
-                <span style={{ fontSize: '14px', color: '#6b7280', textTransform: 'capitalize' }}>Found {suggestedPlaces.length} attractions along your route.</span>
+                <span style={{ fontSize: '14px', color: '#6b7280' }}>Showing {filteredPlaces.length} locations.</span>
               )}
             </div>
 
-            {/* Standard 1-Column Horizontal Capsules */}
+            {/* Paginated List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {suggestedPlaces.length > 0 ? suggestedPlaces.map((rec) => {
+              {currentDisplayedRecs.length > 0 ? currentDisplayedRecs.map((rec) => {
                 const isAdded = itineraryStops.find(s => s.id === rec.id);
                 return (
                   <div key={rec.id} style={{ 
                     backgroundColor: 'white', borderRadius: '50px', padding: '10px', display: 'flex', alignItems: 'center', gap: '15px', border: isAdded ? '2px solid #16a34a' : '1px solid #e5e7eb', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', transition: 'all 0.2s', opacity: isSuggesting ? 0.5 : 1
                   }}>
-                    <div style={{ width: '70px', height: '70px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: '2px solid #f3f4f6' }}>
-                      <img src={rec.img} alt={rec.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ width: '70px', height: '70px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: '2px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e0f2fe' }}>
+                      {rec.img && rec.img.includes('unsplash') ? (
+                        <img src={rec.img} alt={rec.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <rec.icon size={32} color="#0284c7" />
+                      )}
                     </div>
                     <div style={{ flex: 1, overflow: 'hidden' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#6b7280', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>
@@ -719,7 +877,30 @@ const RoutePlannerPage = () => {
                 )
               }) : !isSuggesting && (
                 <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280', backgroundColor: 'white', borderRadius: '20px', border: '1px dashed #d1d5db' }}>
-                  No automatic suggestions found. Use the search box!
+                  No places found in this category along the route.
+                </div>
+              )}
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && !isSuggesting && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 20px', backgroundColor: 'white', borderRadius: '50px', border: '1px solid #e5e7eb', marginTop: '5px', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
+                  <button 
+                    onClick={() => setRecPage(p => Math.max(0, p - 1))} 
+                    disabled={recPage === 0} 
+                    style={{ background: 'none', border: 'none', cursor: recPage === 0 ? 'not-allowed' : 'pointer', color: recPage === 0 ? '#d1d5db' : '#0284c7', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 'bold', fontSize: '13px', padding: 0 }}
+                  >
+                    <ChevronLeft size={18} /> Prev
+                  </button>
+                  <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#4b5563' }}>
+                    Page {recPage + 1} of {totalPages}
+                  </span>
+                  <button 
+                    onClick={() => setRecPage(p => Math.min(totalPages - 1, p + 1))} 
+                    disabled={recPage === totalPages - 1} 
+                    style={{ background: 'none', border: 'none', cursor: recPage === totalPages - 1 ? 'not-allowed' : 'pointer', color: recPage === totalPages - 1 ? '#d1d5db' : '#0284c7', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 'bold', fontSize: '13px', padding: 0 }}
+                  >
+                    Next <ChevronRight size={18} />
+                  </button>
                 </div>
               )}
             </div>
@@ -728,7 +909,6 @@ const RoutePlannerPage = () => {
         </div>
       )}
 
-      {/* Global Styles */}
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
