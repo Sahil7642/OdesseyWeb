@@ -243,6 +243,7 @@ import ExperiencesPage from "./pages/ExperiencesPage";
 import MissionPage from "./pages/MissionPage";
 import AboutPage from "./pages/AboutPage";
 import RoutePlannerPage from "./pages/RoutePlannerPage";
+import TripDiscovererPage from './pages/TripDiscovererPage'
 
 // 👇 NEW: ScrollToTop Helper Component
 const ScrollToTop = () => {
@@ -307,6 +308,7 @@ function App() {
           <Route path="/mission" element={<MissionPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/stories" element={<StoriesPage />} />
+          <Route path="/discover" element={<TripDiscovererPage />} />
 
         </Routes>
 
