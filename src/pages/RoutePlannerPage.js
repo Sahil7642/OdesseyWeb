@@ -401,11 +401,14 @@ const RoutePlannerPage = () => {
   }, [routeCoords.start?.lat, routeCoords.start?.lng, routeCoords.end?.lat, routeCoords.end?.lng, itineraryStops]);
 
   // INITIALIZE MAPLIBRE SAFELY
+  // INITIALIZE MAPLIBRE SAFELY
   useEffect(() => {
     if (!isSearching || !mapContainerRef.current) return;
 
     const initMap = () => {
-      if (mapInstance.current) return; 
+      // 👇 The crucial fix: strictly check if window.maplibregl exists before calling .Map
+      if (mapInstance.current || !window.maplibregl) return; 
+      
       const map = new window.maplibregl.Map({
         container: mapContainerRef.current, style: mapLayouts[currentMapStyle], center: [routeCoords.start.lng, routeCoords.start.lat],
         zoom: 5, attributionControl: false
@@ -418,12 +421,15 @@ const RoutePlannerPage = () => {
       if (!document.getElementById('maplibre-css')) {
         const link = document.createElement('link'); link.id = 'maplibre-css'; link.href = 'https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.css'; link.rel = 'stylesheet'; document.head.appendChild(link);
       }
-      if (!document.getElementById('maplibre-js')) {
-        const script = document.createElement('script'); script.id = 'maplibre-js'; script.src = 'https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.js'; script.async = true; script.onload = initMap; document.head.appendChild(script);
+      let script = document.getElementById('maplibre-js');
+      if (!script) {
+        script = document.createElement('script'); script.id = 'maplibre-js'; script.src = 'https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.js'; script.async = true; script.onload = initMap; document.head.appendChild(script);
       } else {
-        document.getElementById('maplibre-js').addEventListener('load', initMap);
+        script.addEventListener('load', initMap);
       }
-    } else { initMap(); }
+    } else { 
+      initMap(); 
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSearching]);
 

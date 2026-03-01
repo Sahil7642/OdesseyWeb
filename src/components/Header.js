@@ -660,7 +660,8 @@ export default Header;
 */
 
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ChevronDown, MapPin, Compass, Calendar, Camera, Info, MessageCircle, ArrowRight, Map, Car, LayoutGrid } from 'lucide-react';
+// 👇 Added Sparkles icon for the new Discover menu item
+import { Menu, X, ChevronDown, MapPin, Compass, Calendar, Camera, Info, MessageCircle, ArrowRight, Map, Car, LayoutGrid, Sparkles } from 'lucide-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 
 // Import your logo
@@ -727,6 +728,7 @@ const Header = () => {
 
   // --- DESKTOP NAVIGATION ---
   const desktopNavLinks = [
+    { name: 'Discover', href: '/discover' }, // 👇 Newly Added Discover Page
     { name: 'Plan Trip', href: '/plan' },
     { name: 'Itineraries', href: '/itinerary' },
     { name: 'Lodges', href: '/lodges' },
@@ -756,10 +758,11 @@ const Header = () => {
     {
       title: "Plan Your Trip", icon: Calendar,
       items: [
+        { label: "Trip Discoverer (Quiz)", href: "/discover", navIcon: Sparkles }, // 👇 Newly Added Discover Page
         { label: "Custom Trip Planner", href: "/plan", navIcon: Calendar },
-        { label: "Maps & Routes", href: "/route-planner", navIcon: Map }, // Newly Added
-        { label: "Vehicle Options", href: "/plan", navIcon: Car }, // Newly Added
-        { label: "Other Services", href: "/plan", navIcon: LayoutGrid } // Newly Added
+        { label: "Maps & Routes", href: "/route-planner", navIcon: Map }, 
+        { label: "Vehicle Options", href: "/plan", navIcon: Car }, 
+        { label: "Other Services", href: "/plan", navIcon: LayoutGrid } 
       ]
     },
     {
