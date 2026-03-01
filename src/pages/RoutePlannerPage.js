@@ -5,11 +5,27 @@ import { useNavigate } from 'react-router-dom';
 const OLA_MAPS_API_KEY = process.env.REACT_APP_OLA_MAPS_API_KEY || ""; 
 const WEATHER_API_KEY = process.env.REACT_APP_WEATHER_API_KEY || ""; 
 
+// --- HELPER: Polyline Decoder for Ola Maps Routing API ---
+const decodePolyline = (str, precision = 5) => {
+  let index = 0, lat = 0, lng = 0, coordinates = [], shift = 0, result = 0, byte = null, latitude_change, longitude_change, factor = Math.pow(10, precision);
+  while (index < str.length) {
+    byte = null; shift = 0; result = 0;
+    do { byte = str.charCodeAt(index++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
+    latitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    shift = result = 0;
+    do { byte = str.charCodeAt(index++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
+    longitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lat += latitude_change; lng += longitude_change;
+    coordinates.push([lng / factor, lat / factor]); // [lng, lat] for GeoJSON compatibility
+  }
+  return coordinates;
+};
+
 const getWeatherBackground = (condition = "") => {
   const lowerCond = condition.toLowerCase();
-  if (lowerCond.includes('rain') || lowerCond.includes('drizzle') || lowerCond.includes('shower')) return 'url(https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?auto=format&fit=crop&w=400&q=80)';
-  if (lowerCond.includes('thunder') || lowerCond.includes('storm')) return 'url(https://images.unsplash.com/photo-1605727216801-e27ce1d0ce5c?auto=format&fit=crop&w=400&q=80)';
-  if (lowerCond.includes('snow') || lowerCond.includes('ice') || lowerCond.includes('blizzard')) return 'url(https://images.unsplash.com/photo-1517299321609-52687d1bc9e2?auto=format&fit=crop&w=400&q=80)';
+  if (lowerCond.includes('rain') || lowerCond.includes('drizzle')) return 'url(https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?auto=format&fit=crop&w=400&q=80)';
+  if (lowerCond.includes('storm')) return 'url(https://images.unsplash.com/photo-1605727216801-e27ce1d0ce5c?auto=format&fit=crop&w=400&q=80)';
+  if (lowerCond.includes('snow') || lowerCond.includes('ice')) return 'url(https://images.unsplash.com/photo-1517299321609-52687d1bc9e2?auto=format&fit=crop&w=400&q=80)';
   if (lowerCond.includes('fog') || lowerCond.includes('mist')) return 'url(https://images.unsplash.com/photo-1485236715568-ddc5ee6ca227?auto=format&fit=crop&w=400&q=80)';
   if (lowerCond.includes('cloud') || lowerCond.includes('overcast')) return 'url(https://images.unsplash.com/photo-1534088568595-a066f410cbda?auto=format&fit=crop&w=400&q=80)';
   if (lowerCond.includes('sun') || lowerCond.includes('clear')) return 'url(https://images.unsplash.com/photo-1622396481328-9b1b78cdd9fd?auto=format&fit=crop&w=400&q=80)';
@@ -38,34 +54,6 @@ const getIconForCategory = (cat) => {
     case 'Hidden Gems': return Compass;
     default: return Camera;
   }
-};
-
-// 👇 SUPER STRICT TAG & KEYWORD CATEGORIZER
-const getCategoryStrict = (f, forcedCat) => {
-  const key = f.properties.osm_key || '';
-  const val = f.properties.osm_value || '';
-  const name = (f.properties.name || '').toLowerCase();
-  
-  if (key === 'tourism' && val.match(/hotel|hostel|motel|resort|guest_house/)) return 'Stays';
-  if (name.match(/hotel|resort|lodge|hostel|homestay|bhavan/)) return 'Stays';
-  
-  if (key === 'amenity' && val.match(/restaurant|cafe|bar|fast_food|food_court/)) return 'Food';
-  if (name.match(/restaurant|cafe|dhaba|bhojnalaya|eatery/)) return 'Food';
-  
-  if (key === 'historic') return 'Monuments';
-  if (name.match(/monument|fort|palace|temple|mosque|church|tomb|mahal/)) return 'Monuments';
-  
-  if (key === 'place' && val.match(/city|town|municipality/)) return 'Cities';
-  if (name.match(/city|town/)) return 'Cities';
-  
-  if (key === 'amenity' && val.match(/fuel|hospital|atm|bank|parking|clinic/)) return 'Amenities';
-  if (name.match(/petrol|fuel|hospital|clinic|parking/)) return 'Amenities';
-  
-  if (key === 'natural' && val.match(/waterfall|peak|lake|beach/)) return 'Hidden Gems';
-  if (key === 'tourism' && val.match(/viewpoint|museum|attraction|gallery/)) return 'Hidden Gems';
-  if (name.match(/waterfall|lake|trek|sanctuary|park|museum|viewpoint/)) return 'Hidden Gems';
-
-  return forcedCat; 
 };
 
 // --- STRICT INDIA AUTOCOMPLETE ---
@@ -220,24 +208,59 @@ const RoutePlannerPage = () => {
     } catch (error) { alert("Error generating route."); } finally { setIsLoading(false); }
   };
 
+  // --- 2. FETCH OLA MAPS ROUTING API (TRAFFIC ENABLED) ---
   useEffect(() => {
     if (!routeCoords.start || !routeCoords.end) return;
+    
     const fetchRoutes = async () => {
-      const waypoints = [routeCoords.start, ...itineraryStops, routeCoords.end];
-      const coordsString = waypoints.map(wp => `${wp.lng},${wp.lat}`).join(';');
       try {
-        const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson&alternatives=3`);
-        const data = await res.json();
-        if (data.routes && data.routes.length > 0) {
-          setRouteOptions(data.routes); setSelectedRouteIndex(0); setRouteLegs(data.routes[0].legs || []);
+        let routeData = null;
+        const originStr = `${routeCoords.start.lat},${routeCoords.start.lng}`;
+        const destStr = `${routeCoords.end.lat},${routeCoords.end.lng}`;
+        
+        // Use Ola Maps Directions API if key exists
+        if (OLA_MAPS_API_KEY) {
+          let url = `https://api.olamaps.io/routing/v1/directions?origin=${originStr}&destination=${destStr}&api_key=${OLA_MAPS_API_KEY}&alternatives=true&overview=full&traffic_metadata=true`;
+          if (itineraryStops.length > 0) {
+             url += `&waypoints=${itineraryStops.map(s => `${s.lat},${s.lng}`).join('|')}`;
+          }
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data.routes && data.routes.length > 0) routeData = data;
         }
-      } catch (error) { console.error("Error fetching OSRM routes:", error); }
+
+        // Fallback to OSRM if Ola Routing fails or key missing
+        if (!routeData) {
+          const waypoints = [routeCoords.start, ...itineraryStops, routeCoords.end];
+          const coordsString = waypoints.map(wp => `${wp.lng},${wp.lat}`).join(';');
+          const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson&alternatives=3`);
+          routeData = await res.json();
+        }
+
+        if (routeData && routeData.routes) {
+          // Normalize geometry from either API
+          const parsedRoutes = routeData.routes.map(r => {
+            let geom = r.geometry;
+            if (typeof geom === 'string') geom = { type: 'LineString', coordinates: decodePolyline(geom) };
+            else if (r.overview_polyline) geom = { type: 'LineString', coordinates: decodePolyline(r.overview_polyline) };
+            
+            // Normalize legs array
+            const legs = r.legs || [{ distance: r.summary?.distance || r.distance || 0, duration: r.summary?.duration || r.duration || 0 }];
+            return { ...r, geometry: geom, legs: legs };
+          });
+          
+          setRouteOptions(parsedRoutes); 
+          setSelectedRouteIndex(0); 
+          setRouteLegs(parsedRoutes[0].legs);
+        }
+      } catch (error) { console.error("Routing error:", error); }
     };
+    
     fetchRoutes();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeCoords.start?.lat, routeCoords.start?.lng, routeCoords.end?.lat, routeCoords.end?.lng, itineraryStops]);
 
-  // --- 3. DYNAMIC ROUTE SCANNER: HYBRID PARALLEL FETCH ---
+  // --- 3. DYNAMIC ROUTE SCANNER: OLA PLACES API (STRICT 100KM RADIUS) ---
   useEffect(() => {
     if (routeOptions.length === 0 || !routeOptions[selectedRouteIndex]) return;
 
@@ -247,74 +270,85 @@ const RoutePlannerPage = () => {
         const currentRoute = routeOptions[selectedRouteIndex];
         const coords = currentRoute.geometry.coordinates;
 
-        // Take 4 strategic points along the route
+        // Sample 4 points along the route
         const searchCoords = [];
         const numSamples = 4; 
         const step = Math.max(1, Math.floor(coords.length / numSamples));
         for (let i = 0; i < coords.length; i += step) searchCoords.push({ lat: coords[i][1], lng: coords[i][0] });
         searchCoords.push({ lat: coords[coords.length - 1][1], lng: coords[coords.length - 1][0] });
 
-        // Targeted queries to GUARANTEE varied data
-        const queries = [
-          { term: 'hotel', defaultCat: 'Stays' },
-          { term: 'restaurant', defaultCat: 'Food' },
-          { term: 'fuel', defaultCat: 'Amenities' },
-          { term: 'monument', defaultCat: 'Monuments' },
-          { term: 'fort', defaultCat: 'Monuments' }, // Extra specific for India
-          { term: 'temple', defaultCat: 'Monuments' }, // Extra specific for India
-          { term: 'waterfall', defaultCat: 'Hidden Gems' },
-          { term: 'viewpoint', defaultCat: 'Hidden Gems' },
-          { term: 'city', defaultCat: 'Cities' },
+        // Targeted queries using strict bounds and rankBy distance/popular
+        const targetedQueries = [
+          { q: "restaurant", cat: "Food", rankBy: "popular" },
+          { q: "hotel", cat: "Stays", rankBy: "popular" },
+          { q: "gas station", cat: "Amenities", rankBy: "distance" },
+          { q: "monument", cat: "Monuments", rankBy: "popular" },
+          { q: "city", cat: "Cities", rankBy: "popular" },
+          { q: "waterfall", cat: "Hidden Gems", rankBy: "distance" },
+          { q: "viewpoint", cat: "Hidden Gems", rankBy: "distance" }
         ];
 
-        const fetchPromises = [];
-        
-        searchCoords.forEach(c => {
-          queries.forEach(q => {
-            fetchPromises.push(
-              fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q.term)}&lat=${c.lat}&lon=${c.lng}&limit=4`)
-                .then(r => r.json())
-                .then(data => (data.features || []).map(f => ({ feature: f, forcedCat: q.defaultCat })))
-                .catch(() => [])
-            );
+        const fetchPointData = async (lat, lng) => {
+          const promises = targetedQueries.map(async ({ q, cat, rankBy }) => {
+            let fetched = [];
+            try {
+              if (OLA_MAPS_API_KEY) {
+                // 👇 NEW: Strict bounds & 100km radius integrated exactly as requested
+                const url = `https://api.olamaps.io/places/v1/textsearch?query=${encodeURIComponent(q)}&location=${lat},${lng}&radius=100000&strictbounds=true&rankBy=${rankBy}&api_key=${OLA_MAPS_API_KEY}`;
+                const oRes = await fetch(url);
+                const oData = await oRes.json();
+                if (oData?.results && oData.results.length > 0) {
+                  fetched = oData.results.slice(0, 5).map(r => ({
+                    id: r.place_id, name: r.name, lat: r.geometry?.location?.lat, lng: r.geometry?.location?.lng,
+                    _forcedCategory: cat, vicinity: r.formatted_address
+                  }));
+                }
+              }
+              // Strict India Fallback
+              if (fetched.length === 0) {
+                const pRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${lat}&lon=${lng}&limit=5`);
+                const pData = await pRes.json();
+                if (pData?.features) {
+                  fetched = pData.features.filter(f => f.properties.country === 'India' || f.properties.countrycode === 'IN')
+                    .map(f => ({
+                      id: f.properties.osm_id || Math.random(), name: f.properties.name,
+                      lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0],
+                      _forcedCategory: cat, vicinity: [f.properties.street, f.properties.city, f.properties.state].filter(Boolean).join(', ')
+                    })).filter(p => p.name);
+                }
+              }
+            } catch(e) {}
+            return fetched;
           });
-        });
+          const cResults = await Promise.all(promises);
+          return cResults.flat();
+        };
 
-        // Fire all 40+ micro-requests instantly in parallel
-        const allResults = await Promise.all(fetchPromises);
-        const flatResults = allResults.flat();
+        const allDataPromises = searchCoords.map(c => fetchPointData(c.lat, c.lng));
+        const allResultsArray = await Promise.all(allDataPromises);
+        const flatResults = allResultsArray.flat();
         
         const uniquePlaces = new Map();
         
-        flatResults.forEach(item => {
-          const f = item.feature;
-          // Drop if unnamed or not in India
-          if (!f.properties.name || (f.properties.countrycode !== 'IN' && f.properties.country !== 'India')) return;
-          
-          // Drop junk using strict text parsing
-          const cat = getCategoryStrict(f, item.forcedCat);
-          if (!cat) return;
-
-          const id = f.properties.osm_id || f.properties.name;
-          if (!uniquePlaces.has(id) && !itineraryStops.some(s => s.name === f.properties.name)) {
-            uniquePlaces.set(id, {
-              id: id,
-              name: f.properties.name,
-              lat: f.geometry.coordinates[1],
-              lng: f.geometry.coordinates[0],
-              type: cat,
-              category: cat,
-              time: "Route Stop",
-              icon: getIconForCategory(cat),
-              desc: [f.properties.street, f.properties.city, f.properties.state].filter(Boolean).join(', ') || `A notable ${cat.toLowerCase()} near your route.`,
-              img: placeholderImages[uniquePlaces.size % placeholderImages.length]
-            });
-          }
+        flatResults.forEach(place => {
+          if (!place.name) return;
+          const id = place.id || place.name;
+          const isAdded = itineraryStops.some(s => s.id === id || s.name === place.name);
+          if (!isAdded && !uniquePlaces.has(id)) uniquePlaces.set(id, place);
         });
 
-        const dynamicPlaces = Array.from(uniquePlaces.values());
+        const dynamicPlaces = Array.from(uniquePlaces.values()).map((place, idx) => {
+          const cat = place._forcedCategory || "Hidden Gems";
+          const DynIcon = getIconForCategory(cat);
+          return {
+            id: place.id, name: place.name, lat: place.lat, lng: place.lng, 
+            type: cat, category: cat, time: "Route Stop", icon: DynIcon,
+            desc: place.vicinity || `A beautiful ${cat.toLowerCase()} located natively along your route.`,
+            img: placeholderImages[idx % placeholderImages.length]
+          }
+        });
         
-        // Sort so the 'All' tab looks organized and prioritizes Monuments/Cities
+        // Sort so the 'All' tab prioritizes high-value stops
         dynamicPlaces.sort((a, b) => {
           const rank = { 'Cities': 1, 'Monuments': 2, 'Hidden Gems': 3, 'Food': 4, 'Stays': 5, 'Amenities': 6 };
           return rank[a.category] - rank[b.category];
@@ -838,7 +872,7 @@ const RoutePlannerPage = () => {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
               {isSuggesting ? (
-                <><Loader2 size={16} color="#0284c7" className="animate-spin" /><span style={{ fontSize: '14px', color: '#0284c7', fontWeight: '600' }}>Scanning your entire route...</span></>
+                <><Loader2 size={16} color="#0284c7" className="animate-spin" /><span style={{ fontSize: '14px', color: '#0284c7', fontWeight: '600' }}>Hunting for amazing places...</span></>
               ) : (
                 <span style={{ fontSize: '14px', color: '#6b7280' }}>Showing {filteredPlaces.length} locations.</span>
               )}
