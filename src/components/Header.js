@@ -776,7 +776,8 @@ const Header = () => {
       title: "About Odessey", icon: Info,
       items: [
         { label: "Our Story", href: "/about" },
-        { label: "Our Mission", href: "/mission" }
+        { label: "Our Mission", href: "/mission" },
+        { label: "Careers & Partners", href: "/careers" }
       ]
     },
     {
