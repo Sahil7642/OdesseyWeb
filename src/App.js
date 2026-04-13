@@ -251,6 +251,9 @@ import BlogPage from './pages/BlogPage';
 import GamePage from "./pages/GamePage";
 import CareersPage from "./pages/CareersPage";
 import VehicleOptions from "./pages/VehicleOptions";
+//import HomePage from "./pages/HomePage";
+
+//import landingIllustration from './Odesseylogo/landingIllustration.png'
 
 // 👇 NEW: ScrollToTop Helper Component
 const ScrollToTop = () => {
