@@ -71,7 +71,7 @@ def request_ola_maps_api(query: str):
         "location": "",
         "radius": "5000",
         "types": "",
-        "size": "5",
+        "size": "50",
         "api_key": OLA_MAPS_API_KEY,
         }
     )

@@ -1,3 +1,5 @@
+from bson import ObjectId
+from fastapi.encoders import jsonable_encoder
 from fastapi import FastAPI, logger
 import uvicorn
 import os
@@ -97,18 +99,20 @@ async def get_restraunts(request: RestrauntSearchRequest):
                 }
 
                 restraunts.append(restraunt_data)
-                collection.insert_one(restraunt_data)
+                try:
+                    collection.insert_one(restraunt_data)
+                except Exception as e:
+                    print(f"Error inserting document into MongoDB: {e}")
 
-            return {"results": restraunts}
+            return jsonable_encoder({"results": restraunts}, custom_encoder={ObjectId: str})
 
         else:
             print(f"Error fetching data from OLA Maps API: {response.status_code}")
-            return {"results": []}
+            return jsonable_encoder({"results": []}, custom_encoder={ObjectId: str})
 
     else:
 
         for item in collection.find({}, {"_id": 0}):
-
             if string_match_score(query, item.get("query", "")) >= 0.9:
 
                 restraunt_data = {
@@ -140,9 +144,12 @@ async def get_restraunts(request: RestrauntSearchRequest):
                     }
 
                     restraunts.append(restraunt_data)
-                    collection.insert_one(restraunt_data)
+                    try:
+                        collection.insert_one(restraunt_data)
+                    except Exception as e:
+                        print(f"Error inserting document into MongoDB: {e}")
 
-        return {"results": restraunts}
+        return jsonable_encoder({"results": restraunts}, custom_encoder={ObjectId: str})
 
 
 
