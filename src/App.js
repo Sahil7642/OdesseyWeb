@@ -234,6 +234,9 @@ import TravelerStories from "./components/TravelerStories";
 import SearchResults from "./components/SearchResults";
 import StateDetails from "./components/StateDetails"; 
 
+import HoverChatbot from "./components/HoverChatBot";
+import WalkingCursor from "./components/WalkingCursor";
+
 // Pages
 import PlanTrip from "./pages/PlanTrip";
 import StoriesPage from "./pages/StoriesPage";
@@ -244,9 +247,13 @@ import MissionPage from "./pages/MissionPage";
 import AboutPage from "./pages/AboutPage";
 import RoutePlannerPage from "./pages/RoutePlannerPage";
 import TripDiscovererPage from './pages/TripDiscovererPage';
-import CareersPage from "./pages/CareersPage";
 import BlogPage from './pages/BlogPage';
 import GamePage from "./pages/GamePage";
+import CareersPage from "./pages/CareersPage";
+import VehicleOptions from "./pages/VehicleOptions";
+//import HomePage from "./pages/HomePage";
+
+//import landingIllustration from './Odesseylogo/landingIllustration.png'
 
 // 👇 NEW: ScrollToTop Helper Component
 const ScrollToTop = () => {
@@ -312,11 +319,15 @@ function App() {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/stories" element={<StoriesPage />} />
           <Route path="/discover" element={<TripDiscovererPage />} />
-          <Route path="/careers" element={<CareersPage />} />
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/games" element={<GamePage />} />
+          <Route path="/careers" element={<CareersPage />} />
+          <Route path="/vehicles" element={<VehicleOptions />} />
 
         </Routes>
+
+        <HoverChatbot />
+        <WalkingCursor />
 
         <Footer />
       </div>

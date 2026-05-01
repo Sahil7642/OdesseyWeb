@@ -1,108 +1,122 @@
 import React, { useState } from 'react';
-import { MapPin, Clock, ArrowRight, Sparkles, Compass, X, Calendar as CalIcon, Map } from 'lucide-react';
+import { MapPin, Clock, ArrowRight, Compass, X, Calendar as CalIcon, Map } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+
+// 👇 EXPORTED MASTER DATA (Now PlanTrip.js can read this!)
+export const itineraries = [
+  { 
+    id: 1, title: "Royal Rajasthan Circuit", location: "Jaipur, Jodhpur, Udaipur", dest: "Jaipur, Jodhpur, Udaipur", days: "7 Days / 6 Nights", category: "Heritage", 
+    image: "https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=800&q=80", tags: ["Palaces", "Desert", "Culture"],
+    overview: "Experience the grandeur of India's most vibrant state. From the pink hues of Jaipur to the golden sands of Jaisalmer.",
+    description: "Experience the grandeur of India's most vibrant state. From the pink hues of Jaipur to the golden sands of Jaisalmer.",
+    highlights: "Lake Pichola boat ride, Mehrangarh Fort exploration, Jaipur Blue City walk.",
+    plan: [
+      { day: 1, title: "Arrival in Jaipur", desc: "Check-in to a heritage Haveli. Evening visit to Chokhi Dhani for traditional dinner." },
+      { day: 2, title: "The Pink City Heritage", desc: "Explore Amer Fort, Hawa Mahal, and the bustling Johari Bazaar." },
+      { day: 3, title: "Journey to Jodhpur", desc: "Drive to Jodhpur. Evening tour of Mehrangarh Fort overlooking the blue city." },
+      { day: 4, title: "Into the Thar Desert", desc: "Drive to Jaisalmer. Enjoy a sunset camel safari and overnight stay in a luxury desert camp." },
+      { day: 5, title: "Golden Fort & Havelis", desc: "Explore Jaisalmer Fort, Patwon Ki Haveli, and Gadisar Lake." },
+      { day: 6, title: "Udaipur - The City of Lakes", desc: "Drive to Udaipur. Evening boat ride on Lake Pichola at sunset." },
+      { day: 7, title: "Departure", desc: "Morning visit to the City Palace before departure." }
+    ]
+  },
+  { 
+    id: 2, title: "Kerala Backwaters & Tea Estates", location: "Kochi, Munnar, Alleppey", dest: "Kochi, Munnar, Alleppey", days: "6 Days / 5 Nights", category: "Nature", 
+    image: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=800&q=80", tags: ["Houseboat", "Hills", "Ayurveda"],
+    overview: "A deeply relaxing journey through 'God's Own Country', blending misty mountains with serene coastal backwaters.",
+    description: "A deeply relaxing journey through 'God's Own Country', blending misty mountains with serene coastal backwaters.",
+    highlights: "Overnight Houseboat cruise, Tea plantation trekking, Kathakali performance.",
+    plan: [
+      { day: 1, title: "Arrival in Kochi & Munnar Drive", desc: "Arrive in Kochi, scenic drive to Munnar. View Cheeyappara waterfalls." },
+      { day: 2, title: "Munnar Tea Gardens", desc: "Visit the Tata Tea Museum, Eravikulam National Park, and Mattupetty Dam." },
+      { day: 3, title: "Thekkady Wildlife", desc: "Drive to Thekkady. Afternoon elephant ride and Periyar lake boat safari." },
+      { day: 4, title: "Alleppey Houseboat", desc: "Check into a private traditional houseboat. Cruise the backwaters while a chef prepares local meals." },
+      { day: 5, title: "Marari Beach Relaxation", desc: "Disembark and drive to Marari for a quiet day at a pristine, uncrowded beach." },
+      { day: 6, title: "Departure", desc: "Return drive to Kochi airport." }
+    ]
+  },
+  { 
+    id: 3, title: "Spiti Valley Expedition", location: "Shimla, Kaza, Manali", dest: "Shimla, Kaza, Manali", days: "9 Days / 8 Nights", category: "Adventure", 
+    image: "https://images.unsplash.com/photo-1623227866981-d131ec6d7c71?auto=format&fit=crop&w=800&q=80", tags: ["High Altitude", "Monasteries", "Trekking"],
+    overview: "A rugged, breathtaking road trip into the cold desert mountains of the Himalayas. Not for the faint of heart.",
+    description: "A rugged, breathtaking road trip into the cold desert mountains of the Himalayas. Not for the faint of heart.",
+    highlights: "Drive the Indo-Tibet highway, Tabo Monastery visit, Chandratal Lake camping.",
+    plan: [
+      { day: 1, title: "Shimla to Kalpa", desc: "Begin the epic mountain drive. Overnight stay in Kalpa with views of Kinner Kailash." },
+      { day: 2, title: "Entering the Desert", desc: "Drive to Tabo via the treacherous and beautiful Indo-Tibet highway." },
+      { day: 3, title: "Tabo to Kaza", desc: "Visit the 1000-year-old Tabo Monastery, then drive to Kaza, the heart of Spiti." },
+      { day: 4, title: "Key Monastery & Kibber", desc: "Visit the iconic Key Monastery perched on a hilltop, and the high-altitude village of Kibber." },
+      { day: 5, title: "Langza to Chandratal", desc: "Drive to the stunning, crescent-shaped Chandratal Lake. Camp overnight under the stars." },
+      { day: 6, title: "Kunzum Pass to Manali", desc: "Cross the challenging Kunzum Pass and Rohtang Pass down into the green Manali valley." },
+      { day: 7, title: "Departure", desc: "Relaxed morning in Manali before departure." }
+    ]
+  },
+  { 
+    id: 4, title: "Golden Triangle Highlights", location: "Delhi, Agra, Jaipur", dest: "Delhi, Agra, Jaipur", days: "5 Days / 4 Nights", category: "Heritage", 
+    image: "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=800&q=80", tags: ["Taj Mahal", "History", "Monuments"],
+    overview: "The quintessential Indian journey. Witness the bustling streets of Delhi, the iconic Taj Mahal, and the royal heritage of Jaipur.",
+    description: "The quintessential Indian journey. Witness the bustling streets of Delhi, the iconic Taj Mahal, and the royal heritage of Jaipur.",
+    highlights: "Sunrise at Taj Mahal, Elephant ride at Amer Fort, Rickshaw tour in Old Delhi.",
+    plan: [
+      { day: 1, title: "Welcome to New Delhi", desc: "Arrive in the capital. Afternoon tour of Qutub Minar, India Gate, and Humayun's Tomb." },
+      { day: 2, title: "Old Delhi to Agra", desc: "Morning rickshaw ride through Chandni Chowk. Afternoon drive to Agra and sunset view of the Taj Mahal from Mehtab Bagh." },
+      { day: 3, title: "The Taj Mahal & Agra Fort", desc: "Sunrise visit to the Taj Mahal. Later, explore the massive red sandstone Agra Fort. Evening drive to Jaipur." },
+      { day: 4, title: "Jaipur Sightseeing", desc: "Elephant or jeep ride up to Amer Fort. Afternoon photo stop at Jal Mahal and Hawa Mahal." },
+      { day: 5, title: "Departure", desc: "Morning shopping for local handicrafts in Jaipur. Transfer to Delhi or Jaipur airport." }
+    ]
+  },
+  { 
+    id: 5, title: "Andaman Island Hopping", location: "Port Blair, Havelock", dest: "Port Blair, Havelock", days: "7 Days / 6 Nights", category: "Relaxation", 
+    image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80", tags: ["Beaches", "Scuba", "Sunsets"],
+    overview: "Escape to tropical paradise. Discover crystal-clear waters, white sandy beaches, and vibrant coral reefs untouched by the mainland hustle.",
+    description: "Escape to tropical paradise. Discover crystal-clear waters, white sandy beaches, and vibrant coral reefs untouched by the mainland hustle.",
+    highlights: "Radhanagar Beach sunset, Elephant Beach scuba diving, Cellular Jail visit.",
+    plan: [
+      { day: 1, title: "Arrival in Port Blair", desc: "Arrive at Port Blair. Afternoon visit to Cellular Jail followed by the stirring Light and Sound Show." },
+      { day: 2, title: "Ferry to Havelock Island", desc: "Morning luxury ferry to Havelock. Spend the afternoon relaxing at the world-famous Radhanagar Beach." },
+      { day: 3, title: "Elephant Beach Adventure", desc: "Take a speed boat to Elephant Beach for snorkeling, sea walking, or scuba diving among vibrant corals." },
+      { day: 4, title: "Neil Island Tranquility", desc: "Ferry to Neil Island. Visit the serene Bharatpur Beach and watch an unforgettable sunset." },
+      { day: 5, title: "Natural Bridge Exploration", desc: "Explore the incredible Howrah Bridge (Natural Rock Formation) and relax at Laxmanpur Beach." },
+      { day: 6, title: "Return to Port Blair", desc: "Morning ferry back to Port Blair. Evening free for local souvenir shopping." },
+      { day: 7, title: "Departure", desc: "Morning transfer to the airport." }
+    ]
+  },
+  { 
+    id: 6, title: "Meghalaya Monsoon Magic", location: "Shillong, Cherrapunji", dest: "Shillong, Cherrapunji", days: "6 Days / 5 Nights", category: "Nature", 
+    image: "https://images.unsplash.com/photo-1571536802807-30451e3955d8?auto=format&fit=crop&w=800&q=80", tags: ["Waterfalls", "Caves", "Root Bridges"],
+    overview: "Step into the 'Abode of Clouds'. Explore living root bridges, mystical caves, and some of the highest waterfalls in Asia.",
+    description: "Step into the 'Abode of Clouds'. Explore living root bridges, mystical caves, and some of the highest waterfalls in Asia.",
+    highlights: "Trek to Double Decker Root Bridge, Umngot River boat ride, Mawsmai Cave exploration.",
+    plan: [
+      { day: 1, title: "Guwahati to Shillong", desc: "Arrive at Guwahati and drive to Shillong. En route, stop at the beautiful Umiam Lake." },
+      { day: 2, title: "Shillong Local & Laitlum", desc: "Visit Elephant Falls and Shillong Peak. Afternoon trek to the breathtaking Laitlum Canyons." },
+      { day: 3, title: "Drive to Cherrapunji", desc: "Drive to the wettest place on earth. View the dramatic Nohkalikai Falls and explore Mawsmai Cave." },
+      { day: 4, title: "Double Decker Root Bridge", desc: "Descend 3000 steps deep into the jungle to witness the incredible living root bridges of Nongriat." },
+      { day: 5, title: "Crystal Clear Dawki", desc: "Drive to the border town of Dawki. Enjoy a boat ride on the transparent Umngot River." },
+      { day: 6, title: "Departure", desc: "Return journey to Guwahati for your onward flight." }
+    ]
+  },
+  { 
+    id: 7, title: "Kashmir Paradise Retreat", location: "Srinagar, Gulmarg, Pahalgam", dest: "Srinagar, Gulmarg, Pahalgam", days: "6 Days / 5 Nights", category: "Nature", 
+    image: "https://images.unsplash.com/photo-1595815771614-ade9d6527620?auto=format&fit=crop&w=800&q=80", tags: ["Snow", "Shikara", "Valleys"],
+    overview: "Often called 'Heaven on Earth', experience the serene lakes of Srinagar and the rolling green meadows of Pahalgam and Gulmarg.",
+    description: "Often called 'Heaven on Earth', experience the serene lakes of Srinagar and the rolling green meadows of Pahalgam and Gulmarg.",
+    highlights: "Houseboat stay on Dal Lake, Gulmarg Gondola ride, exploring Betaab Valley.",
+    plan: [
+      { day: 1, title: "Srinagar & Dal Lake", desc: "Arrive in Srinagar. Check into a traditional wooden houseboat and enjoy a sunset Shikara ride." },
+      { day: 2, title: "Mughal Gardens", desc: "Visit the stunning terraced Shalimar Bagh and Nishat Bagh. Evening stroll around the local markets." },
+      { day: 3, title: "Excursion to Gulmarg", desc: "Day trip to the 'Meadow of Flowers'. Take the thrilling Gulmarg Gondola ride up to Mount Apharwat." },
+      { day: 4, title: "Srinagar to Pahalgam", desc: "Drive to Pahalgam, the 'Valley of Shepherds', passing saffron fields and apple orchards." },
+      { day: 5, title: "Exploring Betaab Valley", desc: "Visit the scenic Betaab Valley and Aru Valley. Relax by the Lidder River." },
+      { day: 6, title: "Departure", desc: "Drive back to Srinagar airport with memories of a lifetime." }
+    ]
+  }
+];
 
 const ItinerariesPage = () => {
   const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState('All');
   const [selectedItinerary, setSelectedItinerary] = useState(null);
-
-  // --- EXPANDED MOCK DATA (7 FULL ITINERARIES) ---
-  const itineraries = [
-    { 
-      id: 1, title: "Royal Rajasthan Circuit", location: "Rajasthan", days: "7 Days / 6 Nights", category: "Heritage", 
-      image: "https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=800&q=80", tags: ["Palaces", "Desert", "Culture"],
-      overview: "Experience the grandeur of India's most vibrant state. From the pink hues of Jaipur to the golden sands of Jaisalmer.",
-      plan: [
-        { day: 1, title: "Arrival in Jaipur", desc: "Check-in to a heritage Haveli. Evening visit to Chokhi Dhani for traditional dinner." },
-        { day: 2, title: "The Pink City Heritage", desc: "Explore Amer Fort, Hawa Mahal, and the bustling Johari Bazaar." },
-        { day: 3, title: "Journey to Jodhpur", desc: "Drive to Jodhpur. Evening tour of Mehrangarh Fort overlooking the blue city." },
-        { day: 4, title: "Into the Thar Desert", desc: "Drive to Jaisalmer. Enjoy a sunset camel safari and overnight stay in a luxury desert camp." },
-        { day: 5, title: "Golden Fort & Havelis", desc: "Explore Jaisalmer Fort, Patwon Ki Haveli, and Gadisar Lake." },
-        { day: 6, title: "Udaipur - The City of Lakes", desc: "Drive to Udaipur. Evening boat ride on Lake Pichola at sunset." },
-        { day: 7, title: "Departure", desc: "Morning visit to the City Palace before departure." }
-      ]
-    },
-    { 
-      id: 2, title: "Kerala Backwaters & Tea Estates", location: "Kerala", days: "6 Days / 5 Nights", category: "Nature", 
-      image: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=800&q=80", tags: ["Houseboat", "Hills", "Ayurveda"],
-      overview: "A deeply relaxing journey through 'God's Own Country', blending misty mountains with serene coastal backwaters.",
-      plan: [
-        { day: 1, title: "Arrival in Kochi & Munnar Drive", desc: "Arrive in Kochi, scenic drive to Munnar. View Cheeyappara waterfalls." },
-        { day: 2, title: "Munnar Tea Gardens", desc: "Visit the Tata Tea Museum, Eravikulam National Park, and Mattupetty Dam." },
-        { day: 3, title: "Thekkady Wildlife", desc: "Drive to Thekkady. Afternoon elephant ride and Periyar lake boat safari." },
-        { day: 4, title: "Alleppey Houseboat", desc: "Check into a private traditional houseboat. Cruise the backwaters while a chef prepares local meals." },
-        { day: 5, title: "Marari Beach Relaxation", desc: "Disembark and drive to Marari for a quiet day at a pristine, uncrowded beach." },
-        { day: 6, title: "Departure", desc: "Return drive to Kochi airport." }
-      ]
-    },
-    { 
-      id: 3, title: "Spiti Valley Expedition", location: "Himachal Pradesh", days: "9 Days / 8 Nights", category: "Adventure", 
-      image: "https://images.unsplash.com/photo-1623227866981-d131ec6d7c71?auto=format&fit=crop&w=800&q=80", tags: ["High Altitude", "Monasteries", "Trekking"],
-      overview: "A rugged, breathtaking road trip into the cold desert mountains of the Himalayas. Not for the faint of heart.",
-      plan: [
-        { day: 1, title: "Shimla to Kalpa", desc: "Begin the epic mountain drive. Overnight stay in Kalpa with views of Kinner Kailash." },
-        { day: 2, title: "Entering the Desert", desc: "Drive to Tabo via the treacherous and beautiful Indo-Tibet highway." },
-        { day: 3, title: "Tabo to Kaza", desc: "Visit the 1000-year-old Tabo Monastery, then drive to Kaza, the heart of Spiti." },
-        { day: 4, title: "Key Monastery & Kibber", desc: "Visit the iconic Key Monastery perched on a hilltop, and the high-altitude village of Kibber." },
-        { day: 5, title: "Langza to Chandratal", desc: "Drive to the stunning, crescent-shaped Chandratal Lake. Camp overnight under the stars." },
-        { day: 6, title: "Kunzum Pass to Manali", desc: "Cross the challenging Kunzum Pass and Rohtang Pass down into the green Manali valley." },
-        { day: 7, title: "Departure", desc: "Relaxed morning in Manali before departure." }
-      ]
-    },
-    { 
-      id: 4, title: "Golden Triangle Highlights", location: "Delhi, Agra, Jaipur", days: "5 Days / 4 Nights", category: "Heritage", 
-      image: "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=800&q=80", tags: ["Taj Mahal", "History", "Monuments"],
-      overview: "The quintessential Indian journey. Witness the bustling streets of Delhi, the iconic Taj Mahal, and the royal heritage of Jaipur.",
-      plan: [
-        { day: 1, title: "Welcome to New Delhi", desc: "Arrive in the capital. Afternoon tour of Qutub Minar, India Gate, and Humayun's Tomb." },
-        { day: 2, title: "Old Delhi to Agra", desc: "Morning rickshaw ride through Chandni Chowk. Afternoon drive to Agra and sunset view of the Taj Mahal from Mehtab Bagh." },
-        { day: 3, title: "The Taj Mahal & Agra Fort", desc: "Sunrise visit to the Taj Mahal. Later, explore the massive red sandstone Agra Fort. Evening drive to Jaipur." },
-        { day: 4, title: "Jaipur Sightseeing", desc: "Elephant or jeep ride up to Amer Fort. Afternoon photo stop at Jal Mahal and Hawa Mahal." },
-        { day: 5, title: "Departure", desc: "Morning shopping for local handicrafts in Jaipur. Transfer to Delhi or Jaipur airport." }
-      ]
-    },
-    { 
-      id: 5, title: "Andaman Island Hopping", location: "Andaman Islands", days: "7 Days / 6 Nights", category: "Relaxation", 
-      image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80", tags: ["Beaches", "Scuba", "Sunsets"],
-      overview: "Escape to tropical paradise. Discover crystal-clear waters, white sandy beaches, and vibrant coral reefs untouched by the mainland hustle.",
-      plan: [
-        { day: 1, title: "Arrival in Port Blair", desc: "Arrive at Port Blair. Afternoon visit to Cellular Jail followed by the stirring Light and Sound Show." },
-        { day: 2, title: "Ferry to Havelock Island", desc: "Morning luxury ferry to Havelock. Spend the afternoon relaxing at the world-famous Radhanagar Beach." },
-        { day: 3, title: "Elephant Beach Adventure", desc: "Take a speed boat to Elephant Beach for snorkeling, sea walking, or scuba diving among vibrant corals." },
-        { day: 4, title: "Neil Island Tranquility", desc: "Ferry to Neil Island. Visit the serene Bharatpur Beach and watch an unforgettable sunset." },
-        { day: 5, title: "Natural Bridge Exploration", desc: "Explore the incredible Howrah Bridge (Natural Rock Formation) and relax at Laxmanpur Beach." },
-        { day: 6, title: "Return to Port Blair", desc: "Morning ferry back to Port Blair. Evening free for local souvenir shopping." },
-        { day: 7, title: "Departure", desc: "Morning transfer to the airport." }
-      ]
-    },
-    { 
-      id: 6, title: "Meghalaya Monsoon Magic", location: "Meghalaya", days: "6 Days / 5 Nights", category: "Nature", 
-      image: "https://images.unsplash.com/photo-1571536802807-30451e3955d8?auto=format&fit=crop&w=800&q=80", tags: ["Waterfalls", "Caves", "Root Bridges"],
-      overview: "Step into the 'Abode of Clouds'. Explore living root bridges, mystical caves, and some of the highest waterfalls in Asia.",
-      plan: [
-        { day: 1, title: "Guwahati to Shillong", desc: "Arrive at Guwahati and drive to Shillong. En route, stop at the beautiful Umiam Lake." },
-        { day: 2, title: "Shillong Local & Laitlum", desc: "Visit Elephant Falls and Shillong Peak. Afternoon trek to the breathtaking Laitlum Canyons." },
-        { day: 3, title: "Drive to Cherrapunji", desc: "Drive to the wettest place on earth. View the dramatic Nohkalikai Falls and explore Mawsmai Cave." },
-        { day: 4, title: "Double Decker Root Bridge", desc: "Descend 3000 steps deep into the jungle to witness the incredible living root bridges of Nongriat." },
-        { day: 5, title: "Crystal Clear Dawki", desc: "Drive to the border town of Dawki. Enjoy a boat ride on the transparent Umngot River." },
-        { day: 6, title: "Departure", desc: "Return journey to Guwahati for your onward flight." }
-      ]
-    },
-    { 
-      id: 7, title: "Kashmir Paradise Retreat", location: "Jammu & Kashmir", days: "6 Days / 5 Nights", category: "Nature", 
-      image: "https://images.unsplash.com/photo-1595815771614-ade9d6527620?auto=format&fit=crop&w=800&q=80", tags: ["Snow", "Shikara", "Valleys"],
-      overview: "Often called 'Heaven on Earth', experience the serene lakes of Srinagar and the rolling green meadows of Pahalgam and Gulmarg.",
-      plan: [
-        { day: 1, title: "Srinagar & Dal Lake", desc: "Arrive in Srinagar. Check into a traditional wooden houseboat and enjoy a sunset Shikara ride." },
-        { day: 2, title: "Mughal Gardens", desc: "Visit the stunning terraced Shalimar Bagh and Nishat Bagh. Evening stroll around the local markets." },
-        { day: 3, title: "Excursion to Gulmarg", desc: "Day trip to the 'Meadow of Flowers'. Take the thrilling Gulmarg Gondola ride up to Mount Apharwat." },
-        { day: 4, title: "Srinagar to Pahalgam", desc: "Drive to Pahalgam, the 'Valley of Shepherds', passing saffron fields and apple orchards." },
-        { day: 5, title: "Exploring Betaab Valley", desc: "Visit the scenic Betaab Valley and Aru Valley. Relax by the Lidder River." },
-        { day: 6, title: "Departure", desc: "Drive back to Srinagar airport with memories of a lifetime." }
-      ]
-    }
-  ];
 
   const filters = ['All', 'Heritage', 'Nature', 'Adventure', 'Relaxation'];
   const displayedItineraries = activeFilter === 'All' ? itineraries : itineraries.filter(i => i.category === activeFilter);
@@ -165,13 +179,9 @@ const ItinerariesPage = () => {
                     <span key={tag} style={{ backgroundColor: '#f3f4f6', color: '#4b5563', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '600' }}>{tag}</span>
                   ))}
                 </div>
-                <button 
-                  onClick={(e) => handleCustomize(e, item)} 
-                  style={{ marginTop: 'auto', width: '100%', padding: '14px', borderRadius: '12px', backgroundColor: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }} 
-                  onMouseEnter={(e)=>e.currentTarget.style.backgroundColor='#dcfce7'} onMouseLeave={(e)=>e.currentTarget.style.backgroundColor='#f0fdf4'}
-                >
+                <div style={{ marginTop: 'auto', width: '100%', padding: '14px', borderRadius: '12px', backgroundColor: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                   Customize this trip <ArrowRight size={18} />
-                </button>
+                </div>
               </div>
             </div>
           ))}

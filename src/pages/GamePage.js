@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trophy, MapPin, Sparkles, ArrowRight, CheckCircle2, Lightbulb, TicketPercent, PlayCircle, X, Coins, Loader2, Gamepad2, Smile, HelpCircle, ChevronLeft, Compass, Target, Dices, ShieldAlert, Users } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Trophy, MapPin, Sparkles, ArrowRight, CheckCircle2, Lightbulb, PlayCircle, X, Coins, Loader2, Gamepad2, Smile, HelpCircle, ChevronLeft, Compass, Target, Dices, ShieldAlert, Users, RotateCcw, Save } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 // ==========================================
 // 1. GAME DATABASES 
@@ -20,21 +20,19 @@ const crosswordPuzzles = [
   { id: 10, city: "Amritsar", title: "The Golden Heart", hintText: "A prominent city in Punjab, home to the holiest Gurdwara of the Sikh religion.", rows: 4, cols: 4, wordCount: 3, cells: [ { r: 0, c: 0, a: 'G', n: 1 }, { r: 0, c: 1, a: 'O' }, { r: 0, c: 2, a: 'L' }, { r: 0, c: 3, a: 'D', n: 2 }, { r: 1, c: 0, a: 'U' }, { r: 2, c: 0, a: 'R' }, { r: 3, c: 0, a: 'U' }, { r: 1, c: 3, a: 'E' }, { r: 2, c: 3, a: 'S' }, { r: 3, c: 3, a: 'I' } ], clues: { across: [{ n: 1, text: "The precious metal covering the famous temple (4)" }], down: [{ n: 1, text: "A spiritual teacher or guide (4)" }, { n: 2, text: "Local term for traditional, authentic food (4)" }] }, answersExplained: [ { word: "GOLD", meaning: "The precious metal covering the breathtaking Harmandir Sahib (Golden Temple)." }, { word: "GURU", meaning: "A spiritual teacher, central to the Sikh religion founded here." }, { word: "DESI", meaning: "The local term for the rich, traditional, and incredibly authentic Punjabi food." } ], desc: "Congratulations! You unlocked Amritsar. Famous for the breathtaking Golden Temple, community langars, and incredibly rich Punjabi food.", img: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=800&q=80" }
 ];
 
-// --- GAME 2: EMOJI EXPLORER ---
 const emojiPuzzles = [
-  { id: 1, emojis: "🏖️ 🥥 ⛪ 🛵", answer: "GOA", hint: "A state on the western coast of India.", desc: "Goa is the ultimate beach destination.", img: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=800&q=80" },
-  { id: 2, emojis: "🏔️ 🍎 ⛷️ 🌲", answer: "MANALI", hint: "A popular hill station in Himachal Pradesh.", desc: "Manali is a high-altitude Himalayan resort town known for its apple orchards and snowy peaks.", img: "https://images.unsplash.com/photo-1605640840469-60d8050e3ce4?auto=format&fit=crop&w=800&q=80" },
-  { id: 3, emojis: "🐫 🏜️ 🏰 ⛺", answer: "JAISALMER", hint: "A city in Rajasthan also known as the Golden City.", desc: "Jaisalmer lies in the heart of the Thar Desert.", img: "https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=800&q=80" },
-  { id: 4, emojis: "🌴 🛶 🥥 🐘", answer: "KERALA", hint: "A southern state known as God's Own Country.", desc: "Kerala is globally renowned for its serene backwaters, beautiful wooden houseboats, coconut-rich cuisine, and gentle elephants.", img: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=800&q=80" },
-  { id: 5, emojis: "🕌 💖 👑 🕊️", answer: "AGRA", hint: "Home to a world-famous monument of love.", desc: "Agra is synonymous with the Taj Mahal, the breathtaking white marble mausoleum built by Emperor Shah Jahan.", img: "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=800&q=80" },
-  { id: 6, emojis: "🕉️ 🛶 🕯️ 🛕", answer: "VARANASI", hint: "The spiritual capital of India on the banks of the Ganges.", desc: "Varanasi is an intense sensory experience, famous for its ancient ghats, evening Ganga Aarti, and deep spiritual significance.", img: "https://images.unsplash.com/photo-1561359313-0639aad49ca6?auto=format&fit=crop&w=800&q=80" },
-  { id: 7, emojis: "🚂 ☕ 🏔️ 🌿", answer: "DARJEELING", hint: "A hill station in West Bengal.", desc: "Darjeeling is world-famous for its sprawling tea estates, colonial charm, and the iconic Himalayan Toy Train.", img: "https://images.unsplash.com/photo-1588666015694-8ceb1e22067d?auto=format&fit=crop&w=800&q=80" },
-  { id: 8, emojis: "🤿 🐠 🏝️ 🐢", answer: "ANDAMAN", hint: "An archipelago of islands in the Bay of Bengal.", desc: "The Andaman Islands offer some of the best scuba diving in India, boasting crystal-clear waters, vibrant coral reefs, and sea turtles.", img: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80" },
-  { id: 9, emojis: "🎬 🌧️ 🚆 🍔", answer: "MUMBAI", hint: "The financial capital of India.", desc: "Mumbai is the fast-paced city of dreams, famous for Bollywood, the romantic monsoon rains, local trains, and iconic street food like Vada Pav.", img: "https://hblimg.mmtcdn.com/content/hubble/img/dest_img/mmt/activities/m_Kolkata_dest_landscape_l_956_1435.jpg" },
-  { id: 10, emojis: "🏍️ 🏔️ 🥶 ⛺", answer: "LADAKH", hint: "A high-altitude desert in the Himalayas.", desc: "Ladakh is the ultimate adventure destination, famous for treacherous motorcycle trips, freezing high-altitude deserts, and starry camping nights.", img: "https://images.unsplash.com/photo-1581793758837-920fbc8110b6?auto=format&fit=crop&w=800&q=80" }
+  { id: 1, emojis: "🏖️ 🥥 ⛪ 🛵", answer: "GOA", city: "Goa", hint: "A state on the western coast of India.", desc: "Goa is the ultimate beach destination.", img: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=800&q=80" },
+  { id: 2, emojis: "🏔️ 🍎 ⛷️ 🌲", answer: "MANALI", city: "Manali", hint: "A popular hill station in Himachal Pradesh.", desc: "Manali is a high-altitude Himalayan resort town known for its apple orchards and snowy peaks.", img: "https://images.unsplash.com/photo-1605640840469-60d8050e3ce4?auto=format&fit=crop&w=800&q=80" },
+  { id: 3, emojis: "🐫 🏜️ 🏰 ⛺", answer: "JAISALMER", city: "Jaisalmer", hint: "A city in Rajasthan also known as the Golden City.", desc: "Jaisalmer lies in the heart of the Thar Desert.", img: "https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=800&q=80" },
+  { id: 4, emojis: "🌴 🛶 🥥 🐘", answer: "KERALA", city: "Kerala", hint: "A southern state known as God's Own Country.", desc: "Kerala is globally renowned for its serene backwaters, beautiful wooden houseboats, coconut-rich cuisine, and gentle elephants.", img: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=800&q=80" },
+  { id: 5, emojis: "🕌 💖 👑 🕊️", answer: "AGRA", city: "Agra", hint: "Home to a world-famous monument of love.", desc: "Agra is synonymous with the Taj Mahal, the breathtaking white marble mausoleum built by Emperor Shah Jahan.", img: "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=800&q=80" },
+  { id: 6, emojis: "🕉️ 🛶 🕯️ 🛕", answer: "VARANASI", city: "Varanasi", hint: "The spiritual capital of India on the banks of the Ganges.", desc: "Varanasi is an intense sensory experience, famous for its ancient ghats, evening Ganga Aarti, and deep spiritual significance.", img: "https://images.unsplash.com/photo-1561359313-0639aad49ca6?auto=format&fit=crop&w=800&q=80" },
+  { id: 7, emojis: "🚂 ☕ 🏔️ 🌿", answer: "DARJEELING", city: "Darjeeling", hint: "A hill station in West Bengal.", desc: "Darjeeling is world-famous for its sprawling tea estates, colonial charm, and the iconic Himalayan Toy Train.", img: "https://images.unsplash.com/photo-1588666015694-8ceb1e22067d?auto=format&fit=crop&w=800&q=80" },
+  { id: 8, emojis: "🤿 🐠 🏝️ 🐢", answer: "ANDAMAN", city: "Andaman", hint: "An archipelago of islands in the Bay of Bengal.", desc: "The Andaman Islands offer some of the best scuba diving in India, boasting crystal-clear waters, vibrant coral reefs, and sea turtles.", img: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80" },
+  { id: 9, emojis: "🎬 🌧️ 🚆 🍔", answer: "MUMBAI", city: "Mumbai", hint: "The financial capital of India.", desc: "Mumbai is the fast-paced city of dreams, famous for Bollywood, the romantic monsoon rains, local trains, and iconic street food like Vada Pav.", img: "https://hblimg.mmtcdn.com/content/hubble/img/dest_img/mmt/activities/m_Kolkata_dest_landscape_l_956_1435.jpg" },
+  { id: 10, emojis: "🏍️ 🏔️ 🥶 ⛺", answer: "LADAKH", city: "Ladakh", hint: "A high-altitude desert in the Himalayas.", desc: "Ladakh is the ultimate adventure destination, famous for treacherous motorcycle trips, freezing high-altitude deserts, and starry camping nights.", img: "https://images.unsplash.com/photo-1581793758837-920fbc8110b6?auto=format&fit=crop&w=800&q=80" }
 ];
 
-// --- GAME 3: WANDERLUST TRIVIA ---
 const triviaPuzzles = [
   { id: 1, question: "Which Indian state is home to the majestic 'Living Root Bridges'?", options: ["Assam", "Meghalaya", "Nagaland", "Sikkim"], answer: "Meghalaya", city: "Cherrapunji", desc: "The Khasi and Jaintia tribes of Meghalaya have guided roots of rubber trees across rivers for centuries.", img: "https://images.unsplash.com/photo-1571536802807-30451e3955d8?auto=format&fit=crop&w=800&q=80" },
   { id: 2, question: "Which city is known as the 'Yoga Capital of the World'?", options: ["Varanasi", "Haridwar", "Rishikesh", "Dharamshala"], answer: "Rishikesh", city: "Rishikesh", desc: "Rishikesh is a spiritual haven surrounded by the Himalayas.", img: "https://images.unsplash.com/photo-1599839575945-a9e5af0c3fa5?auto=format&fit=crop&w=800&q=80" },
@@ -48,29 +46,80 @@ const triviaPuzzles = [
   { id: 10, question: "The majestic Victoria Memorial, a large marble building built in memory of Queen Victoria, is a prominent landmark in which city?", options: ["Mumbai", "Chennai", "Delhi", "Kolkata"], answer: "Kolkata", city: "Kolkata", desc: "A remnant of the British Raj, the Victoria Memorial in Kolkata is a stunning architectural marvel set amidst sprawling gardens.", img: "https://hblimg.mmtcdn.com/content/hubble/img/dest_img/mmt/activities/m_Kolkata_dest_landscape_l_956_1435.jpg" }
 ];
 
-// --- GAME 4: TRAVEL ROULETTE ---
 const rouletteCategories = [
-  { name: "Food", color: "#ef4444" }, { name: "Culture", color: "#3b82f6" }, { name: "Geography", color: "#10b981" }, { name: "Monument", color: "#f59e0b" }, { name: "Wildcard", color: "#8b5cf6" }
+  { name: "Food", color: "#ef4444" }, 
+  { name: "Culture", color: "#3b82f6" }, 
+  { name: "Geography", color: "#10b981" }, 
+  { name: "Monument", color: "#f59e0b" }, 
+  { name: "Wildlife", color: "#14b8a6" }, 
+  { name: "History", color: "#d946ef" }, 
+  { name: "Festivals", color: "#f97316" },
+  { name: "Wildcard", color: "#8b5cf6" }
 ];
+
 const rouletteChallenges = [
   { type: "Food", q: "Name the fiery red mutton curry famously cooked in Rajasthan.", a: "LAAL MAAS" },
-  { type: "Wildcard", q: "Which state is globally known as 'God's Own Country'?", a: "KERALA" },
-  { type: "Geography", q: "What is the capital city of Rajasthan?", a: "JAIPUR" },
+  { type: "Food", q: "Which famous street food from Mumbai consists of a deep-fried potato dumpling inside a bread bun?", a: "VADA PAV" },
+  { type: "Food", q: "What is the popular fermented crepe made from rice and lentils, a staple in South India?", a: "DOSA" },
+  { type: "Food", q: "Which sweet syrupy dessert, often spiral-shaped, is wildly popular across India?", a: "JALEBI" },
+  { type: "Food", q: "Makki di Roti and Sarson da Saag is a traditional dish from which state?", a: "PUNJAB" },
+  { type: "Food", q: "Which rich Mughlai dish is made of fragrant rice and meat, widely famous in Hyderabad?", a: "BIRYANI" },
   { type: "Culture", q: "The classical dance form 'Kathakali' originated in which state?", a: "KERALA" },
-  { type: "Monument", q: "In which city is the famous Charminar located?", a: "HYDERABAD" }
+  { type: "Culture", q: "Which famous festival is known globally as the 'Festival of Colors'?", a: "HOLI" },
+  { type: "Culture", q: "The Hornbill Festival, a celebration of indigenous warrior tribes, is held in which state?", a: "NAGALAND" },
+  { type: "Culture", q: "Which traditional Indian garment is a long piece of unstitched cloth draped over the body?", a: "SAREE" },
+  { type: "Culture", q: "Bihu is the most important festival of which northeastern Indian state?", a: "ASSAM" },
+  { type: "Geography", q: "What is the capital city of Rajasthan?", a: "JAIPUR" },
+  { type: "Geography", q: "Which Indian state shares the longest international border with a neighboring country?", a: "WEST BENGAL" },
+  { type: "Geography", q: "The Thar Desert is primarily located in which Indian state?", a: "RAJASTHAN" },
+  { type: "Geography", q: "Which river is considered the holiest in India and flows through Varanasi?", a: "GANGES" },
+  { type: "Geography", q: "What is the southernmost point of the Indian mainland called?", a: "KANYAKUMARI" },
+  { type: "Monument", q: "In which city is the famous Charminar located?", a: "HYDERABAD" },
+  { type: "Monument", q: "The iconic Gateway of India overlooks the Arabian Sea in which city?", a: "MUMBAI" },
+  { type: "Monument", q: "Which majestic white marble mausoleum is located in Agra?", a: "TAJ MAHAL" },
+  { type: "Monument", q: "The Victoria Memorial, a large marble building, is a prominent landmark in which city?", a: "KOLKATA" },
+  { type: "Monument", q: "Which famous red sandstone fort in Delhi served as the main residence of Mughal Emperors?", a: "RED FORT" },
+  { type: "Wildcard", q: "Which state is globally known as 'God's Own Country'?", a: "KERALA" },
+  { type: "Wildcard", q: "What is the official currency of India?", a: "RUPEE" },
+  { type: "Wildcard", q: "Which city is famously known as the 'Silicon Valley of India'?", a: "BENGALURU" },
+  { type: "Wildcard", q: "The massive Indian film industry based in Mumbai is commonly known as what?", a: "BOLLYWOOD" },
+  { type: "Wildcard", q: "Which animal is the national heritage animal and widely found in Kerala and Assam?", a: "ELEPHANT" },
+  { type: "Wildlife", q: "Which national park in Gujarat is the only natural home to the Asiatic Lion?", a: "GIR", city: "Gujarat" },
+  { type: "Wildlife", q: "Which national park in Assam is famous for the one-horned rhinoceros?", a: "KAZIRANGA", city: "Assam" },
+  { type: "Wildlife", q: "Ranthambore National Park is famous for spotting which big cat?", a: "TIGER", city: "Sawai Madhopur" },
+  { type: "Wildlife", q: "Which state is home to the dense mangrove forests of the Sundarbans?", a: "WEST BENGAL", city: "Kolkata" },
+  { type: "History", q: "The Vijayanagara Empire's capital was located in which modern-day ruined city?", a: "HAMPI", city: "Hampi" },
+  { type: "History", q: "Which great Mauryan emperor built the Sanchi Stupa?", a: "ASHOKA", city: "Sanchi" },
+  { type: "History", q: "In 1911, the capital of British India was shifted from Kolkata to which city?", a: "DELHI", city: "Delhi" },
+  { type: "History", q: "Which ruler built the majestic Agra Fort?", a: "AKBAR", city: "Agra" },
+  { type: "Festivals", q: "Which famous festival is known globally as the 'Festival of Colors'?", a: "HOLI", city: "Mathura" },
+  { type: "Festivals", q: "The Hornbill Festival, a celebration of indigenous warrior tribes, is held in which state?", a: "NAGALAND", city: "Kohima" },
+  { type: "Festivals", q: "Bihu is the most important festival of which northeastern Indian state?", a: "ASSAM", city: "Guwahati" },
+  { type: "Festivals", q: "Onam is the major harvest festival of which southern state?", a: "KERALA", city: "Kochi" },
 ];
 
-// --- GAME 5: SNAKES & LADDERS (100 TILES WITH TRIVIA) ---
+// --- GAME 5: SNAKES & LADDERS (100 Unique Tiles via Wikipedia) ---
 const snlBoardSize = 100; 
 
-// Generate 100-tile Boustrophedon Layout (10x10) safely
+// Exactly 100 Real Indian Destinations
+const destinationNames = [
+  "Agra", "Jaipur", "Varanasi", "Goa", "Munnar", "Ladakh", "Amritsar", "Hampi", "Jaisalmer", "Cherrapunji",
+  "Udaipur", "Jodhpur", "Kolkata", "Mumbai", "Delhi", "Chennai", "Bangalore", "Hyderabad", "Pune", "Kochi",
+  "Mysore", "Darjeeling", "Shimla", "Manali, Himachal Pradesh", "Rishikesh", "Haridwar", "Nainital", "Mussoorie", "Dalhousie, India", "Gangtok",
+  "Shillong", "Tawang", "Kaziranga National Park", "Kohima", "Imphal", "Aizawl", "Agartala", "Dimapur", "Itanagar", "Guwahati",
+  "Bodh Gaya", "Patna", "Ranchi", "Bhubaneswar", "Puri", "Konark", "Visakhapatnam", "Tirupati", "Vijayawada", "Amaravati",
+  "Mahabalipuram", "Kanyakumari", "Madurai", "Coimbatore", "Ooty", "Kodaikanal", "Rameswaram", "Thiruvananthapuram", "Alappuzha", "Kumarakom",
+  "Wayanad district", "Kozhikode", "Thrissur", "Mangalore", "Udupi", "Gokarna, Karnataka", "Murdeshwar", "Chikmagalur", "Madikeri", "Belur, Karnataka",
+  "Halebidu", "Badami", "Bijapur", "Pattadakal", "Aihole", "Gulbarga", "Bidar", "Aurangabad, Maharashtra", "Nashik", "Mahabaleshwar",
+  "Lonavala", "Panchgani", "Alibag", "Khandala", "Matheran", "Shirdi", "Ellora Caves", "Ajanta Caves", "Khajuraho Group of Monuments", "Sanchi",
+  "Bhopal", "Indore", "Gwalior", "Ujjain", "Jabalpur", "Orchha", "Mandu, Madhya Pradesh", "Pachmarhi", "Bandhavgarh National Park", "Ranthambore National Park"
+];
+
 const getSnlBoardLayout = () => {
   let layout = [];
   for (let row = 9; row >= 0; row--) {
     let rowCells = [];
-    for (let col = 1; col <= 10; col++) {
-      rowCells.push(row * 10 + col);
-    }
+    for (let col = 1; col <= 10; col++) rowCells.push(row * 10 + col);
     if (row % 2 !== 0) rowCells.reverse(); 
     layout.push(...rowCells);
   }
@@ -78,47 +127,27 @@ const getSnlBoardLayout = () => {
 };
 const snlBoardLayout = getSnlBoardLayout();
 
-// Events
 const snakesAndLadders = {
-  4: { to: 14, type: 'ladder', msg: "Found a hidden forest shortcut! 🪜 Climb to 14." },
-  9: { to: 31, type: 'ladder', msg: "Friendly locals gave you a lift! 🪜 Jump to 31." },
-  17: { to: 7, type: 'snake', msg: "Lost your map in the bazaar. 🐍 Fall back to 7." },
-  20: { to: 38, type: 'ladder', msg: "Upgraded to First Class! 🪜 Zoom to 38." },
-  28: { to: 84, type: 'ladder', msg: "Caught the superfast Gatimaan Express! 🪜 Fly to 84." },
-  40: { to: 59, type: 'ladder', msg: "Discovered an underground cave system! 🪜 Climb to 59." },
-  51: { to: 67, type: 'ladder', msg: "Rode a camel across the dunes! 🪜 Jump to 67." },
-  54: { to: 34, type: 'snake', msg: "Monsoon washed out the road. 🐍 Fall to 34." },
-  62: { to: 19, type: 'snake', msg: "Missed your connecting flight! 🐍 Drop to 19." },
-  64: { to: 60, type: 'snake', msg: "Ate too much spicy chaat. 🐍 Rest at 60." },
-  71: { to: 91, type: 'ladder', msg: "Hired a private speedboat! 🪜 Cruise to 91." },
-  87: { to: 24, type: 'snake', msg: "Forgot your passport at the hotel! 🐍 Huge drop to 24." },
-  93: { to: 73, type: 'snake', msg: "Stuck in massive city traffic! 🐍 Fall to 73." },
-  95: { to: 75, type: 'snake', msg: "Monkey stole your sunglasses! 🐍 Drop to 75." },
-  99: { to: 78, type: 'snake', msg: "Took the wrong train at the last second! 🐍 Fall to 78." }
+  4: { to: 14, type: 'ladder', msg: "Hidden shortcut! 🪜 Climb to 14." },
+  9: { to: 31, type: 'ladder', msg: "Friendly locals gave a lift! 🪜 Jump to 31." },
+  17: { to: 7, type: 'snake', msg: "Lost your map! 🐍 Fall to 7." },
+  28: { to: 84, type: 'ladder', msg: "Caught the Express Train! 🪜 Fly to 84." },
+  40: { to: 59, type: 'ladder', msg: "Found a secret cave! 🪜 Climb to 59." },
+  54: { to: 34, type: 'snake', msg: "Monsoon washed out road! 🐍 Fall to 34." },
+  62: { to: 19, type: 'snake', msg: "Missed connecting flight! 🐍 Drop to 19." },
+  71: { to: 91, type: 'ladder', msg: "Hired a speedboat! 🪜 Cruise to 91." },
+  87: { to: 24, type: 'snake', msg: "Forgot your passport! 🐍 Huge drop to 24." },
+  99: { to: 78, type: 'snake', msg: "Wrong train! 🐍 Fall to 78." }
 };
 
-// Rich Tile Trivia 
-const tileTriviaData = [
-  { city: "Agra", fact: "The Taj Mahal changes color depending on the time of day, appearing pink in the morning and golden at night." },
-  { city: "Jaipur", fact: "Known as the Pink City because Maharaja Ram Singh painted the entire city pink to welcome the Prince of Wales in 1876." },
-  { city: "Varanasi", fact: "It is believed to be one of the oldest continuously inhabited cities in the world, dating back over 3,000 years." },
-  { city: "Goa", fact: "Goa has the highest per capita income in India and features over 50 pristine beaches." },
-  { city: "Munnar", fact: "Home to the Neelakurinji flower, which blooms only once every 12 years, painting the hills purplish-blue." },
-  { city: "Ladakh", fact: "Features the 'Magnetic Hill', an optical illusion where vehicles seem to roll uphill against gravity." },
-  { city: "Amritsar", fact: "The Golden Temple feeds over 100,000 people every single day for free in its massive community kitchen (Langar)." },
-  { city: "Hampi", fact: "This UNESCO World Heritage site was once the second-largest medieval-era city in the world after Beijing." },
-  { city: "Jaisalmer", fact: "The Jaisalmer Fort is a 'living fort'—nearly one-fourth of the city's population still resides inside its ancient walls." },
-  { city: "Cherrapunji", fact: "Holds the record for the highest recorded rainfall in a single year, making it one of the wettest places on Earth." }
-];
-
-// Lifeline Snake Trivia Questions
 const snakeLifelineTrivia = [
-  { q: "Which Indian monument was built as a symbol of love?", a: "Taj Mahal", opts: ["Red Fort", "Taj Mahal", "Qutub Minar"] },
-  { q: "What is the capital of God's Own Country (Kerala)?", a: "Trivandrum", opts: ["Kochi", "Munnar", "Trivandrum"] },
-  { q: "Which state is famous for the Backwaters?", a: "Kerala", opts: ["Goa", "Kerala", "Odisha"] },
-  { q: "The 'Pink City' refers to which Indian destination?", a: "Jaipur", opts: ["Jodhpur", "Jaipur", "Udaipur"] }
+  { q: "Which monument was built as a symbol of love?", a: "Taj Mahal", opts: ["Red Fort", "Taj Mahal", "Qutub Minar"] },
+  { q: "Capital of God's Own Country (Kerala)?", a: "Trivandrum", opts: ["Kochi", "Munnar", "Trivandrum"] },
+  { q: "State famous for the Backwaters?", a: "Kerala", opts: ["Goa", "Kerala", "Odisha"] },
+  { q: "The 'Pink City' refers to which destination?", a: "Jaipur", opts: ["Jodhpur", "Jaipur", "Udaipur"] },
+  { q: "Which river flows through Varanasi?", a: "Ganges", opts: ["Yamuna", "Brahmaputra", "Ganges"] },
+  { q: "Where is the Gateway of India located?", a: "Mumbai", opts: ["Delhi", "Mumbai", "Chennai"] }
 ];
-
 
 // ==========================================
 // MAIN COMPONENT
@@ -126,32 +155,70 @@ const snakeLifelineTrivia = [
 const GamePage = () => {
   const navigate = useNavigate();
   
-  // --- GLOBAL ARCADE STATE ---
-  const [activeGame, setActiveGame] = useState('lobby'); 
-  const [levelsCompleted, setLevelsCompleted] = useState(0); 
+  // --- NATIVE ROUTING: BROWSER BACK BUTTON SUPPORT ---
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeGame = searchParams.get('play') || 'lobby';
   
+  const handleGameSelect = (gameId) => {
+    setSearchParams({ play: gameId });
+    if (gameId === 'snakes') setSnlState('setup');
+  };
+
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+
+  // Intercept the browser back button
+  useEffect(() => {
+    const handlePopState = (event) => {
+      if (activeGame !== 'lobby') {
+        window.history.pushState(null, "", window.location.href);
+        setShowLeaveModal(true); 
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeGame]);
+
+  const confirmLeave = (saveProgress) => {
+    if (!saveProgress) {
+      if (activeGame === 'crossword') { setCwLevel(0); setCwGrid({}); setCwSolved(false); localStorage.removeItem('odessey_cwLevel'); }
+      if (activeGame === 'emoji') { setEmLevel(0); setEmGuess(""); setEmSolved(false); localStorage.removeItem('odessey_emLevel'); }
+      if (activeGame === 'trivia') { setTrLevel(0); setSelectedOption(null); setTrSolved(false); localStorage.removeItem('odessey_trLevel'); }
+      if (activeGame === 'snakes') { 
+        resetSnakes(); 
+        localStorage.removeItem('odessey_snl_state'); 
+        localStorage.removeItem('odessey_snl_players');
+        localStorage.removeItem('odessey_snl_currIdx');
+        localStorage.removeItem('odessey_activeTilePos');
+      }
+    }
+    setShowLeaveModal(false);
+    setSearchParams({}); // Go back to lobby natively
+  };
+
   // SHUFFLED ARRAYS
   const [shuffledCw, setShuffledCw] = useState([]);
   const [shuffledEm, setShuffledEm] = useState([]);
   const [shuffledTr, setShuffledTr] = useState([]);
 
-  // WALLETS
-  const [crosswordScore, setCrosswordScore] = useState(0); 
-  const [emojiScore, setEmojiScore] = useState(0);         
-  const [triviaScore, setTriviaScore] = useState(0);       
-  const [rouletteScore, setRouletteScore] = useState(0);   
-  const [snakesScore, setSnakesScore] = useState(0);       
-  
-  const RWD_CW = 1;  
-  const RWD_EM = 5;  
-  const RWD_TR = 3;  
-  const RWD_RO = 3;  
-  const RWD_SN = 15; 
+  // PERMANENT LOCAL STORAGE WALLET
+  const [totalWallet, setTotalWallet] = useState(() => parseInt(localStorage.getItem('odessey_wallet')) || 0);
+  const [levelsCompleted, setLevelsCompleted] = useState(() => parseInt(localStorage.getItem('odessey_levels_cleared')) || 0);
 
-  const totalWallet = (crosswordScore * RWD_CW) + (emojiScore * RWD_EM) + (triviaScore * RWD_TR) + (rouletteScore * RWD_RO) + snakesScore;
+  const triggerWin = (amount) => {
+    setTotalWallet(prev => { const newT = prev + amount; localStorage.setItem('odessey_wallet', newT); return newT; });
+    setLevelsCompleted(prev => { const newL = prev + 1; localStorage.setItem('odessey_levels_cleared', newL); return newL; });
+  };
+
+  const resetAllProgress = () => {
+    if (window.confirm("Are you sure you want to completely reset your Arcade progress and wallet balance to zero?")) {
+      localStorage.clear(); setTotalWallet(0); setLevelsCompleted(0); window.location.reload(); 
+    }
+  };
+
+  const RWD_CW = 1, RWD_EM = 5, RWD_TR = 3, RWD_RO = 3, RWD_SN = 15; 
 
   // --- CROSSWORD STATE ---
-  const [cwLevel, setCwLevel] = useState(0);
+  const [cwLevel, setCwLevel] = useState(() => parseInt(localStorage.getItem('odessey_cwLevel')) || 0);
   const [cwGrid, setCwGrid] = useState({});
   const [cwSolved, setCwSolved] = useState(false);
   const [cwError, setCwError] = useState(false);
@@ -159,12 +226,12 @@ const GamePage = () => {
   const cwRefs = useRef([]);
 
   // --- EMOJI & TRIVIA STATE ---
-  const [emLevel, setEmLevel] = useState(0);
+  const [emLevel, setEmLevel] = useState(() => parseInt(localStorage.getItem('odessey_emLevel')) || 0);
   const [emGuess, setEmGuess] = useState("");
   const [emSolved, setEmSolved] = useState(false);
   const [emError, setEmError] = useState(false);
 
-  const [trLevel, setTrLevel] = useState(0);
+  const [trLevel, setTrLevel] = useState(() => parseInt(localStorage.getItem('odessey_trLevel')) || 0);
   const [trSolved, setTrSolved] = useState(false);
   const [trError, setTrError] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
@@ -179,242 +246,240 @@ const GamePage = () => {
 
   // --- SNAKES & LADDERS STATE ---
   const playerColors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
-  const [snlState, setSnlState] = useState('setup'); 
+  const [snlState, setSnlState] = useState(() => localStorage.getItem('odessey_snl_state') || 'setup'); 
   const [numPlayersInput, setNumPlayersInput] = useState(1);
-  const [snlPlayers, setSnlPlayers] = useState([]); 
-  const [currPlayerIdx, setCurrPlayerIdx] = useState(0);
+  const [snlPlayers, setSnlPlayers] = useState(() => JSON.parse(localStorage.getItem('odessey_snl_players')) || []); 
+  const [currPlayerIdx, setCurrPlayerIdx] = useState(() => parseInt(localStorage.getItem('odessey_snl_currIdx')) || 0);
   const [gameLog, setGameLog] = useState("Roll the dice to start your journey!");
-  const [activeTilePos, setActiveTilePos] = useState(1);
   const [snakeTrap, setSnakeTrap] = useState(null); 
+  
+  const [activeTilePos, setActiveTilePos] = useState(() => parseInt(localStorage.getItem('odessey_activeTilePos')) || 1);
+  const [activeTileData, setActiveTileData] = useState({ city: "Loading...", fact: "Loading data...", img: "" });
+  
+  // WIKIPEDIA DATA CACHE
+  const [wikiDataMap, setWikiDataMap] = useState({});
 
+  // Save basic states to LocalStorage
+  useEffect(() => { localStorage.setItem('odessey_cwLevel', cwLevel); }, [cwLevel]);
+  useEffect(() => { localStorage.setItem('odessey_emLevel', emLevel); }, [emLevel]);
+  useEffect(() => { localStorage.setItem('odessey_trLevel', trLevel); }, [trLevel]);
+  useEffect(() => {
+    localStorage.setItem('odessey_snl_state', snlState);
+    localStorage.setItem('odessey_snl_players', JSON.stringify(snlPlayers));
+    localStorage.setItem('odessey_snl_currIdx', currPlayerIdx);
+    localStorage.setItem('odessey_activeTilePos', activeTilePos);
+  }, [snlState, snlPlayers, currPlayerIdx, activeTilePos]);
 
-  // 1. Shuffle Data on Mount
+  // Shuffle Data on Mount
   useEffect(() => {
     setShuffledCw([...crosswordPuzzles].sort(() => Math.random() - 0.5));
     setShuffledEm([...emojiPuzzles].sort(() => Math.random() - 0.5));
     setShuffledTr([...triviaPuzzles].sort(() => Math.random() - 0.5));
   }, []);
 
-  // 2. Snakes & Ladders Bot Logic (MUST BE BEFORE EARLY RETURN)
+  // WIKIPEDIA API FETCH (Loads images and facts for the 100 destinations)
   useEffect(() => {
-    if (snlState === 'playing' && !snakeTrap && snlPlayers.length > 0) {
+    const fetchWiki = async () => {
+      try {
+        const chunks = [destinationNames.slice(0, 50), destinationNames.slice(50, 100)];
+        let newMap = {};
+
+        for (const chunk of chunks) {
+          const titles = chunk.join('|');
+          // Fetch thumbnail + extract (intro text)
+          const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages|extracts&titles=${encodeURIComponent(titles)}&pithumbsize=400&exintro=1&explaintext=1&exsentences=2&redirects=1&origin=*`;
+          const res = await fetch(url);
+          const data = await res.json();
+          
+          // Map exact input titles to returned titles (handling redirects)
+          const titleMapping = {};
+          chunk.forEach(t => titleMapping[t.toLowerCase()] = t);
+          if (data.query?.normalized) data.query.normalized.forEach(n => titleMapping[n.to.toLowerCase()] = titleMapping[n.from.toLowerCase()]);
+          if (data.query?.redirects) data.query.redirects.forEach(r => titleMapping[r.to.toLowerCase()] = titleMapping[r.from.toLowerCase()]);
+
+          if (data.query?.pages) {
+            Object.values(data.query.pages).forEach(page => {
+              const originalTitle = titleMapping[page.title.toLowerCase()] || page.title;
+              let intro = page.extract || "";
+              
+              // CUSTOM WIKIPEDIA CLEANER: Removes ugly IPA pronunciations and alternate spellings in brackets!
+              intro = intro.replace(/\s*\([^)]*\)/g, '').replace(/\s*\[[^\]]*\]/g, ''); 
+              
+              // Split cleaned paragraph into distinct sentences to randomize facts
+              let sentences = intro.match(/[^.!?]+[.!?]+/g) || [];
+              sentences = sentences.map(s => s.trim()).filter(s => s.length > 25);
+              
+              newMap[originalTitle] = {
+                img: page.thumbnail?.source || "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=600&q=80",
+                facts: sentences.length > 0 ? sentences : [`Discover the incredible sights and rich culture of ${originalTitle.split(',')[0]}.`]
+              };
+            });
+          }
+        }
+        
+        // Safety Fallback for any missing items that Wikipedia didn't return
+        destinationNames.forEach(dest => {
+          if (!newMap[dest]) {
+            newMap[dest] = {
+              img: "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=600&q=80",
+              facts: [`Explore the amazing destination of ${dest.split(',')[0]}.`]
+            };
+          }
+        });
+
+        setWikiDataMap(newMap);
+      } catch (err) {
+        console.error("Wiki Fetch Error:", err);
+      }
+    };
+
+    if (activeGame === 'snakes' && Object.keys(wikiDataMap).length === 0) {
+      fetchWiki();
+    }
+  }, [activeGame, wikiDataMap]);
+
+  // Update Side Panel Fact randomly
+  const updateSidePanel = (tileNum) => {
+    setActiveTilePos(tileNum);
+    const destName = destinationNames[tileNum - 1];
+    const tileData = wikiDataMap[destName];
+    if (tileData) {
+      const randomFact = tileData.facts[Math.floor(Math.random() * tileData.facts.length)];
+      setActiveTileData({ city: destName.split(',')[0], fact: randomFact, img: tileData.img });
+    }
+  };
+
+  // Sync side panel once Wiki data finishes loading
+  useEffect(() => {
+    if (Object.keys(wikiDataMap).length === 100) {
+      updateSidePanel(activeTilePos);
+    }
+  }, [wikiDataMap]);
+
+  // Bot Auto-Roll Logic
+  useEffect(() => {
+    if (snlState === 'playing' && !snakeTrap && !showLeaveModal && snlPlayers.length > 0) {
       const activePlayer = snlPlayers[currPlayerIdx];
       if (activePlayer && activePlayer.isBot) {
         const timer = setTimeout(() => {
-          // Trigger bot roll
           const roll = Math.floor(Math.random() * 6) + 1;
-          let updatedPlayers = [...snlPlayers];
-          let curr = updatedPlayers[currPlayerIdx];
-          let newPos = curr.pos + roll;
+          let updatedPlayers = [...snlPlayers]; let curr = updatedPlayers[currPlayerIdx]; let newPos = curr.pos + roll;
 
           if (newPos >= snlBoardSize) {
-            newPos = snlBoardSize;
-            curr.pos = newPos;
-            setSnlPlayers(updatedPlayers);
-            setActiveTilePos(newPos);
-            setGameLog(`🎲 ${curr.name} rolled a ${roll} and reached the destination! 🎉`);
-            setSnlState('finished');
-            return;
+            newPos = snlBoardSize; curr.pos = newPos; setSnlPlayers(updatedPlayers); setActiveTilePos(newPos);
+            setGameLog(`🎲 ${curr.name} rolled a ${roll} and reached the destination first! You lose!`);
+            setSnlState('finished'); return;
           }
-
           const event = snakesAndLadders[newPos];
-          if (event) {
-            setGameLog(`🎲 ${curr.name} rolled ${roll}. Landed on ${newPos}... ${event.msg}`);
-            curr.pos = event.to;
-          } else {
-            setGameLog(`🎲 ${curr.name} rolled a ${roll} and moved to tile ${newPos}.`);
-            curr.pos = newPos;
-          }
+          if (event) { setGameLog(`🎲 ${curr.name} rolled ${roll}. Landed on ${newPos}... ${event.msg}`); curr.pos = event.to; } 
+          else { setGameLog(`🎲 ${curr.name} rolled a ${roll} and moved to tile ${newPos}.`); curr.pos = newPos; }
 
-          setActiveTilePos(curr.pos);
-          setSnlPlayers(updatedPlayers);
-          setCurrPlayerIdx((prev) => (prev + 1) % updatedPlayers.length);
+          setActiveTilePos(curr.pos); setSnlPlayers(updatedPlayers); setCurrPlayerIdx((prev) => (prev + 1) % updatedPlayers.length);
         }, 1500); 
         return () => clearTimeout(timer);
       }
     }
-  }, [snlState, currPlayerIdx, snakeTrap, snlPlayers]);
+  }, [snlState, currPlayerIdx, snakeTrap, snlPlayers, showLeaveModal]);
 
-  // 3. Early Return for Loading State
   if (shuffledCw.length === 0 || shuffledEm.length === 0 || shuffledTr.length === 0) {
     return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 className="animate-spin" size={40} color="#16a34a" /></div>;
   }
 
-  // --- CROSSWORD LOGIC ---
-  const currentCw = shuffledCw[cwLevel] || crosswordPuzzles[0]; // Safety fallback
-  const focusCell = (targetR, targetC) => {
-    const index = currentCw.cells.findIndex(cell => cell.r === targetR && cell.c === targetC);
-    if (index !== -1 && cwRefs.current[index]) cwRefs.current[index].focus();
-  };
-  const handleCwChange = (r, c, value, index) => {
-    const letter = value.toUpperCase().slice(-1); 
-    setCwGrid(prev => ({ ...prev, [`${r}-${c}`]: letter })); setCwError(false);
-    if (letter) {
-      const rIdx = currentCw.cells.findIndex(cell => cell.r === r && cell.c === c + 1);
-      const dIdx = currentCw.cells.findIndex(cell => cell.r === r + 1 && cell.c === c);
-      if (rIdx !== -1) cwRefs.current[rIdx]?.focus(); 
-      else if (dIdx !== -1) cwRefs.current[dIdx]?.focus(); 
-      else if (index < currentCw.cells.length - 1) cwRefs.current[index + 1]?.focus(); 
+  // --- CROSSWORD FUNCTIONS ---
+  const currentCw = shuffledCw[cwLevel] || crosswordPuzzles[0]; 
+  const focusCell = (r, c) => { const i = currentCw.cells.findIndex(cl => cl.r === r && cl.c === c); if (i !== -1 && cwRefs.current[i]) cwRefs.current[i].focus(); };
+  const handleCwChange = (r, c, v, idx) => {
+    const l = v.toUpperCase().slice(-1); setCwGrid(prev => ({ ...prev, [`${r}-${c}`]: l })); setCwError(false);
+    if (l) {
+      const rIdx = currentCw.cells.findIndex(cl => cl.r === r && cl.c === c + 1); const dIdx = currentCw.cells.findIndex(cl => cl.r === r + 1 && cl.c === c);
+      if (rIdx !== -1) cwRefs.current[rIdx]?.focus(); else if (dIdx !== -1) cwRefs.current[dIdx]?.focus(); else if (idx < currentCw.cells.length - 1) cwRefs.current[idx + 1]?.focus(); 
     }
   };
-  const handleCwKeyDown = (e, r, c, index) => {
+  const handleCwKeyDown = (e, r, c, idx) => {
     if (e.key === 'Backspace' && !cwGrid[`${r}-${c}`]) {
-      const lIdx = currentCw.cells.findIndex(cell => cell.r === r && cell.c === c - 1);
-      const uIdx = currentCw.cells.findIndex(cell => cell.r === r - 1 && cell.c === c);
-      if (lIdx !== -1) cwRefs.current[lIdx]?.focus(); else if (uIdx !== -1) cwRefs.current[uIdx]?.focus(); else if (index > 0) cwRefs.current[index - 1]?.focus();
-    } else if (e.key === 'ArrowRight') focusCell(r, c + 1);
-    else if (e.key === 'ArrowLeft') focusCell(r, c - 1);
-    else if (e.key === 'ArrowDown') focusCell(r + 1, c);
-    else if (e.key === 'ArrowUp') focusCell(r - 1, c);
+      const lIdx = currentCw.cells.findIndex(cl => cl.r === r && cl.c === c - 1); const uIdx = currentCw.cells.findIndex(cl => cl.r === r - 1 && cl.c === c);
+      if (lIdx !== -1) cwRefs.current[lIdx]?.focus(); else if (uIdx !== -1) cwRefs.current[uIdx]?.focus(); else if (idx > 0) cwRefs.current[idx - 1]?.focus();
+    } else if (e.key === 'ArrowRight') focusCell(r, c + 1); else if (e.key === 'ArrowLeft') focusCell(r, c - 1);
+    else if (e.key === 'ArrowDown') focusCell(r + 1, c); else if (e.key === 'ArrowUp') focusCell(r - 1, c);
   };
   const checkCw = () => {
-    if (currentCw.cells.every(cell => cwGrid[`${cell.r}-${cell.c}`] === cell.a)) {
-      if (!cwSolved) { setCrosswordScore(prev => prev + currentCw.wordCount); setLevelsCompleted(prev => prev + 1); }
-      setCwSolved(true); setCwError(false);
-    } else setCwError(true);
+    if (currentCw.cells.every(cl => cwGrid[`${cl.r}-${cl.c}`] === cl.a)) { if (!cwSolved) triggerWin(currentCw.wordCount * RWD_CW); setCwSolved(true); setCwError(false); } else setCwError(true);
   };
-  const nextCw = () => {
-    if (cwLevel < shuffledCw.length - 1) {
-      setCwLevel(prev => prev + 1); setCwGrid({}); setCwSolved(false); setCwError(false); setShowHintModal(false);
-    }
-  };
+  const nextCw = () => { if (cwLevel < shuffledCw.length - 1) { setCwLevel(prev => prev + 1); setCwGrid({}); setCwSolved(false); setCwError(false); setShowHintModal(false); } };
 
-  // --- EMOJI LOGIC ---
+  // --- EMOJI FUNCTIONS ---
   const currentEm = shuffledEm[emLevel] || emojiPuzzles[0];
   const checkEm = () => {
-    if (emGuess.trim().toUpperCase() === currentEm.answer) {
-      if (!emSolved) { setEmojiScore(prev => prev + 1); setLevelsCompleted(prev => prev + 1); }
-      setEmSolved(true); setEmError(false);
-    } else setEmError(true);
+    if (emGuess.trim().toUpperCase() === currentEm.answer) { if (!emSolved) triggerWin(RWD_EM); setEmSolved(true); setEmError(false); } else setEmError(true);
   };
-  const nextEm = () => {
-    if (emLevel < shuffledEm.length - 1) {
-      setEmLevel(prev => prev + 1); setEmGuess(""); setEmSolved(false); setEmError(false); setShowHintModal(false);
-    }
-  };
+  const nextEm = () => { if (emLevel < shuffledEm.length - 1) { setEmLevel(prev => prev + 1); setEmGuess(""); setEmSolved(false); setEmError(false); setShowHintModal(false); } };
 
-  // --- TRIVIA LOGIC ---
+  // --- TRIVIA FUNCTIONS ---
   const currentTr = shuffledTr[trLevel] || triviaPuzzles[0];
   const checkTr = (option) => {
     setSelectedOption(option);
-    if (option === currentTr.answer) {
-      if (!trSolved) { setTriviaScore(prev => prev + 1); setLevelsCompleted(prev => prev + 1); }
-      setTrSolved(true); setTrError(false);
-    } else setTrError(true);
+    if (option === currentTr.answer) { if (!trSolved) triggerWin(RWD_TR); setTrSolved(true); setTrError(false); } else setTrError(true);
   };
-  const nextTr = () => {
-    if (trLevel < shuffledTr.length - 1) {
-      setTrLevel(prev => prev + 1); setSelectedOption(null); setTrSolved(false); setTrError(false);
-    }
-  };
+  const nextTr = () => { if (trLevel < shuffledTr.length - 1) { setTrLevel(prev => prev + 1); setSelectedOption(null); setTrSolved(false); setTrError(false); } };
 
-  // --- ROULETTE LOGIC ---
+  // --- ROULETTE FUNCTIONS ---
   const spinWheel = () => {
     if (isSpinning) return;
     setIsSpinning(true); setRoSolved(false); setRoError(false); setRoGuess(""); setCurrentChallenge(null);
     const targetIndex = Math.floor(Math.random() * rouletteCategories.length);
-    const targetCategory = rouletteCategories[targetIndex].name;
     const sliceAngle = 360 / rouletteCategories.length;
     const landAngle = 1800 + (360 - (targetIndex * sliceAngle) - (sliceAngle / 2));
     setWheelRotation(prev => prev + landAngle);
     setTimeout(() => {
       setIsSpinning(false);
-      const categoryChallenges = rouletteChallenges.filter(c => c.type === targetCategory);
-      const list = categoryChallenges.length > 0 ? categoryChallenges : rouletteChallenges;
-      setCurrentChallenge(list[Math.floor(Math.random() * list.length)]);
+      const list = rouletteChallenges.filter(c => c.type === rouletteCategories[targetIndex].name);
+      setCurrentChallenge((list.length > 0 ? list : rouletteChallenges)[Math.floor(Math.random() * list.length)]);
     }, 3000); 
   };
-  const checkRo = () => {
-    if (roGuess.trim().toUpperCase() === currentChallenge?.a) {
-      if (!roSolved) { setRouletteScore(prev => prev + 1); setLevelsCompleted(prev => prev + 1); }
-      setRoSolved(true); setRoError(false);
-    } else setRoError(true);
-  };
+  const checkRo = () => { if (roGuess.trim().toUpperCase() === currentChallenge?.a) { if (!roSolved) triggerWin(RWD_RO); setRoSolved(true); setRoError(false); } else setRoError(true); };
 
-  // --- SNAKES LOGIC (USER ACTION) ---
+  // --- SNAKES FUNCTIONS ---
   const startSnakesGame = () => {
     let playersArr = [];
-    if (numPlayersInput === 1) {
-      playersArr = [
-        { id: 0, name: "You", pos: 1, saves: 3, color: playerColors[0], isBot: false },
-        { id: 1, name: "Red Bot", pos: 1, saves: 0, color: playerColors[1], isBot: true }
-      ];
-    } else {
-      for (let i = 0; i < numPlayersInput; i++) {
-        playersArr.push({ id: i, name: `Player ${i+1}`, pos: 1, saves: 3, color: playerColors[i % playerColors.length], isBot: false });
-      }
-    }
-    setSnlPlayers(playersArr);
-    setCurrPlayerIdx(0);
-    setGameLog(`Game started! ${playersArr[0].name}'s turn to roll.`);
-    setActiveTilePos(1);
-    setSnlState('playing');
+    if (numPlayersInput === 1) playersArr = [ { id: 0, name: "You", pos: 1, saves: 3, color: playerColors[0], isBot: false }, { id: 1, name: "Red Bot", pos: 1, saves: 0, color: playerColors[1], isBot: true } ];
+    else for (let i = 0; i < numPlayersInput; i++) playersArr.push({ id: i, name: `Player ${i+1}`, pos: 1, saves: 3, color: playerColors[i % playerColors.length], isBot: false });
+    
+    setSnlPlayers(playersArr); setCurrPlayerIdx(0); setGameLog(`Game started! ${playersArr[0].name}'s turn to roll.`); setActiveTilePos(1); setSnlState('playing');
   };
 
   const rollDiceUser = () => {
     if (snlPlayers[currPlayerIdx]?.isBot || snlState !== 'playing') return;
-    
     const roll = Math.floor(Math.random() * 6) + 1;
-    let updatedPlayers = [...snlPlayers];
-    let curr = updatedPlayers[currPlayerIdx];
-    let newPos = curr.pos + roll;
+    let updatedPlayers = [...snlPlayers]; let curr = updatedPlayers[currPlayerIdx]; let newPos = curr.pos + roll;
 
     if (newPos >= snlBoardSize) {
-      newPos = snlBoardSize;
-      curr.pos = newPos;
-      setSnlPlayers(updatedPlayers);
-      setActiveTilePos(newPos);
+      newPos = snlBoardSize; curr.pos = newPos; setSnlPlayers(updatedPlayers); setActiveTilePos(newPos);
       setGameLog(`🎲 ${curr.name} rolled a ${roll} and reached the destination! 🎉`);
-      setSnlState('finished');
-      setSnakesScore(prev => prev + RWD_SN);
-      setLevelsCompleted(prev => prev + 1);
-      return;
+      setSnlState('finished'); triggerWin(RWD_SN); return;
     }
-
     const event = snakesAndLadders[newPos];
     if (event) {
       if (event.type === 'snake' && curr.saves > 0) {
         setActiveTilePos(newPos);
-        setSnakeTrap({
-          playerIdx: currPlayerIdx,
-          from: newPos,
-          to: event.to,
-          qData: snakeLifelineTrivia[Math.floor(Math.random() * snakeLifelineTrivia.length)]
-        });
-        return; // Pause turn, don't advance yet
-      } else {
-        setGameLog(`🎲 ${curr.name} rolled ${roll}. Landed on ${newPos}... ${event.msg}`);
-        curr.pos = event.to;
-      }
-    } else {
-      setGameLog(`🎲 ${curr.name} rolled a ${roll} and moved to tile ${newPos}.`);
-      curr.pos = newPos;
-    }
-
-    setActiveTilePos(curr.pos);
-    setSnlPlayers(updatedPlayers);
-    setCurrPlayerIdx((prev) => (prev + 1) % updatedPlayers.length);
+        setSnakeTrap({ playerIdx: currPlayerIdx, from: newPos, to: event.to, qData: snakeLifelineTrivia[Math.floor(Math.random() * snakeLifelineTrivia.length)] });
+        return; 
+      } else { setGameLog(`🎲 ${curr.name} rolled ${roll}. Landed on ${newPos}... ${event.msg}`); curr.pos = event.to; }
+    } else { setGameLog(`🎲 ${curr.name} rolled a ${roll} and moved to tile ${newPos}.`); curr.pos = newPos; }
+    
+    setActiveTilePos(curr.pos); setSnlPlayers(updatedPlayers); setCurrPlayerIdx((prev) => (prev + 1) % updatedPlayers.length);
   };
 
   const handleSnakeTrapAnswer = (isCorrect) => {
-    let updatedPlayers = [...snlPlayers];
-    let curr = updatedPlayers[snakeTrap.playerIdx];
-    curr.saves -= 1; 
-    
-    if (isCorrect) {
-      curr.pos = snakeTrap.from; 
-      setGameLog(`Great job! ${curr.name} used a save and dodged the snake at tile ${snakeTrap.from}!`);
-    } else {
-      curr.pos = snakeTrap.to; 
-      setGameLog(`Incorrect! ${curr.name} fell down the snake to tile ${snakeTrap.to}.`);
-    }
-    
-    setActiveTilePos(curr.pos);
-    setSnlPlayers(updatedPlayers);
-    setSnakeTrap(null);
-    setCurrPlayerIdx((prev) => (prev + 1) % updatedPlayers.length);
+    let updatedPlayers = [...snlPlayers]; let curr = updatedPlayers[snakeTrap.playerIdx]; curr.saves -= 1; 
+    if (isCorrect) { curr.pos = snakeTrap.from; setGameLog(`Great job! ${curr.name} used a save and dodged the snake!`); } 
+    else { curr.pos = snakeTrap.to; setGameLog(`Incorrect! ${curr.name} fell down the snake to tile ${snakeTrap.to}.`); }
+    setActiveTilePos(curr.pos); setSnlPlayers(updatedPlayers); setSnakeTrap(null); setCurrPlayerIdx((prev) => (prev + 1) % updatedPlayers.length);
   };
 
+  const resetSnakes = () => { setSnlState('setup'); setSnlPlayers([]); setCurrPlayerIdx(0); setActiveTilePos(1); setGameLog("Roll the dice to start your journey!"); };
+
+
+  // --- REUSABLE REWARD CARD ---
   const renderRewardCard = (data, totalEarned, handleNext, isLastLevel) => (
     <div style={{ backgroundColor: 'white', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.1)', border: '2px solid #16a34a', animation: 'fadeIn 0.6s ease-out', display: 'flex', flexDirection: 'column', flex: 1 }}>
       <div style={{ position: 'relative', height: '200px' }}>
@@ -461,13 +526,11 @@ const GamePage = () => {
       
       {/* FLOATING WALLET WIDGET */}
       <div style={{ position: 'fixed', bottom: '30px', right: '30px', zIndex: 100, backgroundColor: '#16a34a', color: 'white', padding: '14px 24px', borderRadius: '50px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', boxShadow: '0 10px 25px rgba(22, 163, 74, 0.4)', border: '2px solid #bbf7d0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '14px' }}>
-          <Trophy size={18} color="#facc15" /> {levelsCompleted} Cleared
-        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '14px' }}><Trophy size={18} color="#facc15" /> {levelsCompleted} Cleared</div>
         <div style={{ width: '1px', height: '20px', backgroundColor: 'rgba(255,255,255,0.4)' }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '14px' }}>
-          <Coins size={18} color="#facc15" /> Wallet: ₹{totalWallet}
-        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '14px' }}><Coins size={18} color="#facc15" /> Wallet: ₹{totalWallet}</div>
+        <div style={{ width: '1px', height: '20px', backgroundColor: 'rgba(255,255,255,0.4)' }} />
+        <button type="button" onClick={resetAllProgress} title="Reset Arcade Progress" style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0' }}><RotateCcw size={16} /></button>
       </div>
 
       {/* --- LOBBY VIEW --- */}
@@ -478,45 +541,38 @@ const GamePage = () => {
             <h1 style={{ fontSize: '48px', fontWeight: '900', marginBottom: '20px' }}>Play, Learn, and <span style={{ color: '#4ade80' }}>Earn</span></h1>
             <p style={{ fontSize: '18px', color: '#9ca3af', maxWidth: '600px', margin: '0 auto' }}>Select a game below. Every challenge you solve adds real rupees to your travel wallet for your next booking!</p>
           </div>
-
           <div style={{ maxWidth: '1200px', margin: '-40px auto 0 auto', padding: '0 20px', position: 'relative', zIndex: 10 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '25px' }}>
-              
-              <div onClick={() => setActiveGame('crossword')} style={{ backgroundColor: 'white', borderRadius: '24px', padding: '30px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.3s', border: '1px solid #e5e7eb', textAlign: 'center' }} onMouseEnter={e=>e.currentTarget.style.transform='translateY(-10px)'} onMouseLeave={e=>e.currentTarget.style.transform='translateY(0)'}>
+              <div onClick={() => handleGameSelect('crossword')} style={{ backgroundColor: 'white', borderRadius: '24px', padding: '30px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.3s', border: '1px solid #e5e7eb', textAlign: 'center' }} onMouseEnter={e=>e.currentTarget.style.transform='translateY(-10px)'} onMouseLeave={e=>e.currentTarget.style.transform='translateY(0)'}>
                 <div style={{ width: '60px', height: '60px', backgroundColor: '#e0f2fe', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px auto' }}><Sparkles size={28} color="#0284c7" /></div>
                 <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px' }}>Travel Crossword</h3>
                 <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '15px' }}>Solve clues to reveal a hidden destination.</p>
                 <div style={{ display: 'inline-block', backgroundColor: '#f0fdf4', color: '#166534', padding: '6px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold' }}>Earn ₹{RWD_CW} per word</div>
               </div>
-
-              <div onClick={() => setActiveGame('emoji')} style={{ backgroundColor: 'white', borderRadius: '24px', padding: '30px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.3s', border: '1px solid #e5e7eb', textAlign: 'center' }} onMouseEnter={e=>e.currentTarget.style.transform='translateY(-10px)'} onMouseLeave={e=>e.currentTarget.style.transform='translateY(0)'}>
+              <div onClick={() => handleGameSelect('emoji')} style={{ backgroundColor: 'white', borderRadius: '24px', padding: '30px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.3s', border: '1px solid #e5e7eb', textAlign: 'center' }} onMouseEnter={e=>e.currentTarget.style.transform='translateY(-10px)'} onMouseLeave={e=>e.currentTarget.style.transform='translateY(0)'}>
                 <div style={{ width: '60px', height: '60px', backgroundColor: '#fef3c7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px auto' }}><Smile size={28} color="#d97706" /></div>
                 <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px' }}>Emoji Explorer</h3>
                 <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '15px' }}>Can you guess the city from 4 emojis?</p>
                 <div style={{ display: 'inline-block', backgroundColor: '#f0fdf4', color: '#166534', padding: '6px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold' }}>Earn ₹{RWD_EM} per level</div>
               </div>
-
-              <div onClick={() => setActiveGame('trivia')} style={{ backgroundColor: 'white', borderRadius: '24px', padding: '30px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.3s', border: '1px solid #e5e7eb', textAlign: 'center' }} onMouseEnter={e=>e.currentTarget.style.transform='translateY(-10px)'} onMouseLeave={e=>e.currentTarget.style.transform='translateY(0)'}>
+              <div onClick={() => handleGameSelect('trivia')} style={{ backgroundColor: 'white', borderRadius: '24px', padding: '30px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.3s', border: '1px solid #e5e7eb', textAlign: 'center' }} onMouseEnter={e=>e.currentTarget.style.transform='translateY(-10px)'} onMouseLeave={e=>e.currentTarget.style.transform='translateY(0)'}>
                 <div style={{ width: '60px', height: '60px', backgroundColor: '#f3e8ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px auto' }}><HelpCircle size={28} color="#7e22ce" /></div>
                 <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px' }}>Wanderlust Trivia</h3>
                 <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '15px' }}>Test your knowledge of incredible India.</p>
                 <div style={{ display: 'inline-block', backgroundColor: '#f0fdf4', color: '#166534', padding: '6px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold' }}>Earn ₹{RWD_TR} per question</div>
               </div>
-
-              <div onClick={() => setActiveGame('roulette')} style={{ backgroundColor: 'white', borderRadius: '24px', padding: '30px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.3s', border: '1px solid #e5e7eb', textAlign: 'center' }} onMouseEnter={e=>e.currentTarget.style.transform='translateY(-10px)'} onMouseLeave={e=>e.currentTarget.style.transform='translateY(0)'}>
+              <div onClick={() => handleGameSelect('roulette')} style={{ backgroundColor: 'white', borderRadius: '24px', padding: '30px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.3s', border: '1px solid #e5e7eb', textAlign: 'center' }} onMouseEnter={e=>e.currentTarget.style.transform='translateY(-10px)'} onMouseLeave={e=>e.currentTarget.style.transform='translateY(0)'}>
                 <div style={{ width: '60px', height: '60px', backgroundColor: '#fee2e2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px auto' }}><Target size={28} color="#b91c1c" /></div>
                 <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px' }}>Travel Roulette</h3>
                 <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '15px' }}>Spin the wheel to get a random challenge!</p>
                 <div style={{ display: 'inline-block', backgroundColor: '#f0fdf4', color: '#166534', padding: '6px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold' }}>Earn ₹{RWD_RO} per spin</div>
               </div>
-
-              <div onClick={() => { setActiveGame('snakes'); setSnlState('setup'); }} style={{ backgroundColor: 'white', borderRadius: '24px', padding: '30px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.3s', border: '1px solid #e5e7eb', textAlign: 'center' }} onMouseEnter={e=>e.currentTarget.style.transform='translateY(-10px)'} onMouseLeave={e=>e.currentTarget.style.transform='translateY(0)'}>
+              <div onClick={() => handleGameSelect('snakes')} style={{ backgroundColor: 'white', borderRadius: '24px', padding: '30px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.3s', border: '1px solid #e5e7eb', textAlign: 'center' }} onMouseEnter={e=>e.currentTarget.style.transform='translateY(-10px)'} onMouseLeave={e=>e.currentTarget.style.transform='translateY(0)'}>
                 <div style={{ width: '60px', height: '60px', backgroundColor: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px auto' }}><Dices size={28} color="#15803d" /></div>
                 <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px' }}>Snakes & Ladders</h3>
                 <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '15px' }}>Race across 100 tiles of Indian destinations.</p>
                 <div style={{ display: 'inline-block', backgroundColor: '#f0fdf4', color: '#166534', padding: '6px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold' }}>Earn ₹{RWD_SN} per win</div>
               </div>
-
             </div>
           </div>
         </>
@@ -527,7 +583,7 @@ const GamePage = () => {
         <>
           <div style={{ backgroundColor: '#111827', padding: '60px 20px 40px 20px', color: 'white' }}>
             <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-              <button type="button" onClick={() => setActiveGame('lobby')} style={{ background: 'none', border: 'none', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', marginBottom: '20px', fontSize: '14px', fontWeight: 'bold' }}><ChevronLeft size={16} /> Back to Arcade</button>
+              <button type="button" onClick={() => setShowLeaveModal(true)} style={{ background: 'none', border: 'none', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', marginBottom: '20px', fontSize: '14px', fontWeight: 'bold' }}><ChevronLeft size={16} /> Back to Arcade</button>
               <h1 style={{ fontSize: '36px', fontWeight: '900', marginBottom: '10px' }}>Level {cwLevel + 1}: {currentCw?.title}</h1>
             </div>
           </div>
@@ -570,7 +626,7 @@ const GamePage = () => {
         <>
           <div style={{ backgroundColor: '#111827', padding: '60px 20px 40px 20px', color: 'white' }}>
             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-              <button type="button" onClick={() => setActiveGame('lobby')} style={{ background: 'none', border: 'none', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', marginBottom: '20px', fontSize: '14px', fontWeight: 'bold' }}><ChevronLeft size={16} /> Back to Arcade</button>
+              <button type="button" onClick={() => setShowLeaveModal(true)} style={{ background: 'none', border: 'none', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', marginBottom: '20px', fontSize: '14px', fontWeight: 'bold' }}><ChevronLeft size={16} /> Back to Arcade</button>
               <h1 style={{ fontSize: '36px', fontWeight: '900', marginBottom: '10px' }}>Level {emLevel + 1}: Emoji Explorer</h1>
             </div>
           </div>
@@ -593,7 +649,7 @@ const GamePage = () => {
         <>
           <div style={{ backgroundColor: '#111827', padding: '60px 20px 40px 20px', color: 'white' }}>
             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-              <button type="button" onClick={() => setActiveGame('lobby')} style={{ background: 'none', border: 'none', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', marginBottom: '20px', fontSize: '14px', fontWeight: 'bold' }}><ChevronLeft size={16} /> Back to Arcade</button>
+              <button type="button" onClick={() => setShowLeaveModal(true)} style={{ background: 'none', border: 'none', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', marginBottom: '20px', fontSize: '14px', fontWeight: 'bold' }}><ChevronLeft size={16} /> Back to Arcade</button>
               <h1 style={{ fontSize: '36px', fontWeight: '900', marginBottom: '10px' }}>Question {trLevel + 1}</h1>
             </div>
           </div>
@@ -618,21 +674,27 @@ const GamePage = () => {
         <>
           <div style={{ backgroundColor: '#111827', padding: '60px 20px 40px 20px', color: 'white' }}>
             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-              <button type="button" onClick={() => setActiveGame('lobby')} style={{ background: 'none', border: 'none', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', marginBottom: '20px', fontSize: '14px', fontWeight: 'bold' }}><ChevronLeft size={16} /> Back to Arcade</button>
+              <button type="button" onClick={() => setShowLeaveModal(true)} style={{ background: 'none', border: 'none', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', marginBottom: '20px', fontSize: '14px', fontWeight: 'bold' }}><ChevronLeft size={16} /> Back to Arcade</button>
               <h1 style={{ fontSize: '36px', fontWeight: '900', marginBottom: '10px' }}>Travel Roulette</h1>
             </div>
           </div>
           <div style={{ maxWidth: '800px', margin: '40px auto 0 auto', padding: '0 20px' }}>
             {!currentChallenge ? (
               <div style={{ backgroundColor: 'white', padding: '60px', borderRadius: '24px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
-                <div style={{ position: 'relative', width: '250px', height: '250px', margin: '0 auto 40px auto' }}>
-                  <div style={{ width: '100%', height: '100%', borderRadius: '50%', border: '6px solid #111827', background: `conic-gradient(${rouletteCategories.map((c, i) => `${c.color} ${i * (360/rouletteCategories.length)}deg ${(i+1) * (360/rouletteCategories.length)}deg`).join(', ')})`, transform: `rotate(${wheelRotation}deg)`, transition: 'transform 3s cubic-bezier(0.25, 0.1, 0.25, 1)', boxShadow: '0 10px 20px rgba(0,0,0,0.1)' }}></div>
+                <div style={{ position: 'relative', width: '280px', height: '280px', margin: '0 auto 40px auto' }}>
+                  <div style={{ width: '100%', height: '100%', borderRadius: '50%', border: '6px solid #111827', background: `conic-gradient(${rouletteCategories.map((c, i) => `${c.color} ${i * (360/rouletteCategories.length)}deg ${(i+1) * (360/rouletteCategories.length)}deg`).join(', ')})`, transform: `rotate(${wheelRotation}deg)`, transition: 'transform 3s cubic-bezier(0.25, 0.1, 0.25, 1)', boxShadow: '0 10px 20px rgba(0,0,0,0.1)', position: 'relative' }}>
+                    {rouletteCategories.map((c, i) => {
+                      const sliceAngle = 360 / rouletteCategories.length;
+                      const rotation = -90 + (i * sliceAngle) + (sliceAngle / 2);
+                      return (
+                        <div key={i} style={{ position: 'absolute', top: '50%', left: '50%', width: '45%', transform: `translate(0, -50%) rotate(${rotation}deg)`, transformOrigin: '0% 50%', textAlign: 'right', color: 'white', fontWeight: 'bold', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', textShadow: '0px 1px 3px rgba(0,0,0,0.8)', zIndex: 5, paddingRight: '15px' }}>{c.name}</div>
+                      );
+                    })}
+                  </div>
                   <div style={{ position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '15px solid transparent', borderRight: '15px solid transparent', borderTop: '30px solid #111827', zIndex: 10 }}></div>
-                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '40px', height: '40px', backgroundColor: '#111827', borderRadius: '50%', border: '4px solid white' }}></div>
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '40px', height: '40px', backgroundColor: '#111827', borderRadius: '50%', border: '4px solid white', zIndex: 10 }}></div>
                 </div>
-                <button type="button" onClick={spinWheel} disabled={isSpinning} style={{ padding: '16px 50px', borderRadius: '50px', backgroundColor: '#111827', color: 'white', fontWeight: 'bold', fontSize: '20px', border: 'none', cursor: isSpinning ? 'not-allowed' : 'pointer' }}>
-                  {isSpinning ? 'Spinning...' : 'SPIN THE WHEEL'}
-                </button>
+                <button type="button" onClick={spinWheel} disabled={isSpinning} style={{ padding: '16px 50px', borderRadius: '50px', backgroundColor: '#111827', color: 'white', fontWeight: 'bold', fontSize: '20px', border: 'none', cursor: isSpinning ? 'not-allowed' : 'pointer' }}>{isSpinning ? 'Spinning...' : 'SPIN THE WHEEL'}</button>
               </div>
             ) : !roSolved ? (
               <div style={{ backgroundColor: 'white', padding: '50px', borderRadius: '24px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
@@ -642,7 +704,7 @@ const GamePage = () => {
                 <br/>
                 <button type="button" onClick={checkRo} style={{ padding: '16px 40px', borderRadius: '50px', backgroundColor: '#111827', color: 'white', fontWeight: 'bold', fontSize: '16px', border: 'none', cursor: 'pointer' }}>Submit Answer</button>
               </div>
-            ) : renderRewardCard({ desc: "You nailed the Roulette challenge!", img: "https://images.unsplash.com/photo-1533130061792-64b345e4a833?auto=format&fit=crop&w=800&q=80" }, RWD_RO, () => setCurrentChallenge(null), false)}
+            ) : renderRewardCard({ desc: "You nailed the Roulette challenge!", img: "https://images.unsplash.com/photo-1533130061792-64b345e4a833?auto=format&fit=crop&w=800&q=80", city: currentChallenge.city }, RWD_RO, () => setCurrentChallenge(null), false)}
           </div>
         </>
       )}
@@ -652,7 +714,7 @@ const GamePage = () => {
         <>
           <div style={{ backgroundColor: '#111827', padding: '40px 20px 20px 20px', color: 'white' }}>
             <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-              <button type="button" onClick={() => setActiveGame('lobby')} style={{ background: 'none', border: 'none', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', marginBottom: '20px', fontSize: '14px', fontWeight: 'bold' }}><ChevronLeft size={16} /> Back to Arcade</button>
+              <button type="button" onClick={() => setShowLeaveModal(true)} style={{ background: 'none', border: 'none', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', marginBottom: '20px', fontSize: '14px', fontWeight: 'bold' }}><ChevronLeft size={16} /> Back to Arcade</button>
               <h1 style={{ fontSize: '32px', fontWeight: '900', marginBottom: '5px' }}>Snakes & Ladders: Grand India Tour</h1>
             </div>
           </div>
@@ -664,41 +726,34 @@ const GamePage = () => {
                 <Users size={60} color="#16a34a" style={{ margin: '0 auto 20px auto' }} />
                 <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '15px' }}>How many players?</h2>
                 <p style={{ color: '#6b7280', marginBottom: '30px' }}>Select 1 to play against the AI Bot, or up to 6 for local multiplayer with friends.</p>
-                
                 <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px', marginBottom: '40px' }}>
                   {[1,2,3,4,5,6].map(num => (
-                    <button type="button" key={num} onClick={() => setNumPlayersInput(num)} style={{ width: '50px', height: '50px', borderRadius: '12px', fontSize: '20px', fontWeight: 'bold', border: numPlayersInput === num ? '2px solid #16a34a' : '2px solid #e5e7eb', backgroundColor: numPlayersInput === num ? '#f0fdf4' : 'white', color: numPlayersInput === num ? '#16a34a' : '#4b5563', cursor: 'pointer', transition: 'all 0.2s' }}>
-                      {num}
-                    </button>
+                    <button type="button" key={num} onClick={() => setNumPlayersInput(num)} style={{ width: '50px', height: '50px', borderRadius: '12px', fontSize: '20px', fontWeight: 'bold', border: numPlayersInput === num ? '2px solid #16a34a' : '2px solid #e5e7eb', backgroundColor: numPlayersInput === num ? '#f0fdf4' : 'white', color: numPlayersInput === num ? '#16a34a' : '#4b5563', cursor: 'pointer', transition: 'all 0.2s' }}>{num}</button>
                   ))}
                 </div>
-
-                <button type="button" onClick={startSnakesGame} style={{ padding: '16px 50px', borderRadius: '50px', backgroundColor: '#16a34a', color: 'white', fontWeight: 'bold', fontSize: '18px', border: 'none', cursor: 'pointer', boxShadow: '0 10px 20px rgba(22, 163, 74, 0.2)' }}>
-                  Start Journey
-                </button>
+                <button type="button" onClick={startSnakesGame} style={{ padding: '16px 50px', borderRadius: '50px', backgroundColor: '#16a34a', color: 'white', fontWeight: 'bold', fontSize: '18px', border: 'none', cursor: 'pointer', boxShadow: '0 10px 20px rgba(22, 163, 74, 0.2)' }}>Start Journey</button>
               </div>
             )}
 
-            {(snlState === 'playing' || snlState === 'finished') && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '30px' }}>
-                
-                {/* LEFT: 100 TILE BOARD */}
-                <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '24px', border: '1px solid #e5e7eb', overflowX: 'auto' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(40px, 1fr))', gap: '4px', minWidth: '400px' }}>
+            {snlState === 'playing' && (
+              <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 900 ? '1fr' : '2.5fr 1fr', gap: '30px' }}>
+                <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '24px', border: '1px solid #e5e7eb', overflowX: 'auto' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(45px, 1fr))', gap: '5px', minWidth: '500px' }}>
                     {snlBoardLayout.map(sq => {
                       const hasSnake = snakesAndLadders[sq]?.type === 'snake';
                       const hasLadder = snakesAndLadders[sq]?.type === 'ladder';
+                      
+                      const destName = destinationNames[sq - 1];
+                      const tileData = wikiDataMap[destName] || { img: "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=400&q=80" };
+
                       return (
-                        <div key={sq} style={{ height: '45px', borderRadius: '6px', backgroundColor: sq % 2 === 0 ? '#f8fafc' : '#f1f5f9', border: '1px solid #e2e8f0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <span style={{ position: 'absolute', top: '2px', left: '4px', fontSize: '10px', fontWeight: 'bold', color: '#94a3b8' }}>{sq}</span>
-                          {hasSnake && <span style={{ fontSize: '16px', opacity: 0.5 }}>🐍</span>}
-                          {hasLadder && <span style={{ fontSize: '16px', opacity: 0.5 }}>🪜</span>}
-                          
-                          {/* Render Players on this tile */}
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', justifyContent: 'center', position: 'absolute', bottom: '2px', width: '100%', padding: '0 4px' }}>
-                            {snlPlayers.map(p => p.pos === sq && (
-                              <div key={p.id} style={{ width: '12px', height: '12px', backgroundColor: p.color, borderRadius: '50%', border: '1px solid white', boxShadow: '0 1px 2px rgba(0,0,0,0.3)' }} title={p.name} />
-                            ))}
+                        <div key={sq} style={{ height: '55px', borderRadius: '8px', backgroundImage: `url(${tileData.img})`, backgroundSize: 'cover', backgroundPosition: 'center', border: '1px solid #cbd5e1', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                          <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)' }}></div>
+                          <span style={{ position: 'absolute', top: '2px', left: '4px', fontSize: '11px', fontWeight: 'bold', color: 'rgba(255,255,255,0.9)', zIndex: 2 }}>{sq}</span>
+                          {hasSnake && <span style={{ fontSize: '20px', zIndex: 2, textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>🐍</span>}
+                          {hasLadder && <span style={{ fontSize: '20px', zIndex: 2, textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>🪜</span>}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', justifyContent: 'center', position: 'absolute', bottom: '3px', width: '100%', padding: '0 4px', zIndex: 3 }}>
+                            {snlPlayers.map(p => p.pos === sq && <div key={p.id} style={{ width: '14px', height: '14px', backgroundColor: p.color, borderRadius: '50%', border: '2px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.8)' }} title={p.name} />)}
                           </div>
                         </div>
                       );
@@ -706,64 +761,40 @@ const GamePage = () => {
                   </div>
                 </div>
 
-                {/* RIGHT: CONTROLS & TRIVIA PANEL */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  
                   <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '24px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
-                    {snlState === 'playing' ? (
-                      <>
-                        <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                          <div style={{ width: '12px', height: '12px', backgroundColor: snlPlayers[currPlayerIdx]?.color, borderRadius: '50%' }} />
-                          {snlPlayers[currPlayerIdx]?.name}'s Turn
-                        </h3>
-                        <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px', minHeight: '40px' }}>{gameLog}</p>
-                        
-                        <button 
-                          type="button"
-                          onClick={rollDiceUser} 
-                          disabled={snlPlayers[currPlayerIdx]?.isBot || snakeTrap !== null} 
-                          style={{ padding: '14px 40px', borderRadius: '50px', backgroundColor: (snlPlayers[currPlayerIdx]?.isBot || snakeTrap) ? '#e5e7eb' : '#16a34a', color: (snlPlayers[currPlayerIdx]?.isBot || snakeTrap) ? '#9ca3af' : 'white', fontWeight: 'bold', fontSize: '16px', border: 'none', cursor: (snlPlayers[currPlayerIdx]?.isBot || snakeTrap) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-                        >
-                          <Dices size={20}/> {snlPlayers[currPlayerIdx]?.isBot ? 'Bot is rolling...' : 'Roll Dice'}
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <h3 style={{ fontSize: '22px', fontWeight: 'bold', color: '#16a34a', marginBottom: '10px' }}>Game Over!</h3>
-                        <p style={{ color: '#4b5563', marginBottom: '20px' }}>{gameLog}</p>
-                        <button type="button" onClick={() => setSnlState('setup')} style={{ padding: '12px 30px', borderRadius: '50px', backgroundColor: '#111827', color: 'white', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>Play Again</button>
-                      </>
-                    )}
-                  </div>
-
-                  <div style={{ backgroundColor: '#f0fdf4', padding: '25px', borderRadius: '24px', border: '1px solid #bbf7d0', flex: 1 }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#16a34a', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '15px' }}>
-                      <MapPin size={14} /> Tile {activeTilePos} Discovered
-                    </div>
-                    <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', marginBottom: '10px' }}>
-                      {tileTriviaData[activeTilePos % tileTriviaData.length].city}
+                    <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                      <div style={{ width: '12px', height: '12px', backgroundColor: snlPlayers[currPlayerIdx]?.color, borderRadius: '50%' }} />
+                      {snlPlayers[currPlayerIdx]?.name}'s Turn
                     </h3>
-                    <p style={{ fontSize: '14px', color: '#4b5563', lineHeight: '1.6' }}>
-                      {tileTriviaData[activeTilePos % tileTriviaData.length].fact}
-                    </p>
+                    <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px', minHeight: '40px' }}>{gameLog}</p>
+                    <button type="button" onClick={rollDiceUser} disabled={snlPlayers[currPlayerIdx]?.isBot || snakeTrap !== null} style={{ padding: '14px 40px', borderRadius: '50px', backgroundColor: (snlPlayers[currPlayerIdx]?.isBot || snakeTrap) ? '#e5e7eb' : '#16a34a', color: (snlPlayers[currPlayerIdx]?.isBot || snakeTrap) ? '#9ca3af' : 'white', fontWeight: 'bold', fontSize: '16px', border: 'none', cursor: (snlPlayers[currPlayerIdx]?.isBot || snakeTrap) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}><Dices size={20}/> {snlPlayers[currPlayerIdx]?.isBot ? 'Bot is rolling...' : 'Roll Dice'}</button>
+                  </div>
+                  
+                  {/* WIKIPEDIA FACT PANEL */}
+                  <div style={{ backgroundColor: '#f0fdf4', padding: '25px', borderRadius: '24px', border: '1px solid #bbf7d0', flex: 1 }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#16a34a', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '15px' }}><MapPin size={14} /> Tile {snlPlayers[currPlayerIdx]?.pos || 1} Discovered</div>
+                    
+                    <img src={wikiDataMap[destinationNames[(snlPlayers[currPlayerIdx]?.pos || 1) - 1]]?.img || "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=400&q=80"} alt="Location" style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '12px', marginBottom: '15px' }} />
+                    <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', marginBottom: '10px' }}>{destinationNames[(snlPlayers[currPlayerIdx]?.pos || 1) - 1]}</h3>
+                    <p style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.6' }}>{wikiDataMap[destinationNames[(snlPlayers[currPlayerIdx]?.pos || 1) - 1]]?.fact || "Loading amazing Wikipedia facts..."}</p>
                   </div>
 
                   <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '24px', border: '1px solid #e5e7eb' }}>
-                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#111827', marginBottom: '15px' }}>Player Standings</h4>
+                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#111827', marginBottom: '15px' }}>Standings</h4>
                     {snlPlayers.map(p => (
                       <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '600' }}>
-                          <div style={{ width: '12px', height: '12px', backgroundColor: p.color, borderRadius: '50%' }} /> {p.name}
-                        </div>
-                        <div style={{ fontSize: '13px', color: '#6b7280' }}>
-                          Tile {p.pos} {p.saves > 0 && `• ${p.saves} Saves`}
-                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '600' }}><div style={{ width: '12px', height: '12px', backgroundColor: p.color, borderRadius: '50%' }} /> {p.name}</div>
+                        <div style={{ fontSize: '13px', color: '#6b7280' }}>Tile {p.pos} {p.saves > 0 && `• ${p.saves} Saves`}</div>
                       </div>
                     ))}
                   </div>
-
                 </div>
               </div>
+            )}
+
+            {snlState === 'finished' && (
+              renderRewardCard({ desc: "The journey is over! Someone reached the destination.", img: "https://images.unsplash.com/photo-1544551763-46a8723ba3f9?auto=format&fit=crop&w=800&q=80" }, RWD_SN, resetSnakes, false)
             )}
           </div>
         </>
@@ -773,28 +804,36 @@ const GamePage = () => {
       {snakeTrap && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 200, backgroundColor: 'rgba(17, 24, 39, 0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '24px', maxWidth: '500px', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.3)', animation: 'fadeIn 0.3s ease-out' }}>
-            <div style={{ width: '70px', height: '70px', backgroundColor: '#fee2e2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
-              <ShieldAlert size={36} color="#ef4444" />
-            </div>
+            <div style={{ width: '70px', height: '70px', backgroundColor: '#fee2e2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}><ShieldAlert size={36} color="#ef4444" /></div>
             <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#b91c1c', marginBottom: '10px' }}>Snake Attack!</h3>
             <p style={{ color: '#4b5563', fontSize: '15px', marginBottom: '25px', lineHeight: '1.6' }}>
               {snlPlayers[snakeTrap.playerIdx]?.name} landed on a snake. You can spend 1 Lifeline to answer this question. If you get it right, you won't fall down!
             </p>
-            
             <div style={{ backgroundColor: '#f9fafb', padding: '20px', borderRadius: '16px', marginBottom: '25px', border: '1px solid #e5e7eb' }}>
               <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '20px' }}>"{snakeTrap.qData.q}"</h4>
               <div style={{ display: 'grid', gap: '10px' }}>
                 {snakeTrap.qData.opts.map(opt => (
-                  <button type="button" key={opt} onClick={() => handleSnakeTrapAnswer(opt === snakeTrap.qData.a)} style={{ padding: '12px', borderRadius: '10px', border: '2px solid #cbd5e1', backgroundColor: 'white', fontWeight: 'bold', cursor: 'pointer', transition: 'border 0.2s' }} onMouseEnter={e=>e.currentTarget.style.borderColor='#16a34a'} onMouseLeave={e=>e.currentTarget.style.borderColor='#cbd5e1'}>
-                    {opt}
-                  </button>
+                  <button type="button" key={opt} onClick={() => handleSnakeTrapAnswer(opt === snakeTrap.qData.a)} style={{ padding: '12px', borderRadius: '10px', border: '2px solid #cbd5e1', backgroundColor: 'white', fontWeight: 'bold', cursor: 'pointer', transition: 'border 0.2s' }} onMouseEnter={e=>e.currentTarget.style.borderColor='#16a34a'} onMouseLeave={e=>e.currentTarget.style.borderColor='#cbd5e1'}>{opt}</button>
                 ))}
               </div>
             </div>
+            <button type="button" onClick={() => handleSnakeTrapAnswer(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', textDecoration: 'underline', cursor: 'pointer', fontWeight: 'bold' }}>Skip and accept fate (Fall to {snakeTrap.to})</button>
+          </div>
+        </div>
+      )}
 
-            <button type="button" onClick={() => handleSnakeTrapAnswer(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', textDecoration: 'underline', cursor: 'pointer', fontWeight: 'bold' }}>
-              Skip and accept fate (Fall to {snakeTrap.to})
-            </button>
+      {/* --- LEAVE GAME CONFIRMATION MODAL --- */}
+      {showLeaveModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 300, backgroundColor: 'rgba(17, 24, 39, 0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '24px', maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.3)', animation: 'fadeIn 0.3s ease-out' }}>
+            <div style={{ width: '60px', height: '60px', backgroundColor: '#e0f2fe', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}><Save size={30} color="#0284c7" /></div>
+            <h3 style={{ fontSize: '22px', fontWeight: 'bold', color: '#111827', marginBottom: '15px' }}>Leaving Game</h3>
+            <p style={{ color: '#4b5563', fontSize: '15px', marginBottom: '25px', lineHeight: '1.6' }}>Would you like to securely save your progress, or discard it to start this game fresh next time?</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button type="button" onClick={() => confirmLeave(true)} style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#16a34a', color: 'white', fontWeight: 'bold', fontSize: '15px', border: 'none', cursor: 'pointer' }}>Save & Return to Lobby</button>
+              <button type="button" onClick={() => confirmLeave(false)} style={{ padding: '14px', borderRadius: '12px', backgroundColor: '#fee2e2', color: '#ef4444', fontWeight: 'bold', fontSize: '15px', border: 'none', cursor: 'pointer' }}>Discard Progress & Return</button>
+              <button type="button" onClick={() => { setShowLeaveModal(false); window.history.pushState(null, "", window.location.href); }} style={{ padding: '10px', background: 'none', border: 'none', color: '#6b7280', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px' }}>Cancel</button>
+            </div>
           </div>
         </div>
       )}
