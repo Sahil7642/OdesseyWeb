@@ -1,18 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { MapPin, Calendar, Users, Sparkles, ArrowRight, Compass, Sun, Map, Clock, Plus, Minus, Tag, Mail, MessageCircle, CheckCircle, PhoneCall, X, Edit3, Home, Activity, PlaneTakeoff, Info, ListChecks } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { MapPin, Calendar, Users, Sparkles, ArrowRight, Sun, Map, Clock, Plus, Minus, Tag, Mail, MessageCircle, CheckCircle, PhoneCall, X, ListChecks, PlaneTakeoff, Loader2 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
-// 👇 IMPORT DIRECTLY FROM YOUR ITINERARIES PAGE
-// Note: Adjust the path if your file is named differently
+// Import from ItinerariesPage
 import { itineraries as importedItineraries } from './ItinerariesPage'; 
+
+// Ola Maps API Key (Add this to your .env file: REACT_APP_OLA_MAPS_API_KEY="your_key_here")
+const OLA_MAPS_API_KEY = process.env.REACT_APP_OLA_MAPS_API_KEY || "";
 
 const PlanTrip = () => {
   const location = useLocation();
 
   // --- TRIP DATA STATE ---
   const [formData, setFormData] = useState({
-    origin: '', destination: '', date: '', groupType: '', pax: 1, interests: ''
+    origin: '', destination: '', startDate: '', endDate: '', groupType: '', pax: 1, interests: ''
   });
+
+  // --- AUTOCOMPLETE STATE ---
+  const [originSuggestions, setOriginSuggestions] = useState([]);
+  const [destSuggestions, setDestSuggestions] = useState([]);
+  const [activeDropdown, setActiveDropdown] = useState(null); // 'origin' | 'destination' | null
+  const [isLoadingPlaces, setIsLoadingPlaces] = useState({ origin: false, dest: false });
+  
+  const originTimer = useRef(null);
+  const destTimer = useRef(null);
 
   // --- FULL DATA OBJECT STATE ---
   const [selectedPlanDetails, setSelectedPlanDetails] = useState(null);
@@ -29,7 +40,6 @@ const PlanTrip = () => {
   const currentMonthName = new Date().toLocaleString('default', { month: 'long' });
 
   // --- FAILSAFE DATA LOAD ---
-  // If the import fails or isn't set up yet, it uses this fallback so the site doesn't crash!
   const masterItineraries = importedItineraries || [
     { 
       title: "Golden Triangle Highlights", dest: "Delhi, Agra, Jaipur", days: "5 Days / 4 Nights", tags: ["History", "Culture", "Monuments"],
@@ -70,7 +80,8 @@ const PlanTrip = () => {
         ...prev,
         origin: stateData.origin || stateData.from || prev.origin,
         destination: stateData.destination || stateData.to || prev.destination,
-        date: stateData.date || prev.date,
+        startDate: stateData.startDate || stateData.date || prev.startDate,
+        endDate: stateData.endDate || prev.endDate,
         pax: stateData.passengers || stateData.pax || prev.pax,
         interests: stateData.interests || prev.interests,
       }));
@@ -107,6 +118,54 @@ const PlanTrip = () => {
     setSeasonalPicks(basePicks);
   }, []);
 
+  // --- OLA MAPS AUTOCOMPLETE LOGIC ---
+  const fetchPlaces = async (input, type) => {
+    if (!input || input.length < 2) {
+      if (type === 'origin') setOriginSuggestions([]);
+      if (type === 'dest') setDestSuggestions([]);
+      return;
+    }
+
+    setIsLoadingPlaces(prev => ({ ...prev, [type]: true }));
+
+    if (OLA_MAPS_API_KEY) {
+      try {
+        const response = await fetch(`https://api.olamaps.io/places/v1/autocomplete?input=${encodeURIComponent(input)}&api_key=${OLA_MAPS_API_KEY}`);
+        const data = await response.json();
+        
+        if (data && data.predictions) {
+          const results = data.predictions.map(p => p.description);
+          type === 'origin' ? setOriginSuggestions(results) : setDestSuggestions(results);
+        }
+      } catch (error) {
+        console.error("Ola Maps API Error:", error);
+      }
+    } else {
+      // Offline Indian City Fallback
+      const offlineCities = ["Ahmedabad, Gujarat", "Agra, Uttar Pradesh", "Amritsar, Punjab", "Bangalore, Karnataka", "Bhopal, Madhya Pradesh", "Chennai, Tamil Nadu", "Chandigarh", "Coimbatore, Tamil Nadu", "Dehradun, Uttarakhand", "Delhi", "Goa", "Guwahati, Assam", "Hyderabad, Telangana", "Indore, Madhya Pradesh", "Jaipur, Rajasthan", "Jodhpur, Rajasthan", "Kochi, Kerala", "Kolkata, West Bengal", "Lucknow, Uttar Pradesh", "Madurai, Tamil Nadu", "Manali, Himachal Pradesh", "Mumbai, Maharashtra", "Mysore, Karnataka", "Nagpur, Maharashtra", "New Delhi", "Pune, Maharashtra", "Rishikesh, Uttarakhand", "Shimla, Himachal Pradesh", "Surat, Gujarat", "Thiruvananthapuram, Kerala", "Udaipur, Rajasthan", "Varanasi, Uttar Pradesh", "Visakhapatnam, Andhra Pradesh"];
+      const filtered = offlineCities.filter(c => c.toLowerCase().includes(input.toLowerCase())).slice(0, 5);
+      type === 'origin' ? setOriginSuggestions(filtered) : setDestSuggestions(filtered);
+    }
+    
+    setIsLoadingPlaces(prev => ({ ...prev, [type]: false }));
+  };
+
+  const handlePlaceInputChange = (e, type) => {
+    const value = e.target.value;
+    setFormData(prev => ({ ...prev, [type]: value }));
+    setActiveDropdown(type);
+
+    const timer = type === 'origin' ? originTimer : destTimer;
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => fetchPlaces(value, type === 'origin' ? 'origin' : 'dest'), 300);
+  };
+
+  const selectPlace = (place, type) => {
+    setFormData(prev => ({ ...prev, [type]: place }));
+    setActiveDropdown(null);
+    type === 'origin' ? setOriginSuggestions([]) : setDestSuggestions([]);
+  };
+
   // --- FORM HANDLERS ---
   const handleTagClick = (tag) => {
     setFormData(prev => {
@@ -135,8 +194,13 @@ const PlanTrip = () => {
     setPreviewItin(null);
   };
 
+  // Close dropdowns if clicked outside
+  const handleGlobalClick = () => {
+    if (activeDropdown) setActiveDropdown(null);
+  };
+
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', paddingBottom: '80px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', paddingBottom: '80px', fontFamily: 'system-ui, -apple-system, sans-serif' }} onClick={handleGlobalClick}>
       
       {/* 1. HERO */}
       <div style={{ position: 'relative', height: '40vh', backgroundImage: 'url(https://images.unsplash.com/photo-1506461883276-594a12b11cf3?auto=format&fit=crop&w=1920&q=80)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
@@ -180,17 +244,62 @@ const PlanTrip = () => {
 
           <form onSubmit={handleStartPlanning}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px', marginBottom: '25px' }}>
-              <div>
+              
+              {/* Origin Autocomplete */}
+              <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Origin</label>
-                <div style={{ position: 'relative' }}><PlaneTakeoff size={18} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} /><input type="text" name="origin" value={formData.origin} onChange={(e)=>setFormData({...formData, origin: e.target.value})} placeholder="Starting city" style={{ width: '100%', boxSizing:'border-box', padding: '14px 14px 14px 42px', borderRadius: '12px', border: '1px solid #e2e8f0', outline: 'none' }} /></div>
+                <div style={{ position: 'relative' }}>
+                  <PlaneTakeoff size={18} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <input 
+                    type="text" value={formData.origin} onChange={(e) => handlePlaceInputChange(e, 'origin')} 
+                    onFocus={() => setActiveDropdown('origin')} placeholder="Starting city" 
+                    style={{ width: '100%', boxSizing:'border-box', padding: '14px 14px 14px 42px', borderRadius: '12px', border: '1px solid #e2e8f0', outline: 'none' }} 
+                  />
+                  {isLoadingPlaces.origin && <Loader2 size={16} color="#94a3b8" className="animate-spin" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />}
+                </div>
+                {/* Dropdown */}
+                {activeDropdown === 'origin' && originSuggestions.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', zIndex: 50, overflow: 'hidden' }}>
+                    {originSuggestions.map((place, i) => (
+                      <div key={i} onClick={() => selectPlace(place, 'origin')} style={{ padding: '12px 16px', fontSize: '14px', color: '#334155', cursor: 'pointer', borderBottom: i === originSuggestions.length -1 ? 'none' : '1px solid #f1f5f9' }} onMouseEnter={(e)=>e.currentTarget.style.backgroundColor='#f8fafc'} onMouseLeave={(e)=>e.currentTarget.style.backgroundColor='transparent'}>
+                        <MapPin size={14} color="#94a3b8" style={{ display: 'inline', marginRight: '8px' }} /> {place}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div>
+
+              {/* Destination Autocomplete */}
+              <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Destination</label>
-                <div style={{ position: 'relative' }}><MapPin size={18} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} /><input type="text" name="destination" value={formData.destination} onChange={(e)=>setFormData({...formData, destination: e.target.value})} placeholder="Going to" style={{ width: '100%', boxSizing:'border-box', padding: '14px 14px 14px 42px', borderRadius: '12px', border: '1px solid #e2e8f0', outline: 'none' }} /></div>
+                <div style={{ position: 'relative' }}>
+                  <MapPin size={18} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <input 
+                    type="text" value={formData.destination} onChange={(e) => handlePlaceInputChange(e, 'destination')} 
+                    onFocus={() => setActiveDropdown('destination')} placeholder="Going to" 
+                    style={{ width: '100%', boxSizing:'border-box', padding: '14px 14px 14px 42px', borderRadius: '12px', border: '1px solid #e2e8f0', outline: 'none' }} 
+                  />
+                  {isLoadingPlaces.dest && <Loader2 size={16} color="#94a3b8" className="animate-spin" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />}
+                </div>
+                {/* Dropdown */}
+                {activeDropdown === 'destination' && destSuggestions.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', zIndex: 50, overflow: 'hidden' }}>
+                    {destSuggestions.map((place, i) => (
+                      <div key={i} onClick={() => selectPlace(place, 'destination')} style={{ padding: '12px 16px', fontSize: '14px', color: '#334155', cursor: 'pointer', borderBottom: i === destSuggestions.length -1 ? 'none' : '1px solid #f1f5f9' }} onMouseEnter={(e)=>e.currentTarget.style.backgroundColor='#f8fafc'} onMouseLeave={(e)=>e.currentTarget.style.backgroundColor='transparent'}>
+                        <MapPin size={14} color="#94a3b8" style={{ display: 'inline', marginRight: '8px' }} /> {place}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Start Date</label>
+                <input type="date" name="startDate" value={formData.startDate} onChange={(e)=>setFormData({...formData, startDate: e.target.value})} style={{ width: '100%', boxSizing:'border-box', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', outline: 'none', color: '#334155' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Travel Date</label>
-                <input type="date" name="date" value={formData.date} onChange={(e)=>setFormData({...formData, date: e.target.value})} style={{ width: '100%', boxSizing:'border-box', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', outline: 'none', color: '#334155' }} />
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>End Date</label>
+                <input type="date" name="endDate" min={formData.startDate} value={formData.endDate} onChange={(e)=>setFormData({...formData, endDate: e.target.value})} style={{ width: '100%', boxSizing:'border-box', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', outline: 'none', color: '#334155' }} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Travelers</label>
@@ -304,7 +413,6 @@ const PlanTrip = () => {
               
               <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: '#334155', marginBottom: '10px' }}>Key Highlights</h4>
               <ul style={{ paddingLeft: '20px', color: '#475569', fontSize: '15px', lineHeight: '1.6', marginBottom: '35px' }}>
-                {/* Fallback if highlights are missing from imported data */}
                 {(previewItin.highlights || "Customizable highlights based on your preferences.").split(', ').map((hl, i) => <li key={i} style={{ marginBottom: '8px' }}>{hl}</li>)}
               </ul>
 
@@ -352,6 +460,8 @@ const PlanTrip = () => {
       )}
 
       <style>{`
+        .animate-spin { animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
