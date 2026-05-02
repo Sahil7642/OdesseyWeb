@@ -660,8 +660,7 @@ export default Header;
 */
 
 import React, { useState, useEffect } from 'react';
-// 👇 Added Sparkles icon for the new Discover menu item
-import { Menu, X, ChevronDown, MapPin, Compass, Calendar, Camera, Info, MessageCircle, ArrowRight, Map, Car, LayoutGrid, Sparkles } from 'lucide-react';
+import { Menu, X, ChevronDown, MapPin, Compass, Calendar, Camera, Info, MessageCircle, ArrowRight, Map, Car, LayoutGrid, Sparkles, BookOpen, Users, Briefcase, Gamepad2, Home } from 'lucide-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 
 // Import your logo
@@ -676,9 +675,9 @@ const Header = () => {
   const [isVisible, setIsVisible] = useState(true); 
   const [isAtTop, setIsAtTop] = useState(true);     
   const [lastScrollY, setLastScrollY] = useState(0);
-  const [openSection, setOpenSection] = useState(null); // Controls the accordion
+  const [openSection, setOpenSection] = useState(null); 
+  const [activeDropdown, setActiveDropdown] = useState(null); 
 
-  // Toggle Accordion Helper
   const toggleSection = (sectionTitle) => {
     setOpenSection(openSection === sectionTitle ? null : sectionTitle);
   };
@@ -702,7 +701,6 @@ const Header = () => {
           if (currentScrollY > lastScrollY && currentScrollY > 100) setIsVisible(false); 
           else setIsVisible(true);  
         }
-
         setLastScrollY(currentScrollY);
       }
     };
@@ -712,75 +710,94 @@ const Header = () => {
     return () => window.removeEventListener('scroll', controlNavbar);
   }, [lastScrollY, isMenuOpen, location.pathname]); 
 
-  // Reset menu and style on route change
   useEffect(() => {
     setIsMenuOpen(false);
     setIsVisible(true);
-    setOpenSection(null); // Close accordions on page change
+    setOpenSection(null);
+    setActiveDropdown(null);
     if (location.pathname !== '/') setIsAtTop(false); 
     else setIsAtTop(window.scrollY < 50);
   }, [location]);
 
-  // Lock body scroll when menu is open
   useEffect(() => {
     document.body.style.overflow = isMenuOpen ? 'hidden' : 'unset';
   }, [isMenuOpen]);
 
-  // --- DESKTOP NAVIGATION ---
+  // --- DESKTOP NAVIGATION (GROUPED) ---
   const desktopNavLinks = [
-    { name: 'Discover', href: '/discover' },
-    { name: 'Plan Trip', href: '/plan' },
-    { name: 'Itineraries', href: '/itinerary' },
-    { name: 'Lodges', href: '/lodges' },
-    { name: 'Experiences', href: '/experiences' },
-    { name: 'Diaries', href: '/story' },
-    { name: 'About Us', href: '/about' },
-    {name: 'Careers', href: '/careers'},
-    { name: 'Blog', href: '/blog' },
-    { name: 'Games', href: '/games' }
+    { 
+      name: 'Explore', 
+      items: [
+        { name: 'Discover', href: '/discover', icon: Sparkles },
+        { name: 'Experiences', href: '/experiences', icon: Compass },
+        { name: 'Diaries', href: '/story', icon: Camera }
+      ] 
+    },
+    { 
+      name: 'Plan', 
+      items: [
+        { name: 'Plan Trip', href: '/plan', icon: Calendar },
+        { name: 'Itineraries', href: '/itinerary', icon: MapPin }
+      ] 
+    },
+    { 
+      name: 'Services', 
+      items: [
+        { name: 'Lodges', href: '/lodges', icon: Home },
+        { name: 'Route Planner', href: '/route-planner', icon: Map },
+        { name: 'Vehicle Options', href: '/vehicles', icon: Car }
+      ] 
+    },
+    { 
+      name: 'Community', 
+      items: [
+        { name: 'Travel Diaries', href: '/story', icon: Camera },
+        { name: 'Blog', href: '/blog', icon: BookOpen }
+      ] 
+    },
+    { name: 'About Us', href: '/about', icon: Info },
+    { name: 'Careers', href: '/careers', icon: Briefcase },
+    { name: 'Games', href: '/games', icon: Gamepad2 }
   ];
 
   // --- MOBILE ACCORDION STRUCTURE ---
   const menuStructure = [
     {
-      title: "Destinations", icon: MapPin,
+      title: "Explore", icon: Compass,
       items: [
-        { label: "Search Destinations", href: "/" },
-        { label: "Curated Itineraries", href: "/itinerary" },
-        { label: "Premium Lodges", href: "/lodges" }
+        { label: "Discover", href: "/discover", navIcon: Sparkles },
+        { label: "Experiences", href: "/experiences", navIcon: Compass },
+        { label: "Diaries", href: "/story", navIcon: Camera }
       ]
     },
     {
-      title: "Experiences", icon: Compass,
+      title: "Plan", icon: Calendar,
       items: [
-        { label: "All Experiences", href: "/experiences" },
-        { label: "Adventure & Wildlife", href: "/experiences" },
-        { label: "Culture & Wellness", href: "/experiences" }
+        { label: "Plan Trip", href: "/plan", navIcon: Calendar },
+        { label: "Curated Itineraries", href: "/itinerary", navIcon: MapPin }
       ]
     },
     {
-      title: "Plan Your Trip", icon: Calendar,
+      title: "Services", icon: LayoutGrid,
       items: [
-        { label: "Trip Discoverer (Quiz)", href: "/discover", navIcon: Sparkles }, // 👇 Newly Added Discover Page
-        { label: "Custom Trip Planner", href: "/plan", navIcon: Calendar },
-        { label: "Maps & Routes", href: "/route-planner", navIcon: Map }, 
-        { label: "Vehicle Options", href: "/plan", navIcon: Car }, 
-        { label: "Other Services", href: "/plan", navIcon: LayoutGrid } 
+        { label: "Premium Lodges", href: "/lodges", navIcon: Home },
+        { label: "Route Planner", href: "/route-planner", navIcon: Map }, 
+        { label: "Vehicle Options", href: "/vehicles", navIcon: Car } 
       ]
     },
     {
-      title: "Inspiration", icon: Camera,
+      title: "Community", icon: Users,
       items: [
-        { label: "Travel Diaries", href: "/story" },
-        { label: "Travel Blog & Guides", href: "/blog" }
+        { label: "Travel Diaries", href: "/story", navIcon: Camera },
+        { label: "Travel Blog & Guides", href: "/blog", navIcon: BookOpen }
       ]
     },
     {
       title: "About Odessey", icon: Info,
       items: [
-        { label: "Our Story", href: "/about" },
-        { label: "Our Mission", href: "/mission" },
-        { label: "Careers & Partners", href: "/careers" }
+        { label: "About Us", href: "/about", navIcon: Info },
+        { label: "Careers", href: "/careers", navIcon: Briefcase },
+        { label: "Arcade Games", href: "/games", navIcon: Gamepad2 }
       ]
     },
     {
@@ -809,10 +826,12 @@ const Header = () => {
     } else {
       navigate(item.href);
     }
-    setIsMenuOpen(false); // Close menu after clicking
+    setIsMenuOpen(false); 
   };
 
   // --- DYNAMIC STYLES ---
+  const textColor = isAtTop ? 'white' : '#111827';
+  
   const headerStyle = {
     position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40, padding: '20px',
     transition: 'transform 0.4s ease-in-out',
@@ -820,25 +839,26 @@ const Header = () => {
     pointerEvents: isVisible ? 'auto' : 'none'
   };
 
+  // TRUE GLASSMORPHISM EFFECT
   const innerStyle = {
     maxWidth: '1200px', margin: '0 auto',
-    backgroundColor: isAtTop ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 1)', 
-    backdropFilter: isAtTop ? 'blur(10px)' : 'none',
-    border: isAtTop ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0,0,0,0.05)',
-    boxShadow: isAtTop ? '0 4px 6px rgba(0,0,0,0.05)' : '0 4px 20px rgba(0,0,0,0.1)',
-    borderRadius: '16px', padding: '10px 24px',
+    backgroundColor: isAtTop ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.9)', 
+    backdropFilter: 'blur(20px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(180%)', // Safari Support
+    border: isAtTop ? '1px solid rgba(255, 255, 255, 0.25)' : '1px solid rgba(0,0,0,0.05)',
+    boxShadow: isAtTop ? '0 10px 30px rgba(0,0,0,0.1)' : '0 4px 20px rgba(0,0,0,0.1)',
+    borderRadius: '20px', padding: '12px 24px',
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    transition: 'background-color 0.3s ease, box-shadow 0.3s ease'
+    transition: 'all 0.3s ease'
   };
 
-  const textColor = isAtTop ? 'white' : '#111827';
-  
   return (
     <>
       {/* --- DESKTOP HEADER --- */}
       <header style={headerStyle}>
         <div style={innerStyle}>
           
+          {/* Logo Section */}
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', textDecoration: 'none' }}>
             <img src={logoSrc} alt="Odessey Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} />
             <span style={{ fontSize: '20px', fontWeight: 'bold', color: textColor, transition: 'color 0.3s' }}>
@@ -846,24 +866,75 @@ const Header = () => {
             </span>
           </Link>
 
-          <div className="hidden md:flex items-center gap-6">
+          {/* Navigation Links - Centered */}
+          <div className="desktop-nav-container">
             {desktopNavLinks.map((link) => (
-              <Link 
-                key={link.name} to={link.href} 
-                style={{
-                  color: textColor, fontSize: '14px', fontWeight: '600', textDecoration: 'none',
-                  padding: '8px 12px', borderRadius: '8px', transition: 'all 0.2s',
-                  backgroundColor: location.pathname === link.href ? (isAtTop ? 'rgba(255,255,255,0.2)' : '#f3f4f6') : 'transparent'
-                }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = isAtTop ? 'rgba(255,255,255,0.2)' : '#f3f4f6'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = location.pathname === link.href ? (isAtTop ? 'rgba(255,255,255,0.2)' : '#f3f4f6') : 'transparent'}
+              <div 
+                key={link.name} 
+                style={{ position: 'relative' }}
+                onMouseEnter={() => link.items && setActiveDropdown(link.name)}
+                onMouseLeave={() => link.items && setActiveDropdown(null)}
               >
-                {link.name}
-              </Link>
+                {/* Main Link / Group Header */}
+                {link.items ? (
+                  <div style={{
+                    color: textColor, fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+                    padding: '8px 12px', borderRadius: '8px', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '4px',
+                    backgroundColor: activeDropdown === link.name ? (isAtTop ? 'rgba(255,255,255,0.2)' : '#f3f4f6') : 'transparent'
+                  }}>
+                    {link.name} <ChevronDown size={14} style={{ transform: activeDropdown === link.name ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}/>
+                  </div>
+                ) : (
+                  <Link 
+                    to={link.href} 
+                    style={{
+                      color: textColor, fontSize: '14px', fontWeight: '600', textDecoration: 'none',
+                      padding: '8px 12px', borderRadius: '8px', transition: 'all 0.2s', display: 'block',
+                      backgroundColor: location.pathname === link.href ? (isAtTop ? 'rgba(255,255,255,0.2)' : '#f3f4f6') : 'transparent'
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = isAtTop ? 'rgba(255,255,255,0.2)' : '#f3f4f6'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = location.pathname === link.href ? (isAtTop ? 'rgba(255,255,255,0.2)' : '#f3f4f6') : 'transparent'}
+                  >
+                    {link.name}
+                  </Link>
+                )}
+
+                {/* Dropdown Menu */}
+                {link.items && activeDropdown === link.name && (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
+                    marginTop: '10px', backgroundColor: 'white', borderRadius: '16px',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb',
+                    minWidth: '200px', padding: '8px', zIndex: 50,
+                    animation: 'dropdownFadeIn 0.2s ease-out'
+                  }}>
+                    {/* Invisible hover bridge */}
+                    <div style={{ position: 'absolute', top: '-10px', left: 0, right: 0, height: '10px' }} />
+                    
+                    {link.items.map(subItem => (
+                      <Link 
+                        key={subItem.name} to={subItem.href}
+                        onClick={() => setActiveDropdown(null)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
+                          color: '#374151', textDecoration: 'none', fontSize: '14px', fontWeight: '500',
+                          borderRadius: '8px', transition: 'background-color 0.2s, color 0.2s'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f0fdf4'; e.currentTarget.style.color = '#16a34a'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151'; }}
+                      >
+                        {subItem.icon && <subItem.icon size={16} />}
+                        {subItem.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
 
-          <button onClick={() => setIsMenuOpen(true)} style={{ background: 'none', border: 'none', color: textColor, cursor: 'pointer', padding: '4px', transition: 'color 0.3s' }}>
+          {/* Hamburger Menu - ALWAYS visible now! */}
+          <button onClick={() => setIsMenuOpen(true)} style={{ background: 'none', border: 'none', color: textColor, cursor: 'pointer', padding: '4px', transition: 'color 0.3s', display: 'flex', alignItems: 'center' }}>
             <Menu size={28} />
           </button>
         </div>
@@ -896,7 +967,6 @@ const Header = () => {
         {/* Drawer Content */}
         <div style={{ padding: '30px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
           
-          {/* Big Green Action Button */}
           <button 
             onClick={() => { setIsMenuOpen(false); navigate('/plan'); }}
             style={{ 
@@ -915,8 +985,6 @@ const Header = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
             {menuStructure.map((section, idx) => (
               <div key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                
-                {/* Accordion Header */}
                 <div 
                   onClick={() => toggleSection(section.title)}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 0', cursor: 'pointer' }}
@@ -928,7 +996,6 @@ const Header = () => {
                   <ChevronDown size={20} color="#9ca3af" style={{ transform: openSection === section.title ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }} />
                 </div>
                 
-                {/* Accordion Expanded Content */}
                 <div style={{ 
                   maxHeight: openSection === section.title ? '400px' : '0', 
                   overflow: 'hidden', transition: 'max-height 0.3s ease-in-out',
@@ -956,7 +1023,6 @@ const Header = () => {
 
         </div>
         
-        {/* Drawer Footer */}
         <div style={{ padding: '20px 30px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>
           © 2026 Odessey. Travel sustainably.
         </div>
@@ -970,6 +1036,30 @@ const Header = () => {
           style={{ position: 'fixed', inset: 0, zIndex: 45, backgroundColor: 'rgba(17, 24, 39, 0.5)', backdropFilter: 'blur(3px)', transition: 'opacity 0.4s' }}
         />
       )}
+
+      {/* Custom Scoped CSS ensuring Horizontal Row layout */}
+      <style>
+        {`
+          /* Forces the desktop links to stay side-by-side horizontally */
+          .desktop-nav-container {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 20px;
+          }
+
+          @media (max-width: 900px) {
+            .desktop-nav-container {
+              display: none !important;
+            }
+          }
+
+          @keyframes dropdownFadeIn {
+            from { opacity: 0; transform: translate(-50%, -10px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+          }
+        `}
+      </style>
     </>
   );
 };

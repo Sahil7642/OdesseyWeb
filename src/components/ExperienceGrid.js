@@ -275,7 +275,11 @@ const ExperienceGrid = () => {
     "Historical Monuments": "Monuments", "Temples / Spiritual Sites": "Temples", "Trekking / Hiking": "Trekking trails",
     "Rafting / Kayaking": "River rafting", "Yoga & Meditation": "Yoga centers", "Street Food": "Street food",
     "Local Cuisine": "Traditional cuisine", "Seafood": "Seafood", "Vegetarian / Vegan Friendly": "Vegetarian",
-    "Wine / Brewery Towns": "Breweries", "Cafés & Coffee Culture": "Cafe"
+    "Wine / Brewery Towns": "Breweries", "Cafés & Coffee Culture": "Cafe",
+    "Eco-Friendly": "Ecotourism", "Community-Based Tourism": "Community tourism", "Farm Stays": "Farm stays",
+    "Party Destination": "Party destinations", "Festival Town": "Cultural festivals", "Nightlife": "Nightlife",
+    "Luxury Resorts": "Luxury resorts", "Camping / Glamping": "Camping", "Backpackers": "Backpacking",
+    "Monsoon Magic": "Monsoon destinations", "Winter Wonderland": "Winter destinations"
   };
 
   // --- HYBRID FETCH FUNCTION (MIXED GRID) ---
@@ -462,7 +466,7 @@ const ExperienceGrid = () => {
     }
   }, [selectedRestaurant]);
 
-  // --- DATA ---
+  // --- DATA WITH ALL 12 CATEGORIES ---
   const categories = [
     {
       id: 1, title: "Nature & Landscape", icon: Mountain, subtitle: "What the place looks and feels like", color: "#dcfce7", textColor: "#166534",
@@ -493,6 +497,36 @@ const ExperienceGrid = () => {
       id: 6, title: "Wellness & Slow Travel", icon: Smile, subtitle: "How it makes you feel", color: "#f3e8ff", textColor: "#6b21a8",
       items: ["Yoga & Meditation", "Ayurveda / Healing", "Digital Detox", "Silent Retreats", "Nature Immersion", "Mindfulness Stays"],
       images: ["https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1599447421405-0c174ac2526e?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?auto=format&fit=crop&w=800&q=80"]
+    },
+    {
+      id: 7, title: "Social & Festive", icon: Users, subtitle: "Energy & crowd", color: "#fce7f3", textColor: "#9d174d",
+      items: ["Party Destination", "Festival Town", "Nightlife", "Cultural Events", "Quiet & Peaceful", "Romantic Escapes"],
+      images: ["https://images.unsplash.com/photo-1514525253440-b393452e8d26?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1533174072545-e8d4aa97edf9?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80"]
+    },
+    {
+      id: 8, title: "Sustainability", icon: Globe, subtitle: "Impact-driven travel", color: "#ecfccb", textColor: "#3f6212",
+      items: ["Eco-Friendly", "Community-Based Tourism", "Farm Stays", "Local-Owned Experiences", "Low-Impact Travel", "Conservation Areas"],
+      images: ["https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=800&q=80"]
+    },
+    {
+      id: 9, title: "Stay Experience", icon: Home, subtitle: "Where & how you live", color: "#e0e7ff", textColor: "#3730a3",
+      items: ["Luxury Resorts", "Boutique Hotels", "Homestays", "Eco Lodges", "Camping / Glamping", "Hostels"],
+      images: ["https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=800&q=80"]
+    },
+    {
+      id: 10, title: "Travel Style", icon: User, subtitle: "Who it’s best for", color: "#ccfbf1", textColor: "#115e59",
+      items: ["Solo Travelers", "Couples", "Families", "Group Trips", "Backpackers", "Digital Nomads", "Senior-Friendly"],
+      images: ["https://images.unsplash.com/photo-1530789253388-582c481c54b0?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=800&q=80"]
+    },
+    {
+      id: 11, title: "Time & Seasonality", icon: Calendar, subtitle: "When to go", color: "#ffedd5", textColor: "#9a3412",
+      items: ["All-Season Destination", "Monsoon Magic", "Winter Wonderland", "Summer Escape", "Weekend Getaway", "Long-Stay Friendly"],
+      images: ["https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1486496146582-9ffcd0b2b2b7?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1516466723877-e4ec1d736c8a?auto=format&fit=crop&w=800&q=80"]
+    },
+    {
+      id: 12, title: "Budget & Accessibility", icon: Wallet, subtitle: "Practical filters", color: "#f1f5f9", textColor: "#334155",
+      items: ["Budget-Friendly", "Mid-Range", "Luxury", "Easy to Reach", "Offbeat / Requires Effort", "Road Trip Friendly"],
+      images: ["https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1526304640152-d4619684e484?auto=format&fit=crop&w=800&q=80", "https://images.unsplash.com/photo-1518183214770-9cffbec72538?auto=format&fit=crop&w=800&q=80"]
     }
   ];
 
@@ -503,7 +537,7 @@ const ExperienceGrid = () => {
   const totalDestPages = Math.ceil(dynamicDestinations.length / DEST_PER_PAGE);
   const visibleDestinations = dynamicDestinations.slice(destPage * DEST_PER_PAGE, (destPage + 1) * DEST_PER_PAGE);
 
-  const activeCategory = categories[activeCategoryIndex];
+  const activeCategory = categories[activeCategoryIndex] || categories[0];
   const currentHeroImage = activeCategory.images[currentSlideIndex % activeCategory.images.length]; 
 
   const scrollSlideLeft = () => setCurrentSlideIndex(prev => (prev === 0 ? activeCategory.images.length - 1 : prev - 1));
@@ -553,7 +587,7 @@ const ExperienceGrid = () => {
                 <div 
                   key={cat.id} onClick={() => { setSelectedCategory(cat); setSelectedSubCategory(null); }}
                   onMouseEnter={() => { setActiveCategoryIndex(categories.indexOf(cat)); setCurrentSlideIndex(0); }}
-                  style={{ backgroundColor: cat.color, borderRadius: '24px', padding: '25px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', cursor: 'pointer', transition: 'all 0.3s ease', border: cat.id === activeCategory.id ? `2px solid ${cat.textColor}` : '2px solid transparent', transform: cat.id === activeCategory.id ? 'scale(1.02)' : 'scale(1)', minHeight: '320px' }}
+                  style={{ backgroundColor: cat.color, borderRadius: '24px', padding: '25px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', cursor: 'pointer', transition: 'all 0.3s ease', border: cat.id === activeCategory?.id ? `2px solid ${cat.textColor}` : '2px solid transparent', transform: cat.id === activeCategory?.id ? 'scale(1.02)' : 'scale(1)', minHeight: '320px' }}
                 >
                   <div style={{ marginBottom: '20px', color: cat.textColor }}><cat.icon size={40} /></div>
                   <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: cat.textColor, marginBottom: '10px', lineHeight: '1.3' }}>{cat.title}</h3>
@@ -565,10 +599,10 @@ const ExperienceGrid = () => {
           </div>
 
           <div style={{ position: 'relative', borderRadius: '24px', overflow: 'hidden', height: '100%', minHeight: '400px' }}>
-            <img src={currentHeroImage} alt={activeCategory.title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.3s ease' }} />
+            <img src={currentHeroImage} alt={activeCategory?.title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.3s ease' }} />
             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '30px', background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }}>
-              <h3 style={{ color: 'white', fontSize: '28px', fontWeight: 'bold', marginBottom: '5px' }}>{activeCategory.title}</h3>
-              <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px' }}>Discover the best of {activeCategory.title}</p>
+              <h3 style={{ color: 'white', fontSize: '28px', fontWeight: 'bold', marginBottom: '5px' }}>{activeCategory?.title}</h3>
+              <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px' }}>Discover the best of {activeCategory?.title}</p>
             </div>
             <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, transform: 'translateY(-50%)', display: 'flex', justifyContent: 'space-between', padding: '0 20px', zIndex: 10 }}>
               <button onClick={scrollSlideLeft} style={{ backgroundColor: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}><ChevronLeft size={24} color="#1f2937" /></button>
