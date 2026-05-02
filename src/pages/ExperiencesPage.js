@@ -2,13 +2,8 @@ import React, { useState } from 'react';
 import { MapPin, Clock, ArrowRight, Sparkles, Activity, X, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const ExperiencesPage = () => {
-  const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = useState('All');
-  const [selectedExperience, setSelectedExperience] = useState(null);
-
   // --- EXPANDED DATA (12 EXPERIENCES) ---
-  const experiences = [
+  export const experiences = [
     { 
       id: 1, title: "White Water Rafting on the Ganges", location: "Rishikesh, UK", duration: "4 Hours", category: "Adventure", 
       image: "https://images.unsplash.com/photo-1530866495561-507c9faab2ed?auto=format&fit=crop&w=800&q=80", 
@@ -94,6 +89,11 @@ const ExperiencesPage = () => {
       inclusions: ["Hands-on Embroidery Lesson", "All Fabric, Threads, and Mirrors", "Interaction with Master Artisans", "Traditional Kutchi Lunch"]
     }
   ];
+
+const ExperiencesPage = () => {
+  const navigate = useNavigate();
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [selectedExperience, setSelectedExperience] = useState(null);
 
   const categories = ['All', 'Adventure', 'Culture', 'Wildlife', 'Wellness'];
   const displayedExps = activeCategory === 'All' ? experiences : experiences.filter(e => e.category === activeCategory);

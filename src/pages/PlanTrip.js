@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Calendar, Users, Sparkles, ArrowRight, Sun, Map, Clock, Plus, Minus, Tag, Mail, MessageCircle, CheckCircle, PhoneCall, X, ListChecks, PlaneTakeoff, Loader2 } from 'lucide-react';
+import { MapPin, Calendar, Users, Sparkles, ArrowRight, Sun, Map, Clock, Plus, Minus, Tag, Mail, MessageCircle, CheckCircle, PhoneCall, X, ListChecks, PlaneTakeoff, Loader2, Activity, CheckCircle2, Bot } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
-// Import from ItinerariesPage
+// Import from master data
 import { itineraries as importedItineraries } from './ItinerariesPage'; 
+import { experiences as importedExperiences } from './ExperiencesPage'; 
 
-// Ola Maps API Key (Add this to your .env file: REACT_APP_OLA_MAPS_API_KEY="your_key_here")
+// Ola Maps API Key
 const OLA_MAPS_API_KEY = process.env.REACT_APP_OLA_MAPS_API_KEY || "";
 
 const PlanTrip = () => {
@@ -19,9 +20,8 @@ const PlanTrip = () => {
   // --- AUTOCOMPLETE STATE ---
   const [originSuggestions, setOriginSuggestions] = useState([]);
   const [destSuggestions, setDestSuggestions] = useState([]);
-  const [activeDropdown, setActiveDropdown] = useState(null); // 'origin' | 'destination' | null
+  const [activeDropdown, setActiveDropdown] = useState(null); 
   const [isLoadingPlaces, setIsLoadingPlaces] = useState({ origin: false, dest: false });
-  
   const originTimer = useRef(null);
   const destTimer = useRef(null);
 
@@ -29,51 +29,40 @@ const PlanTrip = () => {
   const [selectedPlanDetails, setSelectedPlanDetails] = useState(null);
   const [itemType, setItemType] = useState(null); 
   const [previewItin, setPreviewItin] = useState(null); 
+  const [previewExp, setPreviewExp] = useState(null); 
 
   // --- MODAL & CONTACT STATE ---
   const [modalState, setModalState] = useState('none'); 
   const [contactMethod, setContactMethod] = useState('email'); 
   const [contactValue, setContactValue] = useState('');
 
-  // --- SEASONAL PICKS STATE ---
-  const [seasonalPicks, setSeasonalPicks] = useState([]);
-  const currentMonthName = new Date().toLocaleString('default', { month: 'long' });
+  // --- OLLAMA AI STATE ---
+  const [aiGeneratedItinerary, setAiGeneratedItinerary] = useState(null);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
-  // --- FAILSAFE DATA LOAD ---
-  const masterItineraries = importedItineraries || [
-    { 
-      title: "Golden Triangle Highlights", dest: "Delhi, Agra, Jaipur", days: "5 Days / 4 Nights", tags: ["History", "Culture", "Monuments"],
-      highlights: "Sunrise at Taj Mahal, Elephant ride at Amer Fort, Rickshaw tour in Old Delhi.",
-      description: "A classic introduction to India's royal heritage and architectural wonders."
-    },
-    { 
-      title: "Kerala Backwaters & Tea", dest: "Kochi, Munnar, Alleppey", days: "7 Days / 6 Nights", tags: ["Nature", "Relaxation", "Houseboat"],
-      highlights: "Overnight luxury Houseboat cruise, guided tea plantation trekking.",
-      description: "A lush, tropical journey through the serene backwaters of South India."
-    }
-  ];
+  // --- DATA ARRAYS ---
+  const masterItineraries = importedItineraries || [];
+  const masterExperiences = importedExperiences || [];
 
   // --- DETECT INCOMING ITEMS & CONTEXT ---
   useEffect(() => {
     if (location.state) {
       const stateData = location.state;
-      
       if (stateData.prefillPackage) {
         const pkg = stateData.prefillPackage;
         const fullDetails = masterItineraries.find(i => i.title === pkg.title) || pkg;
         setSelectedPlanDetails(fullDetails);
         setItemType('Template');
         setFormData(prev => ({ ...prev, destination: fullDetails.dest || fullDetails.location }));
-      } 
-      else if (stateData.prefillLodge) {
+      } else if (stateData.prefillLodge) {
         setSelectedPlanDetails(stateData.prefillLodge);
         setItemType('Lodge');
         setFormData(prev => ({ ...prev, destination: stateData.prefillLodge.location }));
-      }
-      else if (stateData.prefillExperience) {
-        setSelectedPlanDetails(stateData.prefillExperience);
+      } else if (stateData.prefillExperience) {
+        const exp = stateData.prefillExperience;
+        setSelectedPlanDetails({ title: exp.title, dest: exp.location, days: exp.duration, description: exp.fullDesc, highlights: exp.inclusions?.join(', ') || exp.desc });
         setItemType('Experience');
-        setFormData(prev => ({ ...prev, destination: stateData.prefillExperience.location }));
+        setFormData(prev => ({ ...prev, destination: exp.location.split(',')[0] }));
       }
 
       setFormData(prev => ({
@@ -85,68 +74,134 @@ const PlanTrip = () => {
         pax: stateData.passengers || stateData.pax || prev.pax,
         interests: stateData.interests || prev.interests,
       }));
-
       window.history.replaceState({}, document.title);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
 
-  // --- DYNAMIC SEASON ENGINE ---
+  // --- DYNAMIC FILTERING & OLLAMA GENERATION ---
+  const searchTarget = formData.destination.toLowerCase().trim();
+  
+  // Filter Existing Itineraries
+  const filteredItineraries = searchTarget
+    ? masterItineraries.filter(itin => 
+        (itin.dest && itin.dest.toLowerCase().includes(searchTarget)) || 
+        (itin.location && itin.location.toLowerCase().includes(searchTarget)) || 
+        (itin.title && itin.title.toLowerCase().includes(searchTarget))
+      )
+    : masterItineraries;
+
+  // Filter Existing Experiences
+  const filteredExperiences = searchTarget
+    ? masterExperiences.filter(exp => 
+        (exp.location && exp.location.toLowerCase().includes(searchTarget)) || 
+        (exp.title && exp.title.toLowerCase().includes(searchTarget))
+      )
+    : masterExperiences;
+
+  // Trigger Ollama if no itineraries match the destination
   useEffect(() => {
-    const month = new Date().getMonth(); 
-    let basePicks = [];
-    
-    if (month >= 2 && month <= 4) {
-      basePicks = [
-        { name: "Ladakh", desc: "Clear blue skies and epic mountain passes opening up.", img: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=600&q=80" },
-        { name: "Rishikesh", desc: "Perfect river rafting and yoga retreats before the heavy rains.", img: "https://images.unsplash.com/photo-1605640840469-60d8050e3ce4?auto=format&fit=crop&w=600&q=80" },
-        { name: "Munnar", desc: "Escape the summer heat in lush, misty tea estates.", img: "https://images.unsplash.com/photo-1593693397690-36280732625f?auto=format&fit=crop&w=600&q=80" }
-      ];
-    } else if (month >= 5 && month <= 8) {
-      basePicks = [
-        { name: "Valley of Flowers", desc: "Witness the Himalayas bloom in spectacular color.", img: "https://images.unsplash.com/photo-1571536802807-30451e3955d8?auto=format&fit=crop&w=600&q=80" },
-        { name: "Udaipur", desc: "Romantic, rain-washed palaces and brimming lakes.", img: "https://images.unsplash.com/photo-1615861228075-1b42787383cb?auto=format&fit=crop&w=600&q=80" },
-        { name: "Shillong", desc: "The Scotland of the East in its lush, green glory.", img: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80" }
-      ];
+    if (searchTarget && filteredItineraries.length === 0) {
+      setAiGeneratedItinerary(null);
+      setIsGeneratingAI(true);
+
+      const timer = setTimeout(async () => {
+        try {
+          const prompt = `You are a professional travel planner. The user wants an itinerary for "${formData.destination}". 
+          Create a realistic, exciting travel plan for this location. 
+          Return ONLY a valid JSON object. Do not include markdown like \`\`\`json. The structure MUST be exactly:
+          {
+            "title": "A catchy title for this trip",
+            "dest": "${formData.destination}",
+            "days": "4 Days / 3 Nights",
+            "description": "A compelling 2-sentence overview of what this trip offers.",
+            "highlights": "Highlight 1, Highlight 2, Highlight 3",
+            "plan": [
+              { "day": 1, "title": "Arrival", "desc": "What to do on day 1" },
+              { "day": 2, "title": "Exploration", "desc": "What to do on day 2" }
+            ]
+          }`;
+
+          const response = await fetch('http://localhost:11434/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'gemma3:4b', // Change if using mistral or phi3
+              messages: [{ role: 'user', content: prompt }],
+              stream: false
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            let cleanJSON = data.message.content.trim().replace(/^```json\s*/i, '').replace(/```\s*$/i, '');
+            const parsedItinerary = JSON.parse(cleanJSON);
+            parsedItinerary.isAiGenerated = true;
+            setAiGeneratedItinerary(parsedItinerary);
+          }
+        } catch (error) {
+          console.error("Ollama Generation Failed:", error);
+        } finally {
+          setIsGeneratingAI(false);
+        }
+      }, 1500); // Wait 1.5 seconds after user stops typing before asking Ollama
+
+      return () => clearTimeout(timer);
     } else {
-      basePicks = [
-        { name: "Jaipur", desc: "Perfect cool weather for exploring royal heritage.", img: "https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=600&q=80" },
-        { name: "Goa", desc: "Sunny beaches, festive vibes, and perfect coastlines.", img: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=600&q=80" },
-        { name: "Gulmarg", desc: "A winter wonderland perfect for skiing and snow.", img: "https://images.unsplash.com/photo-1605640840469-60d8050e3ce4?auto=format&fit=crop&w=600&q=80" }
-      ];
+      setIsGeneratingAI(false);
+      setAiGeneratedItinerary(null);
     }
-    setSeasonalPicks(basePicks);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTarget, filteredItineraries.length]);
+
+
+  // --- DYNAMIC 12-MONTH ENGINE ---
+  const [seasonalPicks, setSeasonalPicks] = useState([]);
+  const referenceDate = formData.startDate ? new Date(formData.startDate) : new Date();
+  const safeDate = !isNaN(referenceDate.getTime()) ? referenceDate : new Date();
+  const targetMonthIndex = safeDate.getMonth(); 
+  const currentMonthNameDisplay = safeDate.toLocaleString('default', { month: 'long' });
+
+  useEffect(() => {
+    const monthlyRecommendations = [
+      [{ name: "Gulmarg", desc: "Peak snowfall makes it a winter paradise.", img: "https://images.unsplash.com/photo-1605640840469-60d8050e3ce4?auto=format&fit=crop&w=600&q=80" }, { name: "Jaipur", desc: "Pleasant weather for exploring forts and palaces.", img: "https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=600&q=80" }, { name: "Rann of Kutch", desc: "White desert shines during Rann Utsav.", img: "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=600&q=80" }, { name: "Goa", desc: "Ideal beach weather and lively vibe.", img: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=600&q=80" }],
+      [{ name: "Udaipur", desc: "Romantic lakes with cool breezes.", img: "https://images.unsplash.com/photo-1615861228075-1b42787383cb?auto=format&fit=crop&w=600&q=80" }, { name: "Agra", desc: "Best time to visit the Taj Mahal comfortably.", img: "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=600&q=80" }, { name: "Varkala", desc: "Cliffside beaches with peaceful views.", img: "https://images.unsplash.com/photo-1593693397690-36280732625f?auto=format&fit=crop&w=600&q=80" }, { name: "Khajuraho", desc: "Perfect weather for temple exploration.", img: "https://images.unsplash.com/photo-1600018596645-b4ebcd0662d5?auto=format&fit=crop&w=600&q=80" }],
+      [{ name: "Vrindavan", desc: "Experience vibrant Holi celebrations.", img: "https://images.unsplash.com/photo-1583089892943-e02e5ee6f50b?auto=format&fit=crop&w=600&q=80" }, { name: "Hampi", desc: "Explore surreal ancient ruins.", img: "https://images.unsplash.com/photo-1600018596645-b4ebcd0662d5?auto=format&fit=crop&w=600&q=80" }, { name: "Kaziranga", desc: "Great for wildlife spotting.", img: "https://images.unsplash.com/photo-1588636735515-68041d8e1cc3?auto=format&fit=crop&w=600&q=80" }, { name: "Rishikesh", desc: "Adventure season with river rafting.", img: "https://images.unsplash.com/photo-1605640840469-60d8050e3ce4?auto=format&fit=crop&w=600&q=80" }],
+      [{ name: "Munnar", desc: "Lush tea plantations and cool weather.", img: "https://images.unsplash.com/photo-1593693397690-36280732625f?auto=format&fit=crop&w=600&q=80" }, { name: "Darjeeling", desc: "Himalayan views and toy train rides.", img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80" }, { name: "Andaman Islands", desc: "Clear waters and beach bliss.", img: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=600&q=80" }, { name: "Mount Abu", desc: "A refreshing hill station escape.", img: "https://images.unsplash.com/photo-1623227866981-d131ec6d7c71?auto=format&fit=crop&w=600&q=80" }],
+      [{ name: "Manali", desc: "Snow-capped mountains with summer relief.", img: "https://images.unsplash.com/photo-1605640840469-60d8050e3ce4?auto=format&fit=crop&w=600&q=80" }, { name: "Leh Ladakh", desc: "High-altitude roads open for scenic travel.", img: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=600&q=80" }, { name: "Shimla", desc: "Classic hill station charm.", img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80" }, { name: "Tawang", desc: "Peaceful monasteries and scenic beauty.", img: "https://images.unsplash.com/photo-1571536802807-30451e3955d8?auto=format&fit=crop&w=600&q=80" }],
+      [{ name: "Spiti Valley", desc: "Raw landscapes for offbeat travel.", img: "https://images.unsplash.com/photo-1623227866981-d131ec6d7c71?auto=format&fit=crop&w=600&q=80" }, { name: "Auli", desc: "Green meadows and mountain views.", img: "https://images.unsplash.com/photo-1605640840469-60d8050e3ce4?auto=format&fit=crop&w=600&q=80" }, { name: "Coorg", desc: "Coffee plantations in early monsoon.", img: "https://images.unsplash.com/photo-1593693397690-36280732625f?auto=format&fit=crop&w=600&q=80" }, { name: "Ooty", desc: "Pleasant hill station retreat.", img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80" }],
+      [{ name: "Lonavala", desc: "Waterfalls and misty landscapes.", img: "https://images.unsplash.com/photo-1571536802807-30451e3955d8?auto=format&fit=crop&w=600&q=80" }, { name: "Valley of Flowers", desc: "Peak blooming season of alpine flowers.", img: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=600&q=80" }, { name: "Udaipur", desc: "Lakes look magical in the rain.", img: "https://images.unsplash.com/photo-1615861228075-1b42787383cb?auto=format&fit=crop&w=600&q=80" }, { name: "Mahabaleshwar", desc: "Foggy viewpoints and lush greenery.", img: "https://images.unsplash.com/photo-1593693397690-36280732625f?auto=format&fit=crop&w=600&q=80" }],
+      [{ name: "Munnar", desc: "Green landscapes at their peak.", img: "https://images.unsplash.com/photo-1593693397690-36280732625f?auto=format&fit=crop&w=600&q=80" }, { name: "Wayanad", desc: "Waterfalls and forest escapes.", img: "https://images.unsplash.com/photo-1571536802807-30451e3955d8?auto=format&fit=crop&w=600&q=80" }, { name: "Panchgani", desc: "Scenic plateau views.", img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80" }, { name: "Cherrapunji", desc: "Dramatic monsoon landscapes.", img: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80" }],
+      [{ name: "Ziro Valley", desc: "Scenic valley with cultural charm.", img: "https://images.unsplash.com/photo-1571536802807-30451e3955d8?auto=format&fit=crop&w=600&q=80" }, { name: "Kodaikanal", desc: "Misty lakes and calm surroundings.", img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80" }, { name: "Alleppey", desc: "Backwater houseboat experiences.", img: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=600&q=80" }, { name: "Spiti Valley", desc: "Clear skies before winter.", img: "https://images.unsplash.com/photo-1623227866981-d131ec6d7c71?auto=format&fit=crop&w=600&q=80" }],
+      [{ name: "Jaisalmer", desc: "Desert trips begin in pleasant weather.", img: "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=600&q=80" }, { name: "Varanasi", desc: "Spiritual experiences and ghats.", img: "https://images.unsplash.com/photo-1583089892943-e02e5ee6f50b?auto=format&fit=crop&w=600&q=80" }, { name: "Rishikesh", desc: "Perfect mix of yoga and adventure.", img: "https://images.unsplash.com/photo-1605640840469-60d8050e3ce4?auto=format&fit=crop&w=600&q=80" }, { name: "Kolkata", desc: "Grand Durga Puja celebrations.", img: "https://images.unsplash.com/photo-1600018596645-b4ebcd0662d5?auto=format&fit=crop&w=600&q=80" }],
+      [{ name: "Pushkar", desc: "Famous camel fair and festivities.", img: "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=600&q=80" }, { name: "Amritsar", desc: "Golden Temple looks stunning.", img: "https://images.unsplash.com/photo-1600018596645-b4ebcd0662d5?auto=format&fit=crop&w=600&q=80" }, { name: "Goa", desc: "Start of peak beach season.", img: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=600&q=80" }, { name: "Hampi", desc: "Ideal weather for exploration.", img: "https://images.unsplash.com/photo-1588636735515-68041d8e1cc3?auto=format&fit=crop&w=600&q=80" }],
+      [{ name: "Auli", desc: "Skiing and snow adventures.", img: "https://images.unsplash.com/photo-1605640840469-60d8050e3ce4?auto=format&fit=crop&w=600&q=80" }, { name: "Kerala Backwaters", desc: "Calm and scenic cruises.", img: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=600&q=80" }, { name: "Shillong", desc: "Festive Christmas vibes.", img: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80" }, { name: "Manali", desc: "Snow-covered winter escape.", img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80" }]
+    ];
+    setSeasonalPicks(monthlyRecommendations[targetMonthIndex]);
+  }, [targetMonthIndex]);
 
   // --- OLA MAPS AUTOCOMPLETE LOGIC ---
   const fetchPlaces = async (input, type) => {
     if (!input || input.length < 2) {
-      if (type === 'origin') setOriginSuggestions([]);
-      if (type === 'dest') setDestSuggestions([]);
+      type === 'origin' ? setOriginSuggestions([]) : setDestSuggestions([]);
       return;
     }
-
     setIsLoadingPlaces(prev => ({ ...prev, [type]: true }));
 
     if (OLA_MAPS_API_KEY) {
       try {
         const response = await fetch(`https://api.olamaps.io/places/v1/autocomplete?input=${encodeURIComponent(input)}&api_key=${OLA_MAPS_API_KEY}`);
         const data = await response.json();
-        
         if (data && data.predictions) {
           const results = data.predictions.map(p => p.description);
           type === 'origin' ? setOriginSuggestions(results) : setDestSuggestions(results);
         }
-      } catch (error) {
-        console.error("Ola Maps API Error:", error);
-      }
+      } catch (error) { console.error("Ola Maps API Error:", error); }
     } else {
-      // Offline Indian City Fallback
       const offlineCities = ["Ahmedabad, Gujarat", "Agra, Uttar Pradesh", "Amritsar, Punjab", "Bangalore, Karnataka", "Bhopal, Madhya Pradesh", "Chennai, Tamil Nadu", "Chandigarh", "Coimbatore, Tamil Nadu", "Dehradun, Uttarakhand", "Delhi", "Goa", "Guwahati, Assam", "Hyderabad, Telangana", "Indore, Madhya Pradesh", "Jaipur, Rajasthan", "Jodhpur, Rajasthan", "Kochi, Kerala", "Kolkata, West Bengal", "Lucknow, Uttar Pradesh", "Madurai, Tamil Nadu", "Manali, Himachal Pradesh", "Mumbai, Maharashtra", "Mysore, Karnataka", "Nagpur, Maharashtra", "New Delhi", "Pune, Maharashtra", "Rishikesh, Uttarakhand", "Shimla, Himachal Pradesh", "Surat, Gujarat", "Thiruvananthapuram, Kerala", "Udaipur, Rajasthan", "Varanasi, Uttar Pradesh", "Visakhapatnam, Andhra Pradesh"];
       const filtered = offlineCities.filter(c => c.toLowerCase().includes(input.toLowerCase())).slice(0, 5);
       type === 'origin' ? setOriginSuggestions(filtered) : setDestSuggestions(filtered);
     }
-    
     setIsLoadingPlaces(prev => ({ ...prev, [type]: false }));
   };
 
@@ -154,7 +209,6 @@ const PlanTrip = () => {
     const value = e.target.value;
     setFormData(prev => ({ ...prev, [type]: value }));
     setActiveDropdown(type);
-
     const timer = type === 'origin' ? originTimer : destTimer;
     clearTimeout(timer.current);
     timer.current = setTimeout(() => fetchPlaces(value, type === 'origin' ? 'origin' : 'dest'), 300);
@@ -189,12 +243,20 @@ const PlanTrip = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleExperienceConfirm = (exp) => {
+    setSelectedPlanDetails({ title: exp.title, dest: exp.location, days: exp.duration, description: exp.fullDesc, highlights: exp.inclusions?.join(', ') || exp.desc });
+    setItemType('Experience');
+    setFormData(prev => ({ ...prev, destination: exp.location.split(',')[0] }));
+    setModalState('none');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const closeModal = () => {
     setModalState('none');
     setPreviewItin(null);
+    setPreviewExp(null);
   };
 
-  // Close dropdowns if clicked outside
   const handleGlobalClick = () => {
     if (activeDropdown) setActiveDropdown(null);
   };
@@ -219,8 +281,13 @@ const PlanTrip = () => {
             <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '25px', marginBottom: '35px', animation: 'slideDown 0.4s ease-out' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ backgroundColor: '#16a34a', color: 'white', padding: '8px', borderRadius: '10px' }}><ListChecks size={20}/></div>
-                  <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>{selectedPlanDetails.title || selectedPlanDetails.name}</h3>
+                  <div style={{ backgroundColor: '#16a34a', color: 'white', padding: '8px', borderRadius: '10px' }}>
+                    {itemType === 'Experience' ? <Activity size={20}/> : <ListChecks size={20}/>}
+                  </div>
+                  <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>
+                    {selectedPlanDetails.title || selectedPlanDetails.name}
+                    {selectedPlanDetails.isAiGenerated && <span style={{ marginLeft: '10px', fontSize: '11px', backgroundColor: '#e0f2fe', color: '#0284c7', padding: '4px 8px', borderRadius: '50px', verticalAlign: 'middle' }}>✨ AI Generated</span>}
+                  </h3>
                 </div>
                 <button onClick={() => {setSelectedPlanDetails(null); setItemType(null);}} style={{ background: '#f1f5f9', border: 'none', padding: '5px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', color: '#64748b' }}>Change Plan</button>
               </div>
@@ -231,7 +298,7 @@ const PlanTrip = () => {
                   <p style={{ margin: 0, fontSize: '14px', color: '#334155', fontWeight: '600' }}><Clock size={14} style={{display:'inline', marginRight:'5px'}}/> {selectedPlanDetails.days || 'Flexible'}</p>
                 </div>
                 <div>
-                  <p style={{ margin: '0 0 5px 0', fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>Route</p>
+                  <p style={{ margin: '0 0 5px 0', fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>Location</p>
                   <p style={{ margin: 0, fontSize: '14px', color: '#334155', fontWeight: '600' }}><MapPin size={14} style={{display:'inline', marginRight:'5px'}}/> {selectedPlanDetails.dest || selectedPlanDetails.location}</p>
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
@@ -257,7 +324,6 @@ const PlanTrip = () => {
                   />
                   {isLoadingPlaces.origin && <Loader2 size={16} color="#94a3b8" className="animate-spin" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />}
                 </div>
-                {/* Dropdown */}
                 {activeDropdown === 'origin' && originSuggestions.length > 0 && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', zIndex: 50, overflow: 'hidden' }}>
                     {originSuggestions.map((place, i) => (
@@ -281,7 +347,6 @@ const PlanTrip = () => {
                   />
                   {isLoadingPlaces.dest && <Loader2 size={16} color="#94a3b8" className="animate-spin" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />}
                 </div>
-                {/* Dropdown */}
                 {activeDropdown === 'destination' && destSuggestions.length > 0 && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', zIndex: 50, overflow: 'hidden' }}>
                     {destSuggestions.map((place, i) => (
@@ -344,12 +409,12 @@ const PlanTrip = () => {
         <div style={{ marginBottom: '70px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '30px' }}>
             <div style={{ padding: '10px', backgroundColor: '#fef08a', borderRadius: '12px' }}><Sun size={24} color="#ca8a04" /></div>
-            <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: 0 }}>Perfect for {currentMonthName}</h2>
+            <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: 0 }}>Perfect Match for {currentMonthNameDisplay}</h2>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
             {seasonalPicks.map((pick, idx) => (
               <div 
-                key={idx} onClick={() => handleTemplateConfirm({ title: pick.name, dest: pick.name, days: "Custom Duration", highlights: pick.desc, description: "Seasonal special recommendation based on the current month." })}
+                key={idx} onClick={() => handleTemplateConfirm({ title: pick.name, dest: pick.name, days: "Custom Duration", highlights: pick.desc, description: "Seasonal special recommendation based on your travel dates." })}
                 style={{ backgroundColor: 'white', borderRadius: '20px', overflow: 'hidden', border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.3s ease', boxShadow: '0 4px 10px rgba(0,0,0,0.03)' }}
                 onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = '0 15px 30px rgba(0,0,0,0.08)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.03)'; }}
@@ -366,41 +431,135 @@ const PlanTrip = () => {
           </div>
         </div>
 
-        {/* 4. DYNAMIC ITINERARIES (LOADED FROM SHARED DATA) */}
-        <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '30px' }}>Ready-to-Go Itineraries</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px' }}>
-          {masterItineraries.map((itin, idx) => (
-            <div key={idx} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '20px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
-              <h4 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 10px 0' }}>{itin.title}</h4>
-              <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '15px' }}>{itin.description}</p>
-              <div style={{ display: 'flex', gap: '15px', fontSize: '13px', color: '#475569', marginBottom: '20px', fontWeight: '600' }}>
-                <span><Clock size={14} style={{display:'inline', marginRight:'4px', color: '#94a3b8'}}/> {itin.days}</span>
-                <span><MapPin size={14} style={{display:'inline', marginRight:'4px', color: '#94a3b8'}}/> {(itin.dest || itin.location || '').split(',')[0]}</span>
+        {/* 4. DYNAMIC ITINERARIES (Ollama Fallback included!) */}
+        <div style={{ marginBottom: '70px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '30px' }}>
+             <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+               {searchTarget ? `Itineraries for ${formData.destination}` : "Ready-to-Go Itineraries"}
+             </h2>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px' }}>
+            {/* Show Pre-Built Matches */}
+            {filteredItineraries.length > 0 && filteredItineraries.map((itin, idx) => (
+              <div key={idx} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '20px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
+                <h4 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 10px 0' }}>{itin.title}</h4>
+                <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '15px' }}>{itin.description || itin.overview}</p>
+                <div style={{ display: 'flex', gap: '15px', fontSize: '13px', color: '#475569', marginBottom: '20px', fontWeight: '600' }}>
+                  <span><Clock size={14} style={{display:'inline', marginRight:'4px', color: '#94a3b8'}}/> {itin.days}</span>
+                  <span><MapPin size={14} style={{display:'inline', marginRight:'4px', color: '#94a3b8'}}/> {(itin.dest || itin.location || '').split(',')[0]}</span>
+                </div>
+                <button 
+                  onClick={() => { setPreviewItin(itin); setModalState('previewItin'); }} 
+                  style={{ marginTop: 'auto', padding: '12px', borderRadius: '10px', backgroundColor: 'transparent', color: '#0284c7', border: '1px solid #0284c7', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }} 
+                  onMouseEnter={(e) => {e.currentTarget.style.backgroundColor = '#e0f2fe'}} 
+                  onMouseLeave={(e) => {e.currentTarget.style.backgroundColor = 'transparent'}}
+                >
+                  View Details
+                </button>
               </div>
-              <button 
-                onClick={() => { setPreviewItin(itin); setModalState('preview'); }} 
-                style={{ marginTop: 'auto', padding: '12px', borderRadius: '10px', backgroundColor: 'transparent', color: '#0284c7', border: '1px solid #0284c7', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }} 
-                onMouseEnter={(e) => {e.currentTarget.style.backgroundColor = '#e0f2fe'}} 
-                onMouseLeave={(e) => {e.currentTarget.style.backgroundColor = 'transparent'}}
-              >
-                View Details
-              </button>
-            </div>
-          ))}
+            ))}
+
+            {/* Ollama Loading State */}
+            {isGeneratingAI && (
+              <div style={{ backgroundColor: '#f0fdf4', border: '1px dashed #16a34a', borderRadius: '20px', padding: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                <Loader2 size={30} color="#16a34a" className="animate-spin" style={{ marginBottom: '15px' }} />
+                <h4 style={{ fontSize: '18px', fontWeight: 'bold', color: '#15803d', margin: '0 0 8px 0' }}>Asking our AI Expert...</h4>
+                <p style={{ fontSize: '14px', color: '#166534', margin: 0 }}>Crafting a custom itinerary for {formData.destination} right now.</p>
+              </div>
+            )}
+
+            {/* Render AI Generated Itinerary */}
+            {!isGeneratingAI && aiGeneratedItinerary && (
+              <div style={{ backgroundColor: '#f8fafc', padding: '30px', borderRadius: '20px', border: '1px solid #bae6fd', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                <div style={{ position: 'absolute', top: '-12px', right: '20px', backgroundColor: '#e0f2fe', color: '#0284c7', padding: '4px 12px', borderRadius: '50px', fontSize: '11px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Bot size={12} /> AI Custom Built
+                </div>
+                <h4 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 10px 0' }}>{aiGeneratedItinerary.title}</h4>
+                <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '15px' }}>{aiGeneratedItinerary.description}</p>
+                <div style={{ display: 'flex', gap: '15px', fontSize: '13px', color: '#475569', marginBottom: '20px', fontWeight: '600' }}>
+                  <span><Clock size={14} style={{display:'inline', marginRight:'4px', color: '#94a3b8'}}/> {aiGeneratedItinerary.days}</span>
+                  <span><MapPin size={14} style={{display:'inline', marginRight:'4px', color: '#94a3b8'}}/> {aiGeneratedItinerary.dest}</span>
+                </div>
+                <button 
+                  onClick={() => { setPreviewItin(aiGeneratedItinerary); setModalState('previewItin'); }} 
+                  style={{ marginTop: 'auto', padding: '12px', borderRadius: '10px', backgroundColor: '#0284c7', color: 'white', border: 'none', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }} 
+                  onMouseEnter={(e) => {e.currentTarget.style.backgroundColor = '#0369a1'}} 
+                  onMouseLeave={(e) => {e.currentTarget.style.backgroundColor = '#0284c7'}}
+                >
+                  View AI Itinerary
+                </button>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* 5. CURATED LOCAL EXPERIENCES (Filtered dynamically) */}
+        {filteredExperiences.length > 0 ? (
+          <div style={{ marginBottom: '70px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '30px' }}>
+               <div style={{ padding: '10px', backgroundColor: '#dcfce7', borderRadius: '12px' }}><Activity size={24} color="#16a34a" /></div>
+               <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: 0 }}>Curated Local Experiences</h2>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '30px' }}>
+              {filteredExperiences.map((exp) => (
+                <div 
+                  key={exp.id} 
+                  style={{ backgroundColor: 'white', borderRadius: '24px', overflow: 'hidden', border: '1px solid #e5e7eb', boxShadow: '0 10px 25px rgba(0,0,0,0.03)', transition: 'transform 0.3s', display: 'flex', flexDirection: 'column' }} 
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} 
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+                >
+                  <div style={{ height: '220px', position: 'relative' }}>
+                    <img src={exp.image} alt={exp.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ position: 'absolute', top: '15px', left: '15px', backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(4px)', color: '#16a34a', padding: '6px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <Sparkles size={14} /> {exp.category}
+                    </div>
+                  </div>
+                  <div style={{ padding: '25px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#6b7280', fontSize: '13px', fontWeight: '600' }}>
+                        <MapPin size={14} /> {exp.location}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#4b5563', fontSize: '13px', fontWeight: '600', backgroundColor: '#f3f4f6', padding: '4px 8px', borderRadius: '6px' }}>
+                        <Clock size={12} /> {exp.duration}
+                      </div>
+                    </div>
+                    <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827', marginBottom: '12px', lineHeight: '1.3' }}>{exp.title}</h3>
+                    <p style={{ fontSize: '14px', color: '#4b5563', lineHeight: '1.6', marginBottom: '25px', flex: 1 }}>{exp.desc}</p>
+                    
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button onClick={() => { setPreviewExp(exp); setModalState('previewExp'); }} style={{ flex: 1, padding: '12px', borderRadius: '12px', backgroundColor: 'transparent', color: '#16a34a', border: '2px solid #16a34a', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e)=>{e.currentTarget.style.backgroundColor='#16a34a'; e.currentTarget.style.color='white';}} onMouseLeave={(e)=>{e.currentTarget.style.backgroundColor='transparent'; e.currentTarget.style.color='#16a34a';}}>
+                        Details
+                      </button>
+                      <button onClick={() => handleExperienceConfirm(exp)} style={{ flex: 1, padding: '12px', borderRadius: '12px', backgroundColor: '#16a34a', color: 'white', border: 'none', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e)=>e.currentTarget.style.backgroundColor='#15803d'} onMouseLeave={(e)=>e.currentTarget.style.backgroundColor='#16a34a'}>
+                        Add to Plan
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : searchTarget ? (
+          <div style={{ marginBottom: '70px', padding: '40px', backgroundColor: '#f8fafc', borderRadius: '20px', textAlign: 'center', border: '1px dashed #cbd5e1' }}>
+            <Activity size={30} color="#94a3b8" style={{ margin: '0 auto 10px' }} />
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155' }}>No curated experiences loaded for {formData.destination} yet.</h3>
+            <p style={{ fontSize: '14px', color: '#64748b' }}>Don't worry! If you submit your plan, our experts will build custom activities for you.</p>
+          </div>
+        ) : null}
       </div>
 
       {/* --- OVERLAY MODALS --- */}
       {modalState !== 'none' && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 100, backgroundColor: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           
-          {/* ITINERARY PREVIEW MODAL */}
-          {modalState === 'preview' && previewItin && (
+          {/* 1. ITINERARY PREVIEW MODAL */}
+          {modalState === 'previewItin' && previewItin && (
             <div style={{ backgroundColor: 'white', width: '100%', maxWidth: '600px', borderRadius: '24px', padding: '40px', position: 'relative', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', animation: 'slideUp 0.3s ease-out forwards', maxHeight: '90vh', overflowY: 'auto' }}>
               <button onClick={closeModal} style={{ position: 'absolute', top: '20px', right: '20px', background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}><X size={20} /></button>
               
-              <div style={{ backgroundColor: '#f0fdf4', color: '#16a34a', display: 'inline-block', padding: '6px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '15px' }}>
-                Itinerary Preview
+              <div style={{ backgroundColor: previewItin.isAiGenerated ? '#e0f2fe' : '#f0fdf4', color: previewItin.isAiGenerated ? '#0284c7' : '#16a34a', display: 'inline-block', padding: '6px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '15px' }}>
+                {previewItin.isAiGenerated ? "✨ AI Generated Preview" : "Itinerary Preview"}
               </div>
               <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1e293b', margin: '0 0 10px 0' }}>{previewItin.title}</h2>
               <div style={{ display: 'flex', gap: '20px', fontSize: '14px', color: '#64748b', marginBottom: '25px', fontWeight: '600', paddingBottom: '20px', borderBottom: '1px solid #e2e8f0' }}>
@@ -409,20 +568,67 @@ const PlanTrip = () => {
               </div>
               
               <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: '#334155', marginBottom: '10px' }}>Overview</h4>
-              <p style={{ fontSize: '15px', color: '#475569', lineHeight: '1.6', marginBottom: '25px' }}>{previewItin.description}</p>
+              <p style={{ fontSize: '15px', color: '#475569', lineHeight: '1.6', marginBottom: '25px' }}>{previewItin.description || previewItin.overview}</p>
               
               <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: '#334155', marginBottom: '10px' }}>Key Highlights</h4>
-              <ul style={{ paddingLeft: '20px', color: '#475569', fontSize: '15px', lineHeight: '1.6', marginBottom: '35px' }}>
+              <ul style={{ paddingLeft: '20px', color: '#475569', fontSize: '15px', lineHeight: '1.6', marginBottom: '25px' }}>
                 {(previewItin.highlights || "Customizable highlights based on your preferences.").split(', ').map((hl, i) => <li key={i} style={{ marginBottom: '8px' }}>{hl}</li>)}
               </ul>
 
-              <button onClick={() => handleTemplateConfirm(previewItin)} style={{ width: '100%', padding: '16px', borderRadius: '12px', backgroundColor: '#16a34a', color: 'white', fontSize: '16px', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(22, 163, 74, 0.2)' }}>
+              {/* Only show Day-by-Day if the AI specifically generated it in its JSON array */}
+              {previewItin.plan && previewItin.plan.length > 0 && (
+                <>
+                  <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: '#334155', marginBottom: '15px' }}>Suggested Flow</h4>
+                  <div style={{ borderLeft: '2px solid #e2e8f0', marginLeft: '10px', paddingLeft: '20px', marginBottom: '35px' }}>
+                    {previewItin.plan.map((day, idx) => (
+                      <div key={idx} style={{ position: 'relative', marginBottom: '15px' }}>
+                        <div style={{ position: 'absolute', left: '-27px', top: '4px', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: previewItin.isAiGenerated ? '#0284c7' : '#16a34a' }} />
+                        <h5 style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b', margin: '0 0 4px 0' }}>Day {day.day}: {day.title}</h5>
+                        <p style={{ fontSize: '14px', color: '#64748b', margin: 0, lineHeight: '1.5' }}>{day.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <button onClick={() => handleTemplateConfirm(previewItin)} style={{ width: '100%', padding: '16px', borderRadius: '12px', backgroundColor: previewItin.isAiGenerated ? '#0284c7' : '#16a34a', color: 'white', fontSize: '16px', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0, 0.15)' }}>
                 Add this to my Planner
               </button>
             </div>
           )}
 
-          {/* SUCCESS MODAL */}
+          {/* 2. EXPERIENCE PREVIEW MODAL */}
+          {modalState === 'previewExp' && previewExp && (
+            <div style={{ backgroundColor: 'white', width: '100%', maxWidth: '800px', borderRadius: '24px', padding: '40px', position: 'relative', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', animation: 'slideUp 0.3s ease-out forwards', maxHeight: '90vh', overflowY: 'auto' }}>
+              <button onClick={closeModal} style={{ position: 'absolute', top: '20px', right: '20px', background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}><X size={20} /></button>
+              
+              <div style={{ backgroundColor: '#f0fdf4', color: '#16a34a', display: 'inline-block', padding: '6px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '15px' }}>Experience Details</div>
+              <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1e293b', margin: '0 0 10px 0' }}>{previewExp.title}</h2>
+              <div style={{ display: 'flex', gap: '20px', fontSize: '14px', color: '#64748b', marginBottom: '25px', fontWeight: '600', paddingBottom: '20px', borderBottom: '1px solid #e2e8f0' }}>
+                <span><Clock size={16} style={{display:'inline', marginRight:'6px', verticalAlign:'text-bottom'}}/> {previewExp.duration}</span>
+                <span><MapPin size={16} style={{display:'inline', marginRight:'6px', verticalAlign:'text-bottom'}}/> {previewExp.location}</span>
+              </div>
+              
+              <h4 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', marginBottom: '10px' }}>What to Expect</h4>
+              <p style={{ fontSize: '16px', color: '#4b5563', lineHeight: '1.7', marginBottom: '30px' }}>{previewExp.fullDesc}</p>
+              
+              <h4 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', marginBottom: '15px' }}>What's Included</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px', marginBottom: '35px' }}>
+                {previewExp.inclusions.map((item, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', backgroundColor: '#f9fafb', padding: '12px', borderRadius: '10px', border: '1px solid #e5e7eb' }}>
+                    <CheckCircle2 size={18} color="#16a34a" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <span style={{ color: '#4b5563', fontSize: '14px', fontWeight: '600' }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+
+              <button onClick={() => handleExperienceConfirm(previewExp)} style={{ width: '100%', padding: '16px', borderRadius: '12px', backgroundColor: '#16a34a', color: 'white', fontSize: '16px', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(22, 163, 74, 0.2)' }}>
+                Add this to my Planner
+              </button>
+            </div>
+          )}
+
+          {/* 3. SUCCESS MODAL */}
           {modalState === 'success' && (
             <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '24px', textAlign: 'center', maxWidth: '400px' }}>
               <CheckCircle size={60} color="#16a34a" style={{ margin: '0 auto 20px' }} />
@@ -432,11 +638,24 @@ const PlanTrip = () => {
             </div>
           )}
 
-          {/* CONTACT MODAL */}
+          {/* 4. CONTACT MODAL */}
           {modalState === 'contact' && (
             <div style={{ backgroundColor: 'white', width: '100%', maxWidth: '500px', borderRadius: '24px', padding: '40px', position: 'relative', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', animation: 'slideUp 0.3s ease-out forwards' }}>
               <button onClick={closeModal} style={{ position: 'absolute', top: '20px', right: '20px', background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}><X size={20} /></button>
-              <form onSubmit={(e) => { e.preventDefault(); setModalState('success'); }}>
+              <form onSubmit={(e) => { 
+                  e.preventDefault(); 
+                  const messageDetails = `
+                    *New Trip Inquiry!* ✈️
+                    *From:* ${formData.origin || 'Not specified'}
+                    *To:* ${formData.destination}
+                    *Dates:* ${formData.startDate || 'Not specified'} to ${formData.endDate || 'Not specified'}
+                    *Travelers:* ${formData.pax}
+                    *Interests:* ${formData.interests}
+                    *Contact:* ${contactValue}
+                  `;
+                  console.log(messageDetails);
+                  setModalState('success'); 
+                }}>
                 <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}><Map size={30} /></div>
                 <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e293b', marginBottom: '10px' }}>Where should we send your request?</h2>
                 <p style={{ color: '#64748b', marginBottom: '30px', fontSize: '15px', lineHeight: '1.5' }}>Our travel experts are reviewing your request for <strong>{formData.destination || 'your destination'}</strong>. Choose how you'd like to receive the details.</p>
