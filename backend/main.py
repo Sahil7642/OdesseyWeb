@@ -3,8 +3,27 @@ from fastapi.encoders import jsonable_encoder
 from fastapi import FastAPI, logger
 import uvicorn
 import os
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from utility import *
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from passlib.context import CryptContext
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
+import hashlib
+
+SECRET_KEY = os.getenv("SECRET_KEY", "your_secret_key")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))
+
+pwd_context = CryptContext(
+    schemes=["argon2"],
+    deprecated="auto",
+    argon2__memory_cost=102400,   # 100 MB (tune based on server)
+    argon2__time_cost=2,          # iterations
+    argon2__parallelism=8         # threads
+)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # instantiate the application
 app = FastAPI()
@@ -30,6 +49,76 @@ class TravelStoryRequest(BaseModel):
     tags: list[str]
     likes: int = 0
     comments: list[dict] = []
+
+class UserSignup(BaseModel):
+    email: str
+    password: str = Field(min_length=8, max_length=128)
+    name: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def verify_and_update_password(plain_password: str, hashed_password: str) -> tuple[bool, str | None]:
+    verified, new_hash = pwd_context.verify_and_update(plain_password, hashed_password)
+    return verified, new_hash
+
+def create_access_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def get_user_by_email(email: str):
+    collection = get_mongo_collection("users")
+    return collection.find_one({"email": email})
+
+def authenticate_user(email: str, password: str):
+    user = get_user_by_email(email)
+    if not user:
+        return None
+
+    verified, new_hash = verify_and_update_password(password, user["password"])
+
+    if not verified:
+        return None
+
+    # 🔄 Auto-upgrade hash if needed
+    if new_hash:
+        collection = get_mongo_collection("users")
+        collection.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"password": new_hash}}
+        )
+
+    return user
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user = get_user_by_email(email)
+    if user is None:
+        raise credentials_exception
+    return user
 
 @app.get("/")
 async def root():
@@ -164,13 +253,16 @@ async def get_restraunts(request: RestrauntSearchRequest):
         return jsonable_encoder({"results": restraunts}, custom_encoder={ObjectId: str})
 
 @app.post("/create_travel_story")
-async def create_travel_story(request: TravelStoryRequest):
+async def create_travel_story(
+    request: TravelStoryRequest,
+    current_user: dict = Depends(get_current_user)
+):
     collection = get_mongo_collection("travel_stories")
     if collection is None:
         return jsonable_encoder({"message": "Failed to connect to database"}, custom_encoder={ObjectId: str})
 
     story_data = {
-        "user_id": request.user_id,
+        "user_id": current_user["email"],
         "expedition_type": request.expedition_type,
         "title": request.title,
         "description": request.description,
@@ -216,13 +308,13 @@ async def get_travel_stories():
     return jsonable_encoder({"travel_stories": travel_stories}, custom_encoder={ObjectId: str})
 
 @app.put("/update_travel_story/{story_id}")
-async def update_travel_story(story_id: str, request: TravelStoryRequest):
+async def update_travel_story(story_id: str, request: TravelStoryRequest, current_user: dict = Depends(get_current_user)):
     collection = get_mongo_collection("travel_stories")
     if collection is None:
         return jsonable_encoder({"message": "Failed to connect to database"}, custom_encoder={ObjectId: str})
 
     story_data = {
-        "user_id": request.user_id,
+        "user_id": current_user["email"],
         "expedition_type": request.expedition_type,
         "title": request.title,
         "description": request.description,
@@ -246,7 +338,7 @@ async def update_travel_story(story_id: str, request: TravelStoryRequest):
         return jsonable_encoder({"message": "Failed to update travel story"}, custom_encoder={ObjectId: str})
 
 @app.delete("/delete_travel_story/{story_id}")
-async def delete_travel_story(story_id: str):
+async def delete_travel_story(story_id: str, current_user: dict = Depends(get_current_user)):
     collection = get_mongo_collection("travel_stories")
     if collection is None:
         return jsonable_encoder({"message": "Failed to connect to database"}, custom_encoder={ObjectId: str})
@@ -260,6 +352,39 @@ async def delete_travel_story(story_id: str):
     except Exception as e:
         print(f"Error deleting document from MongoDB: {e}")
         return jsonable_encoder({"message": "Failed to delete travel story"}, custom_encoder={ObjectId: str})
+
+@app.post("/signup")
+async def signup(user: UserSignup):
+    collection = get_mongo_collection("users")
+
+    existing_user = collection.find_one({"email": user.email})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    user_data = {
+        "email": user.email,
+        "name": user.name,
+        "password": hash_password(user.password)
+    }
+
+    result = collection.insert_one(user_data)
+
+    return {"message": "User created successfully", "user_id": str(result.inserted_id)}
+
+@app.post("/login", response_model=Token)
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = authenticate_user(form_data.username, form_data.password)
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    access_token = create_access_token(
+        data={"sub": user["email"]},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+
+    return {"access_token": access_token, "token_type": "bearer"}
+
 
 
 if __name__ == "__main__":
