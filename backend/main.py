@@ -28,6 +28,8 @@ class TravelStoryRequest(BaseModel):
     date: str
     images: list[str]
     tags: list[str]
+    likes: int = 0
+    comments: list[dict] = []
 
 @app.get("/")
 async def root():
@@ -176,6 +178,8 @@ async def create_travel_story(request: TravelStoryRequest):
         "date": request.date,
         "images": request.images,
         "tags": request.tags,
+        "likes": request.likes,
+        "comments": request.comments
     }
     story_data["status"] = "pending"
 
@@ -204,7 +208,9 @@ async def get_travel_stories():
             "date": item["date"],
             "images": item["images"],
             "tags": item["tags"],
-            "status": item["status"]
+            "status": item["status"],
+            "likes": item["likes"],
+            "comments": item["comments"]
         })
 
     return jsonable_encoder({"travel_stories": travel_stories}, custom_encoder={ObjectId: str})
@@ -224,6 +230,8 @@ async def update_travel_story(story_id: str, request: TravelStoryRequest):
         "date": request.date,
         "images": request.images,
         "tags": request.tags,
+        "likes": request.likes if hasattr(request, "likes") else 0,
+        "comments": request.comments if hasattr(request, "comments") else []
     }
     story_data["status"] = "pending"
 
