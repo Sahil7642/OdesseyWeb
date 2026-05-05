@@ -13,6 +13,7 @@ node -v # Should print "v24.13.1".
 # Verify npm version:
 npm -v # Should print "11.8.0".
 npm install react-scripts
+npm install react-joyride
 npm start &
 
 python -m pip install uv

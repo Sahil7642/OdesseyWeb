@@ -767,7 +767,6 @@ const Header = () => {
       items: [
         { label: "Discover", href: "/discover", navIcon: Sparkles },
         { label: "Experiences", href: "/experiences", navIcon: Compass },
-        { label: "Diaries", href: "/story", navIcon: Camera }
       ]
     },
     {
@@ -829,7 +828,6 @@ const Header = () => {
     setIsMenuOpen(false); 
   };
 
-  // --- DYNAMIC STYLES ---
   const textColor = isAtTop ? 'white' : '#111827';
   
   const headerStyle = {
@@ -839,12 +837,11 @@ const Header = () => {
     pointerEvents: isVisible ? 'auto' : 'none'
   };
 
-  // TRUE GLASSMORPHISM EFFECT
   const innerStyle = {
     maxWidth: '1200px', margin: '0 auto',
     backgroundColor: isAtTop ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.9)', 
     backdropFilter: 'blur(20px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(20px) saturate(180%)', // Safari Support
+    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
     border: isAtTop ? '1px solid rgba(255, 255, 255, 0.25)' : '1px solid rgba(0,0,0,0.05)',
     boxShadow: isAtTop ? '0 10px 30px rgba(0,0,0,0.1)' : '0 4px 20px rgba(0,0,0,0.1)',
     borderRadius: '20px', padding: '12px 24px',
@@ -854,8 +851,7 @@ const Header = () => {
 
   return (
     <>
-      {/* --- DESKTOP HEADER --- */}
-      <header style={headerStyle}>
+      <header className="tour-header" style={headerStyle}>
         <div style={innerStyle}>
           
           {/* Logo Section */}
@@ -871,11 +867,12 @@ const Header = () => {
             {desktopNavLinks.map((link) => (
               <div 
                 key={link.name} 
+                // 👇 CRITICAL FIX: Generates unique classes like .tour-nav-explore, .tour-nav-plan
+                className={`tour-nav-${link.name.toLowerCase().replace(/\s+/g, '-')}`}
                 style={{ position: 'relative' }}
                 onMouseEnter={() => link.items && setActiveDropdown(link.name)}
                 onMouseLeave={() => link.items && setActiveDropdown(null)}
               >
-                {/* Main Link / Group Header */}
                 {link.items ? (
                   <div style={{
                     color: textColor, fontSize: '14px', fontWeight: '600', cursor: 'pointer',
@@ -899,7 +896,6 @@ const Header = () => {
                   </Link>
                 )}
 
-                {/* Dropdown Menu */}
                 {link.items && activeDropdown === link.name && (
                   <div style={{
                     position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
@@ -908,7 +904,6 @@ const Header = () => {
                     minWidth: '200px', padding: '8px', zIndex: 50,
                     animation: 'dropdownFadeIn 0.2s ease-out'
                   }}>
-                    {/* Invisible hover bridge */}
                     <div style={{ position: 'absolute', top: '-10px', left: 0, right: 0, height: '10px' }} />
                     
                     {link.items.map(subItem => (
@@ -933,7 +928,6 @@ const Header = () => {
             ))}
           </div>
 
-          {/* Hamburger Menu - ALWAYS visible now! */}
           <button onClick={() => setIsMenuOpen(true)} style={{ background: 'none', border: 'none', color: textColor, cursor: 'pointer', padding: '4px', transition: 'color 0.3s', display: 'flex', alignItems: 'center' }}>
             <Menu size={28} />
           </button>
@@ -950,7 +944,6 @@ const Header = () => {
         display: 'flex', flexDirection: 'column'
       }}>
         
-        {/* Drawer Header */}
         <div style={{ padding: '25px 30px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f3f4f6' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <img src={logoSrc} alt="Odessey Logo" style={{ height: '30px', width: 'auto', objectFit: 'contain' }} />
@@ -964,7 +957,6 @@ const Header = () => {
           </button>
         </div>
 
-        {/* Drawer Content */}
         <div style={{ padding: '30px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
           
           <button 
@@ -981,7 +973,6 @@ const Header = () => {
             Plan Your Adventure <ArrowRight size={18} />
           </button>
 
-          {/* Accordion Menu */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
             {menuStructure.map((section, idx) => (
               <div key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
@@ -1029,7 +1020,6 @@ const Header = () => {
 
       </div>
 
-      {/* --- BACKGROUND OVERLAY --- */}
       {isMenuOpen && (
         <div 
           onClick={() => { setIsMenuOpen(false); setIsVisible(true); }}
@@ -1037,10 +1027,8 @@ const Header = () => {
         />
       )}
 
-      {/* Custom Scoped CSS ensuring Horizontal Row layout */}
       <style>
         {`
-          /* Forces the desktop links to stay side-by-side horizontally */
           .desktop-nav-container {
             display: flex;
             flex-direction: row;

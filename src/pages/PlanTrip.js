@@ -152,11 +152,11 @@ const PlanTrip = () => {
             ]
           }`;
 
-          const response = await fetch('http://localhost:11434/api/chat', {
+          const response = await fetch('http://localhost:5051/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              model: 'llama3', 
+              model: 'qwen2.5:0.5b', // Change if using mistral/phi3
               messages: [{ role: 'user', content: prompt }],
               stream: false
             })

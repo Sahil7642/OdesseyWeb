@@ -55,7 +55,7 @@ export const extractCoordinatesWithOllama = async (location) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'mistral', // Or your preferred model
+        model: 'gemma3:4b', // Or your preferred model
         prompt: prompt,
         stream: false,
         temperature: 0.1,

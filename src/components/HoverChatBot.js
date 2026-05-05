@@ -18,7 +18,7 @@ const HoverChatbot = () => {
   // In-Chat Map State
   const [mapData, setMapData] = useState(null);
 
-  // UI Messages - Now starts in pure English!
+  // UI Messages
   const [messages, setMessages] = useState([
     { 
       id: 1, 
@@ -49,7 +49,6 @@ const HoverChatbot = () => {
               const res = await fetch(`https://api.olamaps.io/places/v1/reverse-geocode?latlng=${latitude},${longitude}&api_key=${OLA_MAPS_API_KEY}`);
               const data = await res.json();
               if (data?.results && data.results.length > 0) {
-                // Grab the city/locality from Ola Maps response
                 locationName = data.results[0].formatted_address;
               }
             }
@@ -73,7 +72,6 @@ const HoverChatbot = () => {
         },
         (error) => {
           console.warn("User denied geolocation or it failed:", error.message);
-          // It will just fall back to "India" gracefully
         },
         { enableHighAccuracy: false, timeout: 10000 }
       );
@@ -162,11 +160,11 @@ const HoverChatbot = () => {
     setMapData(null); // Clear previous map if any
 
     try {
-      const response = await fetch('http://localhost:11434/api/chat', {
+      const response = await fetch('http://localhost:5051/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'llama3', // Change if using mistral/phi3
+          model: 'qwen2.5:0.5b', // Change if using mistral/phi3
           messages: [systemPrompt, ...newContext],
           stream: false
         })
@@ -257,8 +255,8 @@ const HoverChatbot = () => {
   };
 
   return (
-    <div style={{ position: 'fixed', bottom: '30px', right: '30px', zIndex: 9999 }}>
-      
+    <div className="tour-chatbot" style={{ position: 'fixed', bottom: '30px', right: '30px', zIndex: 9999 }}>
+      {/* 👇 The comment is now safely inside the div! */}
       {/* --- THE CHAT WINDOW --- */}
       {isOpen && (
         <div style={{ 
