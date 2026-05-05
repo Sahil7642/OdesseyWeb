@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, MapPin, Calendar, X, Heart, Share2, Sparkles, ArrowRight, Compass } from 'lucide-react';
+import { BookOpen, MapPin, Calendar, X, Heart, Share2, Sparkles, ArrowRight, Compass, MessageCircle, Mail, Copy, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const StoriesPage = () => {
@@ -9,6 +9,11 @@ const StoriesPage = () => {
   
   // State to hold both curated and user-generated stories
   const [allStories, setAllStories] = useState([]);
+
+  // --- NEW STATES FOR LIKES & SHARES ---
+  const [likedStories, setLikedStories] = useState({}); // Stores which story IDs the user has liked
+  const [shareMenuOpen, setShareMenuOpen] = useState(null); // Stores the ID of the story whose share menu is open
+  const [toastMessage, setToastMessage] = useState(''); // For "Link Copied" notifications
 
   // --- MOCK DATA: CURATED TRAVEL DIARIES ---
   const curatedStories = [
@@ -205,23 +210,19 @@ const StoriesPage = () => {
 
   // --- INITIALIZE & MERGE STORIES ---
   useEffect(() => {
-    // 1. Get user stories from LocalStorage
     const savedStoriesJson = localStorage.getItem('odessey_stories');
     let userStories = [];
     
     if (savedStoriesJson) {
       const rawStories = JSON.parse(savedStoriesJson);
-      // Format user stories to match the UI structure of curated stories
       userStories = rawStories.map(story => ({
         id: `user_${story.id}`,
         title: story.title,
         author: story.author,
         state: story.location, 
-        // Map persona type to a category for filtering
         category: story.type === 'The Traveller' ? 'Adventure' : 'Relaxation', 
         date: story.date,
-        likes: Math.floor(Math.random() * 50) + 10, // Give them some fake initial likes!
-        // Provide a default image based on type if they didn't upload one
+        likes: Math.floor(Math.random() * 50) + 10,
         img: story.type === 'The Traveller' 
           ? "https://images.unsplash.com/photo-1506461883276-594a12b11cf3?auto=format&fit=crop&w=800&q=80" 
           : "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=800&q=80",
@@ -229,11 +230,65 @@ const StoriesPage = () => {
         fullText: story.content
       }));
     }
-
-    // 2. Merge User Stories (top) with Curated Stories (bottom)
     setAllStories([...userStories, ...curatedStories]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // --- INTERACTION HANDLERS ---
+  
+  // Handle Liking a Story
+  const handleLike = (e, storyId) => {
+    e.stopPropagation(); // Prevents the story modal from opening when clicking the heart
+    setLikedStories(prev => ({
+      ...prev,
+      [storyId]: !prev[storyId]
+    }));
+  };
+
+  // Handle Sharing a Story
+  const handleShareClick = async (e, story) => {
+    e.stopPropagation(); // Prevents the story modal from opening
+
+    const shareData = {
+      title: story.title,
+      text: `Check out this amazing travel diary about ${story.state} on Odessey: "${story.title}" by ${story.author}.`,
+      url: window.location.href // In a real app, this would be the specific story's URL
+    };
+
+    // 1. Try Native Web Share API first (perfect for Mobile, Safari, Edge - opens native WhatsApp/Socials/Messages menu)
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.log("User cancelled native share or it failed.");
+      }
+    } else {
+      // 2. Fallback for older Desktop browsers: Toggle Custom Dropdown Menu
+      setShareMenuOpen(shareMenuOpen === story.id ? null : story.id);
+    }
+  };
+
+  // Execute Fallback Share Options
+  const executeFallbackShare = (e, type, story) => {
+    e.stopPropagation();
+    const shareText = `Check out this amazing travel diary about ${story.state} on Odessey: "${story.title}"`;
+    const shareUrl = window.location.href;
+
+    if (type === 'whatsapp') {
+      window.open(`https://wa.me/?text=${encodeURIComponent(shareText + " " + shareUrl)}`, '_blank');
+    } else if (type === 'email') {
+      window.location.href = `mailto:?subject=${encodeURIComponent("Odessey Travel Diary: " + story.title)}&body=${encodeURIComponent(shareText + '\n\n' + shareUrl)}`;
+    } else if (type === 'copy') {
+      navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+      showToast('Link copied to clipboard!');
+    }
+    setShareMenuOpen(null);
+  };
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
 
   const categories = ['All', 'Nature', 'Culture', 'Adventure', 'Relaxation', 'Offbeat'];
 
@@ -288,57 +343,95 @@ const StoriesPage = () => {
 
         {/* 3. STORIES GRID */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '35px', marginBottom: '80px' }}>
-          {displayedStories.map((story) => (
-            <div 
-              key={story.id} 
-              onClick={() => setSelectedStory(story)}
-              style={{ 
-                backgroundColor: 'white', borderRadius: '24px', overflow: 'hidden', border: '1px solid #e5e7eb', 
-                boxShadow: '0 10px 25px rgba(0,0,0,0.03)', transition: 'transform 0.3s ease, box-shadow 0.3s ease', 
-                cursor: 'pointer', display: 'flex', flexDirection: 'column' 
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-10px)'; e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.08)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(0,0,0,0.03)'; }}
-            >
-              <div style={{ height: '240px', overflow: 'hidden', position: 'relative' }}>
-                <img src={story.img} alt={story.title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }} onMouseEnter={(e)=>e.currentTarget.style.transform='scale(1.05)'} onMouseLeave={(e)=>e.currentTarget.style.transform='scale(1)'}/>
-                
-                <div style={{ position: 'absolute', top: '20px', left: '20px', display: 'flex', gap: '8px' }}>
-                  <span style={{ backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(4px)', color: '#1f2937', padding: '6px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <MapPin size={12} color="#16a34a" /> {story.state}
-                  </span>
-                  <span style={{ backgroundColor: 'rgba(17, 24, 39, 0.7)', backdropFilter: 'blur(4px)', color: 'white', padding: '6px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold' }}>
-                    {story.category}
-                  </span>
-                </div>
-              </div>
+          {displayedStories.map((story) => {
+            const isLiked = likedStories[story.id];
+            const displayLikes = story.likes + (isLiked ? 1 : 0);
 
-              <div style={{ padding: '30px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#6b7280', marginBottom: '15px' }}>
-                  <span style={{ fontWeight: '600', color: '#16a34a' }}>By {story.author}</span>
-                  <span>•</span>
-                  <span>{story.date}</span>
+            return (
+              <div 
+                key={story.id} 
+                onClick={() => setSelectedStory(story)}
+                style={{ 
+                  backgroundColor: 'white', borderRadius: '24px', overflow: 'hidden', border: '1px solid #e5e7eb', 
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.03)', transition: 'transform 0.3s ease, box-shadow 0.3s ease', 
+                  cursor: 'pointer', display: 'flex', flexDirection: 'column', position: 'relative' 
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-10px)'; e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.08)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(0,0,0,0.03)'; setShareMenuOpen(null); }}
+              >
+                <div style={{ height: '240px', overflow: 'hidden', position: 'relative' }}>
+                  <img src={story.img} alt={story.title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }} onMouseEnter={(e)=>e.currentTarget.style.transform='scale(1.05)'} onMouseLeave={(e)=>e.currentTarget.style.transform='scale(1)'}/>
+                  
+                  <div style={{ position: 'absolute', top: '20px', left: '20px', display: 'flex', gap: '8px' }}>
+                    <span style={{ backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(4px)', color: '#1f2937', padding: '6px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <MapPin size={12} color="#16a34a" /> {story.state}
+                    </span>
+                    <span style={{ backgroundColor: 'rgba(17, 24, 39, 0.7)', backdropFilter: 'blur(4px)', color: 'white', padding: '6px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold' }}>
+                      {story.category}
+                    </span>
+                  </div>
                 </div>
-                
-                <h3 style={{ fontSize: '22px', fontWeight: '800', color: '#111827', marginBottom: '12px', lineHeight: '1.4' }}>
-                  {story.title}
-                </h3>
-                
-                <p style={{ fontSize: '15px', color: '#4b5563', lineHeight: '1.7', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', flex: 1, marginBottom: '20px' }}>
-                  {story.excerpt}
-                </p>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: '20px', marginTop: 'auto' }}>
-                  <button style={{ background: 'none', border: 'none', color: '#16a34a', fontWeight: '700', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px', padding: 0, cursor: 'pointer' }}>
-                    Read Diary <ArrowRight size={16} />
-                  </button>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#9ca3af', fontSize: '13px', fontWeight: '600' }}>
-                    <Heart size={16} /> {story.likes}
+                <div style={{ padding: '30px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#6b7280', marginBottom: '15px' }}>
+                    <span style={{ fontWeight: '600', color: '#16a34a' }}>By {story.author}</span>
+                    <span>•</span>
+                    <span>{story.date}</span>
+                  </div>
+                  
+                  <h3 style={{ fontSize: '22px', fontWeight: '800', color: '#111827', marginBottom: '12px', lineHeight: '1.4' }}>
+                    {story.title}
+                  </h3>
+                  
+                  <p style={{ fontSize: '15px', color: '#4b5563', lineHeight: '1.7', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', flex: 1, marginBottom: '20px' }}>
+                    {story.excerpt}
+                  </p>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: '20px', marginTop: 'auto', position: 'relative' }}>
+                    <button style={{ background: 'none', border: 'none', color: '#16a34a', fontWeight: '700', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px', padding: 0, cursor: 'pointer' }}>
+                      Read Diary <ArrowRight size={16} />
+                    </button>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                      {/* LIKE BUTTON */}
+                      <button 
+                        onClick={(e) => handleLike(e, story.id)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', color: isLiked ? '#ef4444' : '#9ca3af', fontSize: '14px', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer', transition: 'color 0.2s' }}
+                      >
+                        <Heart size={18} fill={isLiked ? '#ef4444' : 'none'} /> {displayLikes}
+                      </button>
+                      
+                      {/* SHARE BUTTON */}
+                      <div style={{ position: 'relative' }}>
+                        <button 
+                          onClick={(e) => handleShareClick(e, story)}
+                          style={{ display: 'flex', alignItems: 'center', color: shareMenuOpen === story.id ? '#0284c7' : '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', transition: 'color 0.2s' }}
+                        >
+                          <Share2 size={18} />
+                        </button>
+                        
+                        {/* FALLBACK SHARE DROPDOWN MENU */}
+                        {shareMenuOpen === story.id && (
+                          <div style={{ position: 'absolute', bottom: '100%', right: '0', marginBottom: '10px', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.15)', border: '1px solid #e5e7eb', overflow: 'hidden', zIndex: 50, width: '160px', animation: 'slideUp 0.2s ease-out' }}>
+                            <button onClick={(e) => executeFallbackShare(e, 'whatsapp', story)} style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '12px 16px', border: 'none', borderBottom: '1px solid #f3f4f6', background: 'white', cursor: 'pointer', color: '#374151', fontSize: '14px', fontWeight: '500' }}>
+                              <MessageCircle size={16} color="#25D366" /> WhatsApp
+                            </button>
+                            <button onClick={(e) => executeFallbackShare(e, 'email', story)} style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '12px 16px', border: 'none', borderBottom: '1px solid #f3f4f6', background: 'white', cursor: 'pointer', color: '#374151', fontSize: '14px', fontWeight: '500' }}>
+                              <Mail size={16} color="#0284c7" /> Email
+                            </button>
+                            <button onClick={(e) => executeFallbackShare(e, 'copy', story)} style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '12px 16px', border: 'none', background: 'white', cursor: 'pointer', color: '#374151', fontSize: '14px', fontWeight: '500' }}>
+                              <Copy size={16} color="#6b7280" /> Copy Link
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* 4. CALL TO ACTION: PLAN YOUR STORY */}
@@ -365,14 +458,14 @@ const StoriesPage = () => {
       {/* --- 5. THE STORY MODAL OVERLAY --- */}
       {selectedStory && (
         <div 
-          onClick={() => setSelectedStory(null)}
+          onClick={() => { setSelectedStory(null); setShareMenuOpen(null); }}
           style={{
             position: 'fixed', inset: 0, zIndex: 100, backgroundColor: 'rgba(17, 24, 39, 0.8)', backdropFilter: 'blur(8px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
           }}
         >
           <div 
-            onClick={(e) => e.stopPropagation()} 
+            onClick={(e) => { e.stopPropagation(); setShareMenuOpen(null); }} 
             style={{
               backgroundColor: 'white', width: '100%', maxWidth: '850px', maxHeight: '90vh', 
               borderRadius: '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', 
@@ -418,13 +511,34 @@ const StoriesPage = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid #e5e7eb', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e)=>e.currentTarget.style.color='#ef4444'} onMouseLeave={(e)=>e.currentTarget.style.color='#6b7280'}>
-                    <Heart size={18} />
+                <div style={{ display: 'flex', gap: '10px', position: 'relative' }}>
+                  <button 
+                    onClick={(e) => handleLike(e, selectedStory.id)}
+                    style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid #e5e7eb', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: likedStories[selectedStory.id] ? '#ef4444' : '#6b7280', cursor: 'pointer', transition: 'all 0.2s' }} 
+                  >
+                    <Heart size={18} fill={likedStories[selectedStory.id] ? '#ef4444' : 'none'} />
                   </button>
-                  <button style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid #e5e7eb', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e)=>e.currentTarget.style.color='#0284c7'} onMouseLeave={(e)=>e.currentTarget.style.color='#6b7280'}>
+                  <button 
+                    onClick={(e) => handleShareClick(e, selectedStory)}
+                    style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid #e5e7eb', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: shareMenuOpen === selectedStory.id ? '#0284c7' : '#6b7280', cursor: 'pointer', transition: 'all 0.2s' }} 
+                  >
                     <Share2 size={18} />
                   </button>
+
+                  {/* MODAL FALLBACK SHARE DROPDOWN MENU */}
+                  {shareMenuOpen === selectedStory.id && (
+                    <div style={{ position: 'absolute', top: '100%', right: '0', marginTop: '10px', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.15)', border: '1px solid #e5e7eb', overflow: 'hidden', zIndex: 50, width: '160px', animation: 'slideUp 0.2s ease-out' }}>
+                      <button onClick={(e) => executeFallbackShare(e, 'whatsapp', selectedStory)} style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '12px 16px', border: 'none', borderBottom: '1px solid #f3f4f6', background: 'white', cursor: 'pointer', color: '#374151', fontSize: '14px', fontWeight: '500' }}>
+                        <MessageCircle size={16} color="#25D366" /> WhatsApp
+                      </button>
+                      <button onClick={(e) => executeFallbackShare(e, 'email', selectedStory)} style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '12px 16px', border: 'none', borderBottom: '1px solid #f3f4f6', background: 'white', cursor: 'pointer', color: '#374151', fontSize: '14px', fontWeight: '500' }}>
+                        <Mail size={16} color="#0284c7" /> Email
+                      </button>
+                      <button onClick={(e) => executeFallbackShare(e, 'copy', selectedStory)} style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '12px 16px', border: 'none', background: 'white', cursor: 'pointer', color: '#374151', fontSize: '14px', fontWeight: '500' }}>
+                        <Copy size={16} color="#6b7280" /> Copy Link
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -449,6 +563,13 @@ const StoriesPage = () => {
 
             </div>
           </div>
+        </div>
+      )}
+
+      {/* --- 6. TOAST NOTIFICATION --- */}
+      {toastMessage && (
+        <div style={{ position: 'fixed', bottom: '40px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#111827', color: 'white', padding: '12px 24px', borderRadius: '50px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '600', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', zIndex: 9999, animation: 'slideUp 0.3s ease-out forwards' }}>
+          <Check size={16} color="#4ade80" /> {toastMessage}
         </div>
       )}
 

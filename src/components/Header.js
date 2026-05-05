@@ -730,7 +730,6 @@ const Header = () => {
       items: [
         { name: 'Discover', href: '/discover', icon: Sparkles },
         { name: 'Experiences', href: '/experiences', icon: Compass },
-        { name: 'Diaries', href: '/story', icon: Camera }
       ] 
     },
     { 
