@@ -1,10 +1,10 @@
-import React, { useState, useEffect, forwardRef } from "react"; 
+import React, { useState, useEffect } from "react"; 
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import "./index.css"; 
 
 import { Joyride } from 'react-joyride'; 
 import { usePageTour } from './hooks/usePageTour'; 
-import { HelpCircle } from 'lucide-react'; 
+import { Map, X } from 'lucide-react'; 
 
 // Existing Components
 import Header from "./components/Header";
@@ -41,48 +41,17 @@ const ScrollToTop = () => {
   return null; 
 };
 
-// 👇 The exact working CustomBeacon from your code
-const CustomBeacon = forwardRef((props, ref) => {
-  return (
-    <button
-      ref={ref}
-      onClick={props.onClick} // Joyride naturally listens to this!
-      onMouseEnter={props.onMouseEnter} 
-      style={{
-        backgroundColor: '#16a34a',
-        color: 'white',
-        padding: '12px 24px',
-        borderRadius: '50px',
-        fontWeight: 'bold',
-        border: 'none',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        boxShadow: '0 10px 25px rgba(22, 163, 74, 0.4)',
-        animation: 'pulse 2s infinite' 
-      }}
-    >
-      <HelpCircle size={18} /> How it works
-    </button>
-  );
-});
-
 const HomePageWrapper = ({ onSearch, searchQuery, searchResults }) => {
-  const { runTour, handleTourCallback, restartTour } = usePageTour('hasSeenHomeTour');
+  const { runTour, showPrompt, handleTourCallback, startTour, skipTour } = usePageTour('hasSeenHomeTour');
+  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   const tourSteps = [
     {
-      // 👇 Step 1 targets the invisible anchor. No disableBeacon here, so CustomBeacon renders!
-      target: '.tour-start-anchor', 
-      content: 'Your journey starts here! Let’s take a quick look at how to navigate the platform.',
-      placement: 'top',
-    },
-    {
-      target: '.tour-header', 
-      content: 'Use the navigation menu to explore destinations, plan trips, or check out our premium services.',
-      placement: 'bottom',
-      disableBeacon: true, // Hide the beacon for all subsequent steps
+      // 👇 FOOLPROOF TARGET: Targeting the body guarantees it works 100% of the time!
+      target: 'body', 
+      content: 'Welcome to Odessey! Let’s take a quick look at how to navigate the platform.',
+      placement: 'center',
+      disableBeacon: true, 
     },
     {
       target: '.tour-nav-explore', 
@@ -144,74 +113,84 @@ const HomePageWrapper = ({ onSearch, searchQuery, searchResults }) => {
 
   return (
     <>
-      <Joyride
-        steps={tourSteps}
-        run={runTour}
-        continuous={true}
-        showSkipButton={true}
-        showProgress={true}
-        callback={handleTourCallback}
-        beaconComponent={CustomBeacon} // 👈 Passes your custom button
-        scrollOffset={150} 
-        styles={{
-          options: { primaryColor: '#16a34a', zIndex: 10000, textColor: '#334155' },
-          buttonClose: { display: 'none' },
-          tooltip: { borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', padding: '20px' },
-          buttonNext: { borderRadius: '8px', fontWeight: 'bold' },
-          buttonBack: { color: '#64748b' },
-          buttonSkip: { color: '#94a3b8' }
-        }}
-      />
+      {/* --- THE STARTUP PROMPT MODAL --- */}
+      {showPrompt && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: 'rgba(17, 24, 39, 0.7)', backdropFilter: 'blur(5px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+          animation: 'fadeIn 0.3s ease-out'
+        }}>
+          <div style={{
+            backgroundColor: 'white', borderRadius: '24px', padding: '40px', maxWidth: '450px', width: '100%',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', textAlign: 'center', position: 'relative',
+            animation: 'slideUp 0.4s ease-out'
+          }}>
+            <button onClick={() => skipTour(dontShowAgain)} style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}>
+              <X size={24} />
+            </button>
+            
+            <div style={{ width: '60px', height: '60px', backgroundColor: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <Map size={30} color="#16a34a" />
+            </div>
+            
+            <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#111827', marginBottom: '10px' }}>Welcome to Odessey!</h2>
+            <p style={{ fontSize: '15px', color: '#4b5563', lineHeight: '1.6', marginBottom: '30px' }}>
+              Would you like a quick guided tour to help you navigate our platform and discover all our travel features?
+            </p>
 
-      <div className="tour-home-hero" style={{ position: 'relative' }}>
-        <HeroSection onSearch={onSearch} /> 
-        
-        {/* 👇 THE ANCHOR: Centered at the bottom of the Hero Section. Joyride will place the button here! */}
-        <div 
-          className="tour-start-anchor" 
-          style={{ 
-            position: 'absolute', 
-            bottom: '40px', 
-            left: '50%', 
-            transform: 'translateX(-50%)', 
-            width: '1px', 
-            height: '1px' 
-          }} 
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '25px' }}>
+              <button 
+                onClick={() => startTour(dontShowAgain)}
+                style={{ backgroundColor: '#16a34a', color: 'white', padding: '14px', borderRadius: '12px', fontSize: '16px', fontWeight: 'bold', border: 'none', cursor: 'pointer', transition: 'background 0.2s' }}
+                onMouseEnter={(e)=>e.currentTarget.style.backgroundColor='#15803d'} onMouseLeave={(e)=>e.currentTarget.style.backgroundColor='#16a34a'}
+              >
+                Yes, start the tour
+              </button>
+              <button 
+                onClick={() => skipTour(dontShowAgain)}
+                style={{ backgroundColor: '#f3f4f6', color: '#4b5563', padding: '14px', borderRadius: '12px', fontSize: '16px', fontWeight: 'bold', border: 'none', cursor: 'pointer', transition: 'background 0.2s' }}
+                onMouseEnter={(e)=>e.currentTarget.style.backgroundColor='#e5e7eb'} onMouseLeave={(e)=>e.currentTarget.style.backgroundColor='#f3f4f6'}
+              >
+                No, skip for now
+              </button>
+            </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#6b7280' }}>
+              <input 
+                type="checkbox" 
+                checked={dontShowAgain} 
+                onChange={(e) => setDontShowAgain(e.target.checked)}
+                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#16a34a' }}
+              />
+              Do not show this message again
+            </label>
+          </div>
+        </div>
+      )}
+
+      {/* --- THE JOYRIDE COMPONENT --- */}
+      {runTour && (
+        <Joyride
+          steps={tourSteps}
+          run={runTour}
+          continuous={true} 
+          showSkipButton={true}
+          showProgress={true}
+          callback={handleTourCallback}
+          scrollOffset={150} 
+          styles={{
+            options: { primaryColor: '#16a34a', zIndex: 10000, textColor: '#334155' },
+            buttonClose: { display: 'none' },
+            tooltip: { borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', padding: '20px' },
+            buttonNext: { borderRadius: '8px', fontWeight: 'bold' },
+            buttonBack: { color: '#64748b' },
+            buttonSkip: { color: '#94a3b8' }
+          }}
         />
+      )}
 
-        {/* STATIC FALLBACK: If the user finishes the tour, runTour becomes false, so Joyride hides the beacon. 
-            This renders a static button in the exact same spot so they can replay the tour anytime! */}
-        {!runTour && (
-          <button
-            onClick={() => {
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-              restartTour();
-            }}
-            style={{
-              position: 'absolute',
-              bottom: '20px', // Adjusted slightly to match Joyride's beacon offset
-              left: '50%',
-              transform: 'translateX(-50%)',
-              backgroundColor: '#16a34a',
-              color: 'white',
-              padding: '12px 24px',
-              borderRadius: '50px',
-              fontWeight: 'bold',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              boxShadow: '0 10px 25px rgba(22, 163, 74, 0.4)',
-              transition: 'transform 0.2s ease',
-              zIndex: 10
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(-50%) scale(1.05)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(-50%) scale(1)'}
-          >
-            <HelpCircle size={18} /> Replay Tour
-          </button>
-        )}
+      <div className="tour-home-hero">
+        <HeroSection onSearch={onSearch} /> 
       </div>
 
       <div className="tour-home-states">
@@ -231,10 +210,13 @@ const HomePageWrapper = ({ onSearch, searchQuery, searchResults }) => {
       </div>
 
       <style>{`
-        @keyframes pulse {
-          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
-          70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(22, 163, 74, 0); }
-          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
     </>
