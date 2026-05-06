@@ -75,7 +75,8 @@ const PlanTrip = () => {
       setFormData(prev => ({
         ...prev,
         origin: stateData.origin || stateData.from || prev.origin,
-        destination: prev.destination || stateData.destination || stateData.to || incomingDest || prev.destination,
+        // 👇 FIX: Prioritizes presetDestination passed from StateDetails and Wishlist pages
+        destination: stateData.presetDestination || incomingDest || stateData.destination || stateData.to || prev.destination,
         startDate: stateData.startDate || stateData.date || prev.startDate,
         endDate: stateData.endDate || prev.endDate,
         pax: stateData.passengers || stateData.pax || prev.pax,

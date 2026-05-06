@@ -1,10 +1,6 @@
 import React, { useState } from 'react';
-import { MapPin, Clock, ArrowRight, Sparkles, Activity, X, CheckCircle2, HelpCircle } from 'lucide-react';
+import { MapPin, Clock, ArrowRight, Sparkles, Activity, X, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-// Import Joyride
-import { Joyride } from 'react-joyride'; 
-import { usePageTour } from '../hooks/usePageTour'; 
 
 // --- EXPANDED DATA (Exported as masterExperiences so PlanTrip can read it!) ---
 export const experiences = [
@@ -99,28 +95,6 @@ const ExperiencesPage = () => {
   const [activeCategory, setActiveCategory] = useState('All');
   const [selectedExperience, setSelectedExperience] = useState(null);
 
-  // --- 1. INITIALIZE THE TOUR ---
-  const { runTour, handleTourCallback, restartTour } = usePageTour('hasSeenExperiencesTour');
-
-  // --- 2. DEFINE THE STEPS ---
-  const tourSteps = [
-    { 
-      target: '.tour-exp-hero', 
-      content: 'Welcome to Experiences! Add unique local activities to your trip here.', 
-      disableBeacon: true // <-- Disables the dot
-    },
-    { 
-      target: '.tour-exp-filters', 
-      content: 'Filter activities by Adventure, Culture, Wildlife, or Wellness to find exactly what you want.', 
-      disableBeacon: true // <-- Disables the dot
-    },
-    { 
-      target: '.tour-exp-grid', 
-      content: 'Browse the experiences. Click "Include in itinerary" to add it instantly to your planner.', 
-      disableBeacon: true // <-- Disables the dot
-    }
-  ];
-
   const categories = ['All', 'Adventure', 'Culture', 'Wildlife', 'Wellness'];
   const displayedExps = activeCategory === 'All' ? experiences : experiences.filter(e => e.category === activeCategory);
 
@@ -132,59 +106,10 @@ const ExperiencesPage = () => {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', fontFamily: 'system-ui, -apple-system, sans-serif', paddingBottom: '80px', overflowX: 'hidden', position: 'relative' }}>
       
-      {/* 3. ADD THE JOYRIDE COMPONENT OVERLAY */}
-      <Joyride 
-        steps={tourSteps} 
-        run={runTour} 
-        continuous={true} 
-        showSkipButton={true} 
-        showProgress={true} 
-        callback={handleTourCallback} 
-        styles={{ 
-          options: { 
-            primaryColor: '#16a34a', 
-            zIndex: 1000,
-            textColor: '#334155',
-          }, 
-          buttonClose: { 
-            display: 'none' 
-          },
-          // Make the pulsing beacon look premium and branded
-          beaconInner: {
-            backgroundColor: '#16a34a',
-          },
-          beaconOuter: {
-            border: '2px solid #16a34a',
-            backgroundColor: 'rgba(22, 163, 74, 0.2)',
-          },
-          // Soften the tooltip box to match your UI's rounded cards
-          tooltip: {
-            borderRadius: '16px',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
-            padding: '20px',
-          },
-          buttonNext: {
-            borderRadius: '8px',
-            fontWeight: 'bold',
-          },
-          buttonBack: {
-            color: '#64748b',
-          },
-          buttonSkip: {
-            color: '#94a3b8',
-          }
-        }} 
-      />
-
-      {/* HERO SECTION (Target 1) */}
-      <div className="tour-exp-hero" style={{ position: 'relative', height: '45vh', minHeight: '400px', backgroundImage: 'url(https://images.unsplash.com/photo-1534430480872-3498386e7856?auto=format&fit=crop&w=1920&q=80)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+      {/* HERO SECTION */}
+      <div style={{ position: 'relative', height: '45vh', minHeight: '400px', backgroundImage: 'url(https://images.unsplash.com/photo-1534430480872-3498386e7856?auto=format&fit=crop&w=1920&q=80)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(17, 24, 39, 0.4), rgba(17, 24, 39, 0.8))' }} />
         
-        {/* Help button to restart tour manually */}
-        <button onClick={restartTour} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50px', padding: '8px 16px', color: 'white', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', backdropFilter: 'blur(4px)', fontWeight: 'bold', fontSize: '13px', zIndex: 20 }}>
-          <HelpCircle size={16} /> How it works
-        </button>
-
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', width: '100%', padding: '0 20px', boxSizing: 'border-box' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', padding: '8px 16px', borderRadius: '50px', color: 'white', fontSize: '14px', fontWeight: '600', marginBottom: '20px' }}>
             <Activity size={16} /> Beyond Sightseeing
@@ -196,8 +121,8 @@ const ExperiencesPage = () => {
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
         
-        {/* FILTERS (Target 2) */}
-        <div className="tour-exp-filters" style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '-30px', position: 'relative', zIndex: 10, marginBottom: '50px' }}>
+        {/* FILTERS */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '-30px', position: 'relative', zIndex: 10, marginBottom: '50px' }}>
           {categories.map(cat => (
             <button key={cat} onClick={() => setActiveCategory(cat)} style={{ padding: '12px 24px', borderRadius: '50px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', backgroundColor: activeCategory === cat ? '#16a34a' : 'white', color: activeCategory === cat ? 'white' : '#4b5563', border: activeCategory === cat ? '1px solid #16a34a' : '1px solid #e5e7eb', boxShadow: activeCategory === cat ? '0 10px 20px rgba(22, 163, 74, 0.25)' : '0 4px 6px rgba(0,0,0,0.05)' }}>
               {cat}
@@ -205,8 +130,8 @@ const ExperiencesPage = () => {
           ))}
         </div>
 
-        {/* EXPERIENCES GRID (Target 3) */}
-        <div className="tour-exp-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '30px' }}>
+        {/* EXPERIENCES GRID */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '30px' }}>
           {displayedExps.map((exp) => (
             <div 
               key={exp.id} 

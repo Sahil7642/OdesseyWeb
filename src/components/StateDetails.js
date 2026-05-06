@@ -740,7 +740,7 @@ export default StateDetails;
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { State } from 'country-state-city';
-import { ArrowLeft, MapPin, Info, ExternalLink, Loader2, Building2, Map as MapIcon, Mountain, Landmark, Leaf, Camera, BookOpen, Star, Quote, X } from 'lucide-react';
+import { ArrowLeft, MapPin, Info, ExternalLink, Loader2, Building2, Map as MapIcon, Mountain, Landmark, Leaf, Camera, BookOpen, Star, Quote, X, Heart, Calendar, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 // --- 1. INTERNAL DATABASE (For Top Destinations Grid ONLY) ---
@@ -867,7 +867,11 @@ const StateDetails = () => {
   const [hasGlobalFootprint, setHasGlobalFootprint] = useState(true);
   const [suggestedDestinations, setSuggestedDestinations] = useState([]);
 
-    // --- HELPER: CALCULATE IOU DISTANCE BETWEEN TWO STRINGS ---
+  // --- WISHLIST STATES ---
+  const [inWishlist, setInWishlist] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  // --- HELPER: CALCULATE IOU DISTANCE BETWEEN TWO STRINGS ---
   const calculateIOUDistance = (str1, str2) => {
     const set1 = new Set(str1.toLowerCase());
     const set2 = new Set(str2.toLowerCase());
@@ -891,18 +895,15 @@ const StateDetails = () => {
       });
     });
     
-    // Filter out the current destination and get 3 closest matches by IOU distance
     const filtered = allDestinations.filter(d => 
       d.name.toLowerCase() !== currentDestination.toLowerCase()
     );
     
-    // Sort by IOU distance (highest similarity first) and take top 3
     return filtered
       .sort((a, b) => calculateIOUDistance(currentDestination, b.name) - calculateIOUDistance(currentDestination, a.name))
       .slice(0, 3);
   };
 
-  // --- HELPER: LOOKUP STATE FOR A PLACE NAME ---
   const getPlaceState = (placeName) => {
     if (!placeName) return null;
     const lowerPlace = placeName.toLowerCase();
@@ -914,70 +915,13 @@ const StateDetails = () => {
     return null;
   };
 
-  // --- 1. ADVANCED SPELL CHECKER & AUTO-CORRECTOR ---
   const resolveLocationName = async (input) => {
-    // if (!input) return { resolved: "", corrected: false };
-    // const normalizedInput = input.toLowerCase().trim();
-
-    // const commonTypos = {
-    //   "mussuri": "Mussoorie", "musori": "Mussoorie", "musuri": "Mussoorie",
-    //   "banglore": "Bengaluru", "bengaluru": "Bengaluru", "bengalor": "Bengaluru",
-    //   "calcutta": "Kolkata", "bombay": "Mumbai", "madras": "Chennai",
-    //   "pondy": "Puducherry", "pondicherry": "Puducherry",
-    //   "anjta": "Ajanta Caves", "ajnta": "Ajanta Caves", "elora": "Ellora Caves",
-    //   "banaras": "Varanasi", "benares": "Varanasi", "kashi": "Varanasi",
-    //   "mysur": "Mysore", "mysuru": "Mysore", "ooti": "Ooty", "uti": "Ooty", 
-    //   "darjiling": "Darjeeling", "darjeling": "Darjeeling",
-    //   "gujrat": "Gujarat", "gujarath": "Gujarat", "amdavad": "Ahmedabad", "ahmedbad": "Ahmedabad",
-    //   "andman": "Andaman and Nicobar Islands", "lakshdweep": "Lakshadweep",
-    //   "keral": "Kerala", "rajesthan": "Rajasthan", "punjab": "Punjab", "delhi": "New Delhi"
-    // };
-
-    // if (commonTypos[normalizedInput]) {
-    //   return { resolved: commonTypos[normalizedInput], corrected: commonTypos[normalizedInput].toLowerCase() !== normalizedInput };
-    // }
-
-    // if (input.length === 2 && input === input.toUpperCase()) {
-    //   const stateObj = State.getStateByCodeAndCountry(input, 'IN');
-    //   if (stateObj) return { resolved: stateObj.name, corrected: false };
-    // }
-
-    // try {
-    //   let searchUrl = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&list=search&srsearch=${encodeURIComponent(input + " India")}&srlimit=3&srinfo=suggestion`;
-    //   let res = await fetch(searchUrl);
-    //   let data = await res.json();
-
-    //   if (data.query?.searchinfo?.suggestion) {
-    //     return { resolved: data.query.searchinfo.suggestion, corrected: true };
-    //   } 
-    //   if (data.query?.search?.length > 0) {
-    //     const topMatch = data.query.search[0].title;
-    //     return { resolved: topMatch, corrected: topMatch.toLowerCase() !== normalizedInput };
-    //   }
-
-    //   const fuzzyQuery = input.split(' ').map(w => w.length > 3 ? w + '~' : w).join(' ');
-    //   searchUrl = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&list=search&srsearch=${encodeURIComponent(fuzzyQuery + " India")}&srlimit=3`;
-    //   res = await fetch(searchUrl);
-    //   data = await res.json();
-
-    //   if (data.query?.search?.length > 0) {
-    //     const topMatch = data.query.search[0].title;
-    //     return { resolved: topMatch, corrected: true };
-    //   }
-
-    // } catch (e) {
-    //   console.error("Auto-correct failed:", e);
-    // }
-    
     return { resolved: input, corrected: false };
   };
 
-  // --- 2. SUMMARIZE TEXT USING OLLAMA ---
   const summarizeWithOllama = async (text) => {
     try {
       const controller = new AbortController();
-      // const timeoutId = setTimeout(() => controller.abort(), 15000); 
-      
       const response = await fetch('http://localhost:5051/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -990,7 +934,6 @@ const StateDetails = () => {
         signal: controller.signal,
       });
 
-      // clearTimeout(timeoutId);
       if (!response.ok) return null;
 
       const data = await response.json();
@@ -1000,7 +943,6 @@ const StateDetails = () => {
     }
   };
 
-  // --- 3. FETCH MAIN STORY ---
   const fetchWikiData = async (exactTitle) => {
     try {
       let endpoint = `https://en.wikipedia.org/w/api.php?origin=*&action=query&format=json&prop=extracts|pageimages&pithumbsize=1200&exintro&explaintext&redirects=1&titles=${encodeURIComponent(exactTitle)}`;
@@ -1038,7 +980,6 @@ const StateDetails = () => {
     }
   };
 
-  // --- 4. FETCH RANDOM GALLERY IMAGES ---
   const fetchStateGallery = async (stateName) => {
     try {
       const queryParams = `action=query&generator=search&gsrsearch=${encodeURIComponent(`"${stateName}" tourist places India`)}&gsrlimit=20&prop=pageimages|extracts&pithumbsize=800&exintro&explaintext&format=json&origin=*`;
@@ -1070,19 +1011,11 @@ const StateDetails = () => {
         const title = (page.title || '').toLowerCase();
         const extract = (page.extract || '').toLowerCase();
         
-        // Strong patterns for person pages
         const personIndicators = ['born ', 'died ', '(actress)', '(actor)', '(singer)', '(dancer)', '(cricketer)', '(footballer)', '(politician)', '(director)', '(author)', '(musician)', '(writer)', '(athlete)'];
         
-        // Check title for person patterns
         if (personIndicators.some(p => title.includes(p))) return true;
-        
-        // Check if extract starts with date pattern (birth/death format)
         if (extract.match(/^[a-z\s]+\([\d\-–]+(?:–|\s*to\s*|to\s)?[\d\-–]*\)/)) return true;
-        
-        // Check extract for strong biography indicators
         if (extract.includes('born') && (extract.includes('indian') || extract.includes('actress') || extract.includes('actor') || extract.includes('singer') || extract.includes('career'))) return true;
-        
-        // Exclude if extract says "personal life", "career", "early life" without place context
         if ((extract.includes('personal life') || extract.includes('early life')) && !extract.includes('temple') && !extract.includes('monument') && !extract.includes('place')) return true;
         
         return false;
@@ -1106,10 +1039,8 @@ const StateDetails = () => {
     }
   };
 
-  // Small placeholder SVG (data URI) used when no wiki image is available
   const placeholderDataUri = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="#e5e7eb"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#9ca3af" font-family="Arial,Helvetica,sans-serif" font-size="20">Image not available</text></svg>')}`;
 
-  // Fetch primary thumbnail for a Wikipedia/Wikivoyage page (tries several fallbacks)
   const fetchWikiImage = async (title) => {
     if (!title) return null;
     try {
@@ -1119,7 +1050,6 @@ const StateDetails = () => {
         return src;
       };
 
-      // Helper: request pageimages for a specific title
       const pageImageForTitle = async (t, endpoint = 'https://en.wikipedia.org/w/api.php') => {
         const params = `origin=*&action=query&format=json&prop=pageimages&pithumbsize=800&titles=${encodeURIComponent(t)}`;
         const res = await fetch(`${endpoint}?${params}`).then(r => r.json()).catch(() => ({}));
@@ -1132,15 +1062,12 @@ const StateDetails = () => {
         return null;
       };
 
-      // 1) Direct lookup on Wikipedia
       let img = await pageImageForTitle(title, 'https://en.wikipedia.org/w/api.php');
       if (img) return img;
 
-      // 2) Try the Wikivoyage site by exact title
       img = await pageImageForTitle(title, 'https://en.wikivoyage.org/w/api.php');
       if (img) return img;
 
-      // 3) Use search to find best matching Wikipedia page, then fetch image
       const searchEndpoints = [
         { url: 'https://en.wikipedia.org/w/api.php', suffix: ' Wikipedia' },
         { url: 'https://en.wikivoyage.org/w/api.php', suffix: ' Wikivoyage' }
@@ -1152,19 +1079,15 @@ const StateDetails = () => {
           const sRes = await fetch(`${src.url}?${sParams}`).then(r => r.json()).catch(() => ({}));
           const hits = sRes.query?.search || [];
           if (hits.length > 0) {
-            // try the top few matches for thumbnails
             for (let i = 0; i < Math.min(hits.length, 3); i++) {
               const candidate = hits[i].title;
               const candImg = await pageImageForTitle(candidate, src.url);
               if (candImg) return candImg;
             }
           }
-        } catch (e) {
-          // ignore and continue
-        }
+        } catch (e) {}
       }
 
-      // 4) As a last attempt, try searching without the "India" suffix (some pages are named differently)
       try {
         const sParams = `origin=*&action=query&list=search&srsearch=${encodeURIComponent(title)}&srlimit=5&format=json`;
         const sRes = await fetch(`https://en.wikipedia.org/w/api.php?${sParams}`).then(r => r.json()).catch(() => ({}));
@@ -1173,9 +1096,7 @@ const StateDetails = () => {
           const candImg = await pageImageForTitle(hits[i].title, 'https://en.wikipedia.org/w/api.php');
           if (candImg) return candImg;
         }
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
 
       return null;
     } catch (e) {
@@ -1183,7 +1104,6 @@ const StateDetails = () => {
     }
   };
 
-  // --- 5. FETCH DYNAMIC RECOMMENDATION ROWS ---
   const fetchCategoryPlaces = async (searchState, queryContext) => {
     try {
       const safeQuery = `+"${searchState}" ${queryContext} India -person -biography -politics -election`;
@@ -1233,6 +1153,41 @@ const StateDetails = () => {
     }
   };
 
+  // --- CHECK INITIAL WISHLIST STATUS ---
+  useEffect(() => {
+    if (displayName) {
+      const wishlist = JSON.parse(localStorage.getItem('odessey_wishlist') || '[]');
+      setInWishlist(wishlist.some(item => item.name === displayName));
+    }
+  }, [displayName]);
+
+  // --- WISHLIST TOGGLE HANDLER ---
+  const handleToggleWishlist = () => {
+    let wishlist = JSON.parse(localStorage.getItem('odessey_wishlist') || '[]');
+    
+    if (inWishlist) {
+      wishlist = wishlist.filter(item => item.name !== displayName);
+      setInWishlist(false);
+      showToast('Removed from Wishlist');
+    } else {
+      const newItem = {
+        name: displayName,
+        image: wikiData?.image || stateGallery?.[0] || placeholderDataUri,
+        excerpt: wikiData?.extract ? wikiData.extract.substring(0, 150) + "..." : "A beautiful destination to explore.",
+        dateAdded: new Date().toISOString()
+      };
+      wishlist.push(newItem);
+      setInWishlist(true);
+      showToast('Added to Wishlist!');
+    }
+    localStorage.setItem('odessey_wishlist', JSON.stringify(wishlist));
+  };
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
+
   // --- 6. MASTER LOAD EFFECT ---
   useEffect(() => {
     if (!urlParam) return;
@@ -1254,8 +1209,6 @@ const StateDetails = () => {
       setStateGallery(galleryResult);
       setLoadingStory(false);
 
-      // --- CHECK IF LOCATION WAS FOUND GLOBALLY ---
-      // If wiki data is null or has insufficient content, location doesn't have global footprint
       if (!wikiResult || wikiResult === null) {
         setHasGlobalFootprint(false);
         const rawSuggestions = findRelatedDestinations(resolved);
@@ -1265,7 +1218,7 @@ const StateDetails = () => {
         })));
         setSuggestedDestinations(suggestions);
         setLoadingRows(false);
-        return; // Exit early, don't fetch recommendations
+        return; 
       }
 
       const [fetchedCities, fetchedSpots, fetchedOffbeat, fetchedHeritage, fetchedNature] = await Promise.all([
@@ -1276,20 +1229,16 @@ const StateDetails = () => {
         fetchCategoryPlaces(resolved, "national park wildlife sanctuary waterfalls")
       ]);
 
-      // --- CHECK FOR TYPO CORRECTION OR INSUFFICIENT WIKI DATA ---
-      // If typo was corrected OR wiki data is insufficient, use findRelatedDestinations as fallback
       if (corrected || (wikiResult && wikiResult.insufficientContent)) {
         const relatedDests = findRelatedDestinations(resolved);
         
-        // Fetch wiki thumbnails for related destinations (preserve state info)
         const relatedWithImages = await Promise.all(relatedDests.map(async (dest) => ({
           name: dest.name,
           desc: dest.detail,
           img: (await fetchWikiImage(dest.name)) || placeholderDataUri,
-          state: dest.state  // Preserve state info from placeDatabase
+          state: dest.state 
         })));
 
-        // If categories are empty, populate them with related destinations
         const citiesToUse = fetchedCities.length > 0 ? fetchedCities : relatedWithImages.slice(0, 3);
         const spotsToUse = fetchedSpots.length > 0 ? fetchedSpots : relatedWithImages.slice(0, 3);
         
@@ -1376,7 +1325,6 @@ const StateDetails = () => {
     );
   };
 
-  // --- DYNAMIC DATA GENERATORS FOR STORIES & TESTIMONIALS ---
   const travellerStories = [
     {
       title: `Lost in the beauty of ${displayName}`,
@@ -1419,8 +1367,6 @@ const StateDetails = () => {
     }
   ];
 
-  // --- RENDER ---
-  // Prefer Wikipedia image, then gallery, then placeholder
   const heroImage = wikiData?.image || stateGallery?.[0] || placeholderDataUri;
   const description = wikiData?.insufficientContent 
     ? `Detailed information for ${displayName} is currently limited.`
@@ -1486,7 +1432,7 @@ const StateDetails = () => {
           </div>
         )}
 
-        {/* 1. INFO CARD (STORY) */}
+        {/* 1. INFO CARD (STORY) & BUTTONS */}
         {hasGlobalFootprint && (
         <div>
           <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '40px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', marginBottom: '50px' }}>
@@ -1514,30 +1460,53 @@ const StateDetails = () => {
                 {summarizing && <p style={{ fontSize: '13px', color: '#15803d', fontStyle: 'italic', marginTop: '5px' }}>✨ Summarizing with Ollama AI...</p>}
               </div>
             ) : (
-              <div style={{ fontSize: '18px', lineHeight: '1.8', color: '#4b5563', marginBottom: '20px' }}>
-                {wikiData?.insufficientContent ? (
-                  <div style={{ padding: '20px', backgroundColor: '#fef3c7', borderRadius: '8px', borderLeft: '4px solid #f59e0b', color: '#92400e' }}>
-                    <p style={{ margin: 0, fontSize: '16px', fontWeight: '500' }}>ⓘ {description}</p>
-                  </div>
-                ) : (
-                  <ReactMarkdown
-                    components={{
-                      h1: ({ children }) => <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '16px', marginBottom: '12px', color: '#1f2937' }}>{children}</h3>,
-                      h2: ({ children }) => <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '14px', marginBottom: '10px', color: '#1f2937' }}>{children}</h3>,
-                      h3: ({ children }) => <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '12px', marginBottom: '8px', color: '#1f2937' }}>{children}</h4>,
-                      p: ({ children }) => <p style={{ marginBottom: '12px', margin: '12px 0' }}>{children}</p>,
-                      strong: ({ children }) => <strong style={{ fontWeight: 'bold', color: '#16a34a' }}>{children}</strong>,
-                      em: ({ children }) => <em style={{ fontStyle: 'italic', color: '#6b7280' }}>{children}</em>,
-                      ul: ({ children }) => <ul style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'disc' }}>{children}</ul>,
-                      ol: ({ children }) => <ol style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'decimal' }}>{children}</ol>,
-                      li: ({ children }) => <li style={{ marginBottom: '6px' }}>{children}</li>,
-                      blockquote: ({ children }) => <blockquote style={{ borderLeft: '4px solid #16a34a', paddingLeft: '16px', marginLeft: '0', marginBottom: '12px', fontStyle: 'italic', color: '#6b7280' }}>{children}</blockquote>,
-                    }}
+              <>
+                <div style={{ fontSize: '18px', lineHeight: '1.8', color: '#4b5563', marginBottom: '20px' }}>
+                  {wikiData?.insufficientContent ? (
+                    <div style={{ padding: '20px', backgroundColor: '#fef3c7', borderRadius: '8px', borderLeft: '4px solid #f59e0b', color: '#92400e' }}>
+                      <p style={{ margin: 0, fontSize: '16px', fontWeight: '500' }}>ⓘ {description}</p>
+                    </div>
+                  ) : (
+                    <ReactMarkdown
+                      components={{
+                        h1: ({ children }) => <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '16px', marginBottom: '12px', color: '#1f2937' }}>{children}</h3>,
+                        h2: ({ children }) => <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '14px', marginBottom: '10px', color: '#1f2937' }}>{children}</h3>,
+                        h3: ({ children }) => <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '12px', marginBottom: '8px', color: '#1f2937' }}>{children}</h4>,
+                        p: ({ children }) => <p style={{ marginBottom: '12px', margin: '12px 0' }}>{children}</p>,
+                        strong: ({ children }) => <strong style={{ fontWeight: 'bold', color: '#16a34a' }}>{children}</strong>,
+                        em: ({ children }) => <em style={{ fontStyle: 'italic', color: '#6b7280' }}>{children}</em>,
+                        ul: ({ children }) => <ul style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'disc' }}>{children}</ul>,
+                        ol: ({ children }) => <ol style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'decimal' }}>{children}</ol>,
+                        li: ({ children }) => <li style={{ marginBottom: '6px' }}>{children}</li>,
+                        blockquote: ({ children }) => <blockquote style={{ borderLeft: '4px solid #16a34a', paddingLeft: '16px', marginLeft: '0', marginBottom: '12px', fontStyle: 'italic', color: '#6b7280' }}>{children}</blockquote>,
+                      }}
+                    >
+                      {description}
+                    </ReactMarkdown>
+                  )}
+                </div>
+
+                {/* 👇 NEW: ACTION BUTTONS (ADD TO WISHLIST & PLAN TRIP) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '35px', borderTop: '1px solid #f3f4f6', paddingTop: '25px', flexWrap: 'wrap' }}>
+                  <button 
+                    onClick={() => navigate('/plan', { state: { presetDestination: displayName } })}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#16a34a', color: 'white', padding: '14px 28px', borderRadius: '50px', fontSize: '15px', fontWeight: 'bold', border: 'none', cursor: 'pointer', transition: 'background 0.2s', boxShadow: '0 4px 10px rgba(22, 163, 74, 0.3)' }}
+                    onMouseEnter={(e)=>e.currentTarget.style.backgroundColor='#15803d'} onMouseLeave={(e)=>e.currentTarget.style.backgroundColor='#16a34a'}
                   >
-                    {description}
-                  </ReactMarkdown>
-                )}
-              </div>
+                    <Calendar size={18} /> Plan Trip Here
+                  </button>
+                  
+                  <button 
+                    onClick={handleToggleWishlist}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: inWishlist ? '#fee2e2' : 'white', color: inWishlist ? '#dc2626' : '#4b5563', padding: '14px 28px', borderRadius: '50px', fontSize: '15px', fontWeight: 'bold', border: `1px solid ${inWishlist ? '#fca5a5' : '#d1d5db'}`, cursor: 'pointer', transition: 'all 0.2s' }}
+                    onMouseEnter={(e)=> { if(!inWishlist) { e.currentTarget.style.backgroundColor='#f9fafb'; e.currentTarget.style.borderColor='#9ca3af'; } }} 
+                    onMouseLeave={(e)=> { if(!inWishlist) { e.currentTarget.style.backgroundColor='white'; e.currentTarget.style.borderColor='#d1d5db'; } }}
+                  >
+                    <Heart size={18} fill={inWishlist ? '#dc2626' : 'none'} /> 
+                    {inWishlist ? 'Saved to Wishlist' : 'Add to Wishlist'}
+                  </button>
+                </div>
+              </>
             )}
           </div>
 
@@ -1678,14 +1647,13 @@ const StateDetails = () => {
           }}
         >
           <div 
-            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the white box
+            onClick={(e) => e.stopPropagation()} 
             style={{
               backgroundColor: 'white', width: '100%', maxWidth: '800px', maxHeight: '90vh', 
               borderRadius: '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', 
               position: 'relative', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', animation: 'slideUp 0.3s ease-out forwards'
             }}
           >
-            {/* Close Button */}
             <button 
               onClick={() => setSelectedStory(null)} 
               style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white', zIndex: 10 }}
@@ -1693,7 +1661,6 @@ const StateDetails = () => {
               <X size={24} />
             </button>
 
-            {/* Modal Image Header */}
             <div style={{ height: '300px', flexShrink: 0, position: 'relative' }}>
               <img src={selectedStory.img} alt={selectedStory.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }} />
@@ -1705,7 +1672,6 @@ const StateDetails = () => {
               </div>
             </div>
 
-            {/* Modal Scrollable Content */}
             <div style={{ padding: '40px', overflowY: 'auto', backgroundColor: '#f9fafb' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '30px', borderBottom: '1px solid #e5e7eb', paddingBottom: '20px' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '18px' }}>
@@ -1725,7 +1691,13 @@ const StateDetails = () => {
         </div>
       )}
 
-      {/* Simple Animation for the Story Modal */}
+      {/* --- TOAST NOTIFICATION --- */}
+      {toastMessage && (
+        <div style={{ position: 'fixed', bottom: '40px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#111827', color: 'white', padding: '12px 24px', borderRadius: '50px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '600', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', zIndex: 9999, animation: 'slideUp 0.3s ease-out forwards' }}>
+          <Check size={16} color="#4ade80" /> {toastMessage}
+        </div>
+      )}
+
       <style>{`
         @keyframes slideUp {
           from { opacity: 0; transform: translateY(30px); }

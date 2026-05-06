@@ -660,7 +660,7 @@ export default Header;
 */
 
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ChevronDown, MapPin, Compass, Calendar, Camera, Info, MessageCircle, ArrowRight, Map, Car, LayoutGrid, Sparkles, BookOpen, Users, Briefcase, Gamepad2, Home } from 'lucide-react';
+import { Menu, X, ChevronDown, MapPin, Compass, Calendar, Camera, Info, MessageCircle, ArrowRight, Map, Car, LayoutGrid, Sparkles, BookOpen, Users, Briefcase, Gamepad2, Home, Heart } from 'lucide-react'; // 👈 Added Heart icon
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 
 // Import your logo
@@ -730,13 +730,15 @@ const Header = () => {
       items: [
         { name: 'Discover', href: '/discover', icon: Sparkles },
         { name: 'Experiences', href: '/experiences', icon: Compass },
+        { name: 'Diaries', href: '/story', icon: Camera }
       ] 
     },
     { 
       name: 'Plan', 
       items: [
         { name: 'Plan Trip', href: '/plan', icon: Calendar },
-        { name: 'Itineraries', href: '/itinerary', icon: MapPin }
+        { name: 'Itineraries', href: '/itinerary', icon: MapPin },
+        { name: 'Wishlist', href: '/wishlist', icon: Heart } // 👈 Added Wishlist here
       ] 
     },
     { 
@@ -766,13 +768,15 @@ const Header = () => {
       items: [
         { label: "Discover", href: "/discover", navIcon: Sparkles },
         { label: "Experiences", href: "/experiences", navIcon: Compass },
+        { label: "Diaries", href: "/story", navIcon: Camera }
       ]
     },
     {
       title: "Plan", icon: Calendar,
       items: [
         { label: "Plan Trip", href: "/plan", navIcon: Calendar },
-        { label: "Curated Itineraries", href: "/itinerary", navIcon: MapPin }
+        { label: "Curated Itineraries", href: "/itinerary", navIcon: MapPin },
+        { label: "My Wishlist", href: "/wishlist", navIcon: Heart } // 👈 Added Wishlist here
       ]
     },
     {
@@ -866,7 +870,6 @@ const Header = () => {
             {desktopNavLinks.map((link) => (
               <div 
                 key={link.name} 
-                // 👇 CRITICAL FIX: Generates unique classes like .tour-nav-explore, .tour-nav-plan
                 className={`tour-nav-${link.name.toLowerCase().replace(/\s+/g, '-')}`}
                 style={{ position: 'relative' }}
                 onMouseEnter={() => link.items && setActiveDropdown(link.name)}

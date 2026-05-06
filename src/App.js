@@ -34,6 +34,7 @@ import BlogPage from './pages/BlogPage';
 import GamePage from "./pages/GamePage";
 import CareersPage from "./pages/CareersPage";
 import VehicleOptions from "./pages/VehicleOptions";
+import WishlistPage from "./pages/WishlistPage";
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -260,6 +261,7 @@ function App() {
           <Route path="/games" element={<GamePage />} />
           <Route path="/careers" element={<CareersPage />} />
           <Route path="/vehicles" element={<VehicleOptions />} />
+          <Route path="/wishlist" element={<WishlistPage />} />
         </Routes>
 
         <HoverChatbot />
