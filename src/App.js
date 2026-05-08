@@ -46,9 +46,9 @@ const HomePageWrapper = ({ onSearch, searchQuery, searchResults }) => {
   const { runTour, showPrompt, handleTourCallback, startTour, skipTour } = usePageTour('hasSeenHomeTour');
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
-  const tourSteps = [
+  // 1. Define the raw steps without a title
+  const rawSteps = [
     {
-      // 👇 FOOLPROOF TARGET: Targeting the body guarantees it works 100% of the time!
       target: 'body', 
       content: 'Welcome to Odessey! Let’s take a quick look at how to navigate the platform.',
       placement: 'center',
@@ -81,7 +81,7 @@ const HomePageWrapper = ({ onSearch, searchQuery, searchResults }) => {
     {
       target: '.tour-home-hero',
       content: 'Start your journey by searching for a destination right here.',
-      placement: 'bottom',
+      placement: 'center',
       disableBeacon: true, 
     },
     {
@@ -111,6 +111,12 @@ const HomePageWrapper = ({ onSearch, searchQuery, searchResults }) => {
       placement: 'left',
     }
   ];
+
+  // 👇 2. FOOLPROOF FIX: Automatically inject "Step X of Y" into the title of every single step!
+  const tourSteps = rawSteps.map((step, index) => ({
+    ...step,
+    title: `Odessey Tour (${index + 1} of ${rawSteps.length})` 
+  }));
 
   return (
     <>
@@ -176,16 +182,25 @@ const HomePageWrapper = ({ onSearch, searchQuery, searchResults }) => {
           run={runTour}
           continuous={true} 
           showSkipButton={true}
-          showProgress={true}
+          showProgress={false} // We don't need this anymore because we injected it into the title!
           callback={handleTourCallback}
+          beaconComponent={() => null}
           scrollOffset={150} 
           styles={{
             options: { primaryColor: '#16a34a', zIndex: 10000, textColor: '#334155' },
-            buttonClose: { display: 'none' },
+            buttonClose: { color: '#9ca3af', width: '24px', height: '24px', marginTop: '5px' }, 
             tooltip: { borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', padding: '20px' },
+            tooltipTitle: { fontSize: '15px', fontWeight: '800', color: '#16a34a', margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '0.5px' },
             buttonNext: { borderRadius: '8px', fontWeight: 'bold' },
             buttonBack: { color: '#64748b' },
             buttonSkip: { color: '#94a3b8' }
+          }}
+          locale={{
+            back: 'Back',
+            close: 'Close',
+            last: 'Finish Tour',
+            next: 'Next',
+            skip: 'Skip Tour'
           }}
         />
       )}

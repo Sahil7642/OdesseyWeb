@@ -1,27 +1,25 @@
 import { useState, useEffect } from 'react';
-import { STATUS } from 'react-joyride';
+import { STATUS, ACTIONS } from 'react-joyride'; // 👈 Added ACTIONS
 
 export const usePageTour = (tourKey) => {
   const [runTour, setRunTour] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
-    // Check if the user has explicitly finished or dismissed the tour forever
     const tourPreference = localStorage.getItem(tourKey);
     if (!tourPreference) {
-      // 1.5 second delay gives the page time to load before asking
       const timer = setTimeout(() => setShowPrompt(true), 1500);
       return () => clearTimeout(timer);
     }
   }, [tourKey]);
 
   const handleTourCallback = (data) => {
-    const { status } = data;
+    const { status, action } = data; // 👈 Destructure action
     const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED];
 
-    // If the user clicks "Skip" or reaches the end, we save their preference
-    if (finishedStatuses.includes(status)) {
-      setRunTour(false);
+    // 👇 CRITICAL FIX: If they click "Skip", reach the end, OR click the "X" (CLOSE)
+    if (finishedStatuses.includes(status) || action === ACTIONS.CLOSE || action === ACTIONS.SKIP) {
+      setRunTour(false); // Completely kills the tour immediately
       localStorage.setItem(tourKey, 'completed');
     }
   };
@@ -32,10 +30,8 @@ export const usePageTour = (tourKey) => {
       localStorage.setItem(tourKey, 'completed');
     }
 
-    // Scroll to the top immediately
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // Give the page 800ms to scroll and the Header to animate down
     setTimeout(() => {
       setRunTour(true);
     }, 800);
