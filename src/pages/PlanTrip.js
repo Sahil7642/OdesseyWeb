@@ -1,17 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Calendar, Users, Sparkles, ArrowRight, Sun, Map, Clock, Plus, Minus, Tag, Mail, MessageCircle, CheckCircle, PhoneCall, X, ListChecks, PlaneTakeoff, Loader2, Activity, CheckCircle2, Bot } from 'lucide-react';
+import { MapPin, Calendar, Users, Sparkles, ArrowRight, Sun, Map, Clock, Plus, Minus, Tag, Mail, MessageCircle, CheckCircle, PhoneCall, X, ListChecks, PlaneTakeoff, Loader2, Activity, CheckCircle2, Bot, Trash2, ShoppingBag } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 // Import from master data
 import { itineraries as importedItineraries } from './ItinerariesPage'; 
 import { experiences as importedExperiences } from './ExperiencesPage'; 
 
-// Ola Maps API Key
 const OLA_MAPS_API_KEY = process.env.REACT_APP_OLA_MAPS_API_KEY || "";
-
-// === YOUR AGENCY CONTACT DETAILS ===
 const AGENCY_WHATSAPP_NUMBER = "919353520020"; 
 const AGENCY_EMAIL_ADDRESS = "hello@odessey.in"; 
+
+// --- DYNAMIC IMAGE FETCHER ---
+const fetchWikiImage = async (title) => {
+  if (!title) return null;
+  try {
+    const sParams = `origin=*&action=query&list=search&srsearch=${encodeURIComponent(title + ' India')}&srlimit=1&format=json`;
+    const sRes = await fetch(`https://en.wikipedia.org/w/api.php?${sParams}`).then(r => r.json());
+    if (sRes.query?.search?.length > 0) {
+      const actualTitle = sRes.query.search[0].title;
+      const params = `origin=*&action=query&format=json&prop=pageimages&pithumbsize=800&titles=${encodeURIComponent(actualTitle)}`;
+      const res = await fetch(`https://en.wikipedia.org/w/api.php?${params}`).then(r => r.json());
+      const pages = res.query?.pages;
+      if (pages) {
+        const pageId = Object.keys(pages)[0];
+        if (pages[pageId].thumbnail?.source) {
+          const src = pages[pageId].thumbnail.source;
+          return src.startsWith('//') ? 'https:' + src : src;
+        }
+      }
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+};
 
 const PlanTrip = () => {
   const location = useLocation();
@@ -20,6 +42,12 @@ const PlanTrip = () => {
   const [formData, setFormData] = useState({
     origin: '', destination: '', startDate: '', endDate: '', groupType: '', pax: 1, children: 0, interests: ''
   });
+
+  // --- ROUTE TIMELINE STATE ---
+  const [routeStops, setRouteStops] = useState([]); 
+
+  // --- TRIP CART STATE ---
+  const [cartItems, setCartItems] = useState([]);
 
   // --- AUTOCOMPLETE STATE ---
   const [originSuggestions, setOriginSuggestions] = useState([]);
@@ -49,6 +77,18 @@ const PlanTrip = () => {
   const masterItineraries = importedItineraries || [];
   const masterExperiences = importedExperiences || [];
 
+  // --- LOAD CART ON MOUNT ---
+  useEffect(() => {
+    const savedCart = JSON.parse(localStorage.getItem('odessey_cart') || '[]');
+    setCartItems(savedCart);
+  }, []);
+
+  const removeFromCart = (id) => {
+    const updated = cartItems.filter(item => item.id !== id);
+    setCartItems(updated);
+    localStorage.setItem('odessey_cart', JSON.stringify(updated));
+  };
+
   // --- DETECT INCOMING ITEMS & CONTEXT ---
   useEffect(() => {
     if (location.state) {
@@ -72,10 +112,13 @@ const PlanTrip = () => {
         incomingDest = exp.location.split(',')[0];
       }
 
+      if (stateData.routeStops) {
+        setRouteStops(stateData.routeStops);
+      }
+
       setFormData(prev => ({
         ...prev,
         origin: stateData.origin || stateData.from || prev.origin,
-        // 👇 FIX: Prioritizes presetDestination passed from StateDetails and Wishlist pages
         destination: stateData.presetDestination || incomingDest || stateData.destination || stateData.to || prev.destination,
         startDate: stateData.startDate || stateData.date || prev.startDate,
         endDate: stateData.endDate || prev.endDate,
@@ -88,10 +131,9 @@ const PlanTrip = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
 
-  // --- DYNAMIC FILTERING & OLLAMA GENERATION ---
+  // --- DYNAMIC FILTERING & OLLAMA GENERATION FOR DESTINATION ---
   const searchTarget = formData.destination.toLowerCase().trim();
   
-  // Filter Existing Itineraries
   const filteredItineraries = searchTarget
     ? masterItineraries.filter(itin => 
         (itin.dest && itin.dest.toLowerCase().includes(searchTarget)) || 
@@ -100,7 +142,6 @@ const PlanTrip = () => {
       )
     : masterItineraries;
 
-  // Filter Existing Experiences
   const filteredExperiences = searchTarget
     ? masterExperiences.filter(exp => 
         (exp.location && exp.location.toLowerCase().includes(searchTarget)) || 
@@ -108,26 +149,21 @@ const PlanTrip = () => {
       )
     : masterExperiences;
 
-  // Trigger Ollama if no itineraries match the destination
   useEffect(() => {
     if (searchTarget && filteredItineraries.length === 0) {
       setAiGeneratedItinerary(null);
       setIsGeneratingAI(true);
 
-      // --- BULLETPROOF DATE CALCULATION ---
-      let numDays = 4; // Default
+      let numDays = 4;
       let durationString = "4 Days / 3 Nights";
       
       if (formData.startDate && formData.endDate) {
         const start = new Date(formData.startDate);
         const end = new Date(formData.endDate);
-        
-        // Force midnight to completely ignore any Indian Timezone (IST) fractional offsets
         start.setHours(0, 0, 0, 0);
         end.setHours(0, 0, 0, 0);
         
         const diffTime = end.getTime() - start.getTime();
-        
         if (diffTime >= 0) {
           numDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
           const nights = Math.max(0, numDays - 1);
@@ -139,17 +175,20 @@ const PlanTrip = () => {
 
       const timer = setTimeout(async () => {
         try {
+          const planTemplate = Array.from({ length: numDays }, (_, i) => 
+            `{ "day": ${i + 1}, "title": "Main activity for Day ${i + 1}", "desc": "Detailed description for Day ${i + 1}" }`
+          ).join(",\n              ");
+
           const prompt = `You are an expert Indian travel planner. The user wants an itinerary for "${formData.destination}" lasting EXACTLY ${numDays} days (${durationString}).
-          You MUST generate exactly ${numDays} items in the "plan" array. Do not use your default 4 days unless they asked for 4 days.
-          Return ONLY a valid JSON object. Do not include markdown or \`\`\`json. The structure MUST be:
+          Return ONLY a valid JSON object. Do not include markdown formatting or backticks. The structure MUST match this exact format:
           {
             "title": "A catchy title for this trip",
             "dest": "${formData.destination}",
             "days": "${durationString}",
             "description": "A compelling 2-sentence overview of what this trip offers.",
-            "highlights": "Highlight 1, Highlight 2, Highlight 3",
+            "highlights": ["Highlight 1", "Highlight 2", "Highlight 3"],
             "plan": [
-              { "day": 1, "title": "Arrival", "desc": "Activities for day 1" }
+              ${planTemplate}
             ]
           }`;
 
@@ -157,7 +196,7 @@ const PlanTrip = () => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              model: 'qwen2.5:0.5b', // Change if using mistral/phi3
+              model: 'qwen2.5:0.5b', 
               messages: [{ role: 'user', content: prompt }],
               stream: false
             })
@@ -165,7 +204,12 @@ const PlanTrip = () => {
 
           if (response.ok) {
             const data = await response.json();
-            let cleanJSON = data.message.content.trim().replace(/^```json\s*/i, '').replace(/```\s*$/i, '');
+            
+            // 👇 FIX: Use RegExp constructor to avoid ESLint parsing errors
+            const jsonStartRegex = new RegExp('^```json\\s*', 'i');
+            const backtickEndRegex = new RegExp('```\\s*$', 'i');
+            let cleanJSON = data.message.content.trim().replace(jsonStartRegex, '').replace(backtickEndRegex, '');
+            
             const parsedItinerary = JSON.parse(cleanJSON);
             parsedItinerary.isAiGenerated = true;
             setAiGeneratedItinerary(parsedItinerary);
@@ -186,30 +230,74 @@ const PlanTrip = () => {
   }, [searchTarget, filteredItineraries.length, formData.startDate, formData.endDate]);
 
 
-  // --- DYNAMIC 12-MONTH ENGINE ---
+  // --- DYNAMIC AI SEASONAL SUGGESTIONS ---
   const [seasonalPicks, setSeasonalPicks] = useState([]);
+  const [isLoadingSeasonal, setIsLoadingSeasonal] = useState(true);
+  
   const referenceDate = formData.startDate ? new Date(formData.startDate) : new Date();
   const safeDate = !isNaN(referenceDate.getTime()) ? referenceDate : new Date();
-  const targetMonthIndex = safeDate.getMonth(); 
   const currentMonthNameDisplay = safeDate.toLocaleString('default', { month: 'long' });
 
   useEffect(() => {
-    const monthlyRecommendations = [
-      [{ name: "Gulmarg", desc: "Peak snowfall makes it a winter paradise.", img: "https://images.unsplash.com/photo-1605640840469-60d8050e3ce4?auto=format&fit=crop&w=600&q=80" }, { name: "Jaipur", desc: "Pleasant weather for exploring forts and palaces.", img: "https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=600&q=80" }, { name: "Rann of Kutch", desc: "White desert shines during Rann Utsav.", img: "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=600&q=80" }, { name: "Goa", desc: "Ideal beach weather and lively vibe.", img: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=600&q=80" }],
-      [{ name: "Udaipur", desc: "Romantic lakes with cool breezes.", img: "https://images.unsplash.com/photo-1615861228075-1b42787383cb?auto=format&fit=crop&w=600&q=80" }, { name: "Agra", desc: "Best time to visit the Taj Mahal comfortably.", img: "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=600&q=80" }, { name: "Varkala", desc: "Cliffside beaches with peaceful views.", img: "https://images.unsplash.com/photo-1593693397690-36280732625f?auto=format&fit=crop&w=600&q=80" }, { name: "Khajuraho", desc: "Perfect weather for temple exploration.", img: "https://images.unsplash.com/photo-1600018596645-b4ebcd0662d5?auto=format&fit=crop&w=600&q=80" }],
-      [{ name: "Vrindavan", desc: "Experience vibrant Holi celebrations.", img: "https://images.unsplash.com/photo-1583089892943-e02e5ee6f50b?auto=format&fit=crop&w=600&q=80" }, { name: "Hampi", desc: "Explore surreal ancient ruins.", img: "https://images.unsplash.com/photo-1600018596645-b4ebcd0662d5?auto=format&fit=crop&w=600&q=80" }, { name: "Kaziranga", desc: "Great for wildlife spotting.", img: "https://images.unsplash.com/photo-1588636735515-68041d8e1cc3?auto=format&fit=crop&w=600&q=80" }, { name: "Rishikesh", desc: "Adventure season with river rafting.", img: "https://images.unsplash.com/photo-1605640840469-60d8050e3ce4?auto=format&fit=crop&w=600&q=80" }],
-      [{ name: "Munnar", desc: "Lush tea plantations and cool weather.", img: "https://images.unsplash.com/photo-1593693397690-36280732625f?auto=format&fit=crop&w=600&q=80" }, { name: "Darjeeling", desc: "Himalayan views and toy train rides.", img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80" }, { name: "Andaman Islands", desc: "Clear waters and beach bliss.", img: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=600&q=80" }, { name: "Mount Abu", desc: "A refreshing hill station escape.", img: "https://images.unsplash.com/photo-1623227866981-d131ec6d7c71?auto=format&fit=crop&w=600&q=80" }],
-      [{ name: "Manali", desc: "Snow-capped mountains with summer relief.", img: "https://images.unsplash.com/photo-1605640840469-60d8050e3ce4?auto=format&fit=crop&w=600&q=80" }, { name: "Leh Ladakh", desc: "High-altitude roads open for scenic travel.", img: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=600&q=80" }, { name: "Shimla", desc: "Classic hill station charm.", img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80" }, { name: "Tawang", desc: "Peaceful monasteries and scenic beauty.", img: "https://images.unsplash.com/photo-1571536802807-30451e3955d8?auto=format&fit=crop&w=600&q=80" }],
-      [{ name: "Spiti Valley", desc: "Raw landscapes for offbeat travel.", img: "https://images.unsplash.com/photo-1623227866981-d131ec6d7c71?auto=format&fit=crop&w=600&q=80" }, { name: "Auli", desc: "Green meadows and mountain views.", img: "https://images.unsplash.com/photo-1605640840469-60d8050e3ce4?auto=format&fit=crop&w=600&q=80" }, { name: "Coorg", desc: "Coffee plantations in early monsoon.", img: "https://images.unsplash.com/photo-1593693397690-36280732625f?auto=format&fit=crop&w=600&q=80" }, { name: "Ooty", desc: "Pleasant hill station retreat.", img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80" }],
-      [{ name: "Lonavala", desc: "Waterfalls and misty landscapes.", img: "https://images.unsplash.com/photo-1571536802807-30451e3955d8?auto=format&fit=crop&w=600&q=80" }, { name: "Valley of Flowers", desc: "Peak blooming season of alpine flowers.", img: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=600&q=80" }, { name: "Udaipur", desc: "Lakes look magical in the rain.", img: "https://images.unsplash.com/photo-1615861228075-1b42787383cb?auto=format&fit=crop&w=600&q=80" }, { name: "Mahabaleshwar", desc: "Foggy viewpoints and lush greenery.", img: "https://images.unsplash.com/photo-1593693397690-36280732625f?auto=format&fit=crop&w=600&q=80" }],
-      [{ name: "Munnar", desc: "Green landscapes at their peak.", img: "https://images.unsplash.com/photo-1593693397690-36280732625f?auto=format&fit=crop&w=600&q=80" }, { name: "Wayanad", desc: "Waterfalls and forest escapes.", img: "https://images.unsplash.com/photo-1571536802807-30451e3955d8?auto=format&fit=crop&w=600&q=80" }, { name: "Panchgani", desc: "Scenic plateau views.", img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80" }, { name: "Cherrapunji", desc: "Dramatic monsoon landscapes.", img: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80" }],
-      [{ name: "Ziro Valley", desc: "Scenic valley with cultural charm.", img: "https://images.unsplash.com/photo-1571536802807-30451e3955d8?auto=format&fit=crop&w=600&q=80" }, { name: "Kodaikanal", desc: "Misty lakes and calm surroundings.", img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80" }, { name: "Alleppey", desc: "Backwater houseboat experiences.", img: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=600&q=80" }, { name: "Spiti Valley", desc: "Clear skies before winter.", img: "https://images.unsplash.com/photo-1623227866981-d131ec6d7c71?auto=format&fit=crop&w=600&q=80" }],
-      [{ name: "Jaisalmer", desc: "Desert trips begin in pleasant weather.", img: "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=600&q=80" }, { name: "Varanasi", desc: "Spiritual experiences and ghats.", img: "https://images.unsplash.com/photo-1583089892943-e02e5ee6f50b?auto=format&fit=crop&w=600&q=80" }, { name: "Rishikesh", desc: "Perfect mix of yoga and adventure.", img: "https://images.unsplash.com/photo-1605640840469-60d8050e3ce4?auto=format&fit=crop&w=600&q=80" }, { name: "Kolkata", desc: "Grand Durga Puja celebrations.", img: "https://images.unsplash.com/photo-1600018596645-b4ebcd0662d5?auto=format&fit=crop&w=600&q=80" }],
-      [{ name: "Pushkar", desc: "Famous camel fair and festivities.", img: "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=600&q=80" }, { name: "Amritsar", desc: "Golden Temple looks stunning.", img: "https://images.unsplash.com/photo-1600018596645-b4ebcd0662d5?auto=format&fit=crop&w=600&q=80" }, { name: "Goa", desc: "Start of peak beach season.", img: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=600&q=80" }, { name: "Hampi", desc: "Ideal weather for exploration.", img: "https://images.unsplash.com/photo-1588636735515-68041d8e1cc3?auto=format&fit=crop&w=600&q=80" }],
-      [{ name: "Auli", desc: "Skiing and snow adventures.", img: "https://images.unsplash.com/photo-1605640840469-60d8050e3ce4?auto=format&fit=crop&w=600&q=80" }, { name: "Kerala Backwaters", desc: "Calm and scenic cruises.", img: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=600&q=80" }, { name: "Shillong", desc: "Festive Christmas vibes.", img: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80" }, { name: "Manali", desc: "Snow-covered winter escape.", img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80" }]
-    ];
-    setSeasonalPicks(monthlyRecommendations[targetMonthIndex]);
-  }, [targetMonthIndex]);
+    const fetchSeasonalPicks = async () => {
+      setIsLoadingSeasonal(true);
+      try {
+        const prompt = `You are an expert Indian travel planner. Suggest exactly 4 destinations in India that are absolutely perfect to visit in the month of ${currentMonthNameDisplay} due to weather, landscapes, or festivals.
+        Return ONLY a valid JSON array of exactly 4 objects. Do not include markdown formatting or backticks.
+        Structure MUST match exactly:
+        [
+          {
+            "name": "Destination Name",
+            "desc": "A compelling 1-sentence description of why it's great in ${currentMonthNameDisplay}."
+          }
+        ]`;
+
+        const response = await fetch('http://localhost:5051/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'qwen2.5:0.5b',
+            messages: [{ role: 'user', content: prompt }],
+            stream: false
+          })
+        });
+
+        if (!response.ok) throw new Error("Network response failed");
+
+        const data = await response.json();
+        
+        // 👇 FIX: Use RegExp constructor to avoid ESLint parsing errors
+        const jsonStartRegex = new RegExp('^```json\\s*', 'i');
+        const backtickEndRegex = new RegExp('```\\s*$', 'i');
+        let cleanJSON = data.message.content.trim().replace(jsonStartRegex, '').replace(backtickEndRegex, '');
+        
+        const aiPicks = JSON.parse(cleanJSON);
+
+        const withImages = await Promise.all(aiPicks.map(async (pick) => {
+          let img = await fetchWikiImage(pick.name);
+          return {
+            ...pick,
+            img: img || "https://images.unsplash.com/photo-1506461883276-594a12b11cf3?auto=format&fit=crop&w=600&q=80" 
+          };
+        }));
+
+        setSeasonalPicks(withImages);
+      } catch (error) {
+        console.error("Seasonal Picks AI Generation failed:", error);
+        setSeasonalPicks([
+          { name: "Manali", desc: "Snow-capped mountains with perfect seasonal relief.", img: "https://images.unsplash.com/photo-1605640840469-60d8050e3ce4?auto=format&fit=crop&w=600&q=80" },
+          { name: "Goa", desc: "Vibrant coastal energy and stunning sunsets.", img: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=600&q=80" },
+          { name: "Munnar", desc: "Lush tea plantations and misty mornings.", img: "https://images.unsplash.com/photo-1593693397690-36280732625f?auto=format&fit=crop&w=600&q=80" },
+          { name: "Udaipur", desc: "Romantic lakes and royal heritage.", img: "https://images.unsplash.com/photo-1615861228075-1b42787383cb?auto=format&fit=crop&w=600&q=80" }
+        ]);
+      } finally {
+        setIsLoadingSeasonal(false);
+      }
+    };
+
+    fetchSeasonalPicks();
+  }, [currentMonthNameDisplay]);
+
 
   // --- OLA MAPS AUTOCOMPLETE LOGIC ---
   const fetchPlaces = async (input, type) => {
@@ -296,13 +384,21 @@ const PlanTrip = () => {
   const handleSubmitRequest = (e) => {
     e.preventDefault(); 
     
+    const cartSummary = cartItems.length > 0 
+      ? `\n\n*Selected Experiences from Cart:* \n${cartItems.map((item, i) => `${i+1}. ${item.title} (${item.location})`).join('\n')}`
+      : '';
+
+    const routeSummary = routeStops.length > 0 
+      ? `\n\n*Custom Route Stops:* \n${routeStops.map((stop, i) => `${i+1}. ${stop.name}`).join('\n')}`
+      : '';
+
     const messageDetails = `*New Trip Inquiry!* ✈️
 *From:* ${formData.origin}
 *To:* ${formData.destination}
 *Dates:* ${formData.startDate} to ${formData.endDate}
 *Travelers:* ${formData.pax} Adults, ${formData.children} Children
 *Interests:* ${formData.interests || 'None'}
-*Target Plan/Experience:* ${selectedPlanDetails ? selectedPlanDetails.title : 'Custom Trip'}
+*Target Plan:* ${selectedPlanDetails ? selectedPlanDetails.title : 'Custom Trip'}${routeSummary}${cartSummary}
 *Customer Info:* ${contactValue}`;
 
     if (contactMethod === 'whatsapp') {
@@ -332,36 +428,122 @@ const PlanTrip = () => {
       <div style={{ maxWidth: '1000px', margin: '-60px auto 50px', padding: '0 20px', position: 'relative', zIndex: 10 }}>
         <div style={{ backgroundColor: 'white', borderRadius: '24px', padding: '40px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}>
           
-          {/* --- FULL DATA PREVIEW CARD --- */}
-          {selectedPlanDetails && (
+          {/* --- ROUTE TIMELINE PREVIEW (From Route Planner) --- */}
+          {routeStops.length > 0 && formData.origin && formData.destination && (
             <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '25px', marginBottom: '35px', animation: 'slideDown 0.4s ease-out' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ backgroundColor: '#16a34a', color: 'white', padding: '8px', borderRadius: '10px' }}>
-                    {itemType === 'Experience' ? <Activity size={20}/> : <ListChecks size={20}/>}
-                  </div>
-                  <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>
-                    {selectedPlanDetails.title || selectedPlanDetails.name}
-                    {selectedPlanDetails.isAiGenerated && <span style={{ marginLeft: '10px', fontSize: '11px', backgroundColor: '#e0f2fe', color: '#0284c7', padding: '4px 8px', borderRadius: '50px', verticalAlign: 'middle' }}>✨ AI Generated</span>}
-                  </h3>
-                </div>
-                <button onClick={() => {setSelectedPlanDetails(null); setItemType(null);}} style={{ background: '#f1f5f9', border: 'none', padding: '5px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', color: '#64748b' }}>Change Plan</button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e293b', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Map color="#0284c7" size={20} /> Your Custom Route
+                </h3>
+                <button 
+                  onClick={() => setRouteStops([])} 
+                  style={{ background: '#f1f5f9', border: 'none', padding: '5px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', color: '#ef4444' }}
+                >
+                  Clear Route
+                </button>
               </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', position: 'relative', paddingLeft: '15px', borderLeft: '2px dashed #cbd5e1', marginLeft: '10px' }}>
+                
+                {/* Origin Point */}
+                <div style={{ position: 'relative' }}>
+                   <div style={{ position: 'absolute', left: '-22px', top: '4px', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#111827', border: '2px solid white' }} />
+                   <h4 style={{ fontSize: '15px', fontWeight: 'bold', color: '#111827', margin: 0 }}>{formData.origin}</h4>
+                   <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>Starting Point</p>
+                </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-                <div>
-                  <p style={{ margin: '0 0 5px 0', fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>Duration</p>
-                  <p style={{ margin: 0, fontSize: '14px', color: '#334155', fontWeight: '600' }}><Clock size={14} style={{display:'inline', marginRight:'5px'}}/> {selectedPlanDetails.days || 'Flexible'}</p>
+                {/* Waypoints */}
+                {routeStops.map((stop, idx) => (
+                   <div key={idx} style={{ position: 'relative' }}>
+                      <div style={{ position: 'absolute', left: '-22px', top: '2px', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#16a34a', border: '2px solid white' }} />
+                      <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#334155', margin: 0 }}>{stop.name}</h4>
+                   </div>
+                ))}
+
+                {/* Destination Point */}
+                <div style={{ position: 'relative' }}>
+                   <div style={{ position: 'absolute', left: '-22px', top: '4px', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ea580c', border: '2px solid white' }} />
+                   <h4 style={{ fontSize: '15px', fontWeight: 'bold', color: '#111827', margin: 0 }}>{formData.destination}</h4>
+                   <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>Final Destination</p>
                 </div>
-                <div>
-                  <p style={{ margin: '0 0 5px 0', fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>Location</p>
-                  <p style={{ margin: 0, fontSize: '14px', color: '#334155', fontWeight: '600' }}><MapPin size={14} style={{display:'inline', marginRight:'5px'}}/> {selectedPlanDetails.dest || selectedPlanDetails.location}</p>
-                </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <p style={{ margin: '0 0 5px 0', fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>Key Highlights</p>
-                  <p style={{ margin: 0, fontSize: '14px', color: '#475569', lineHeight: '1.5' }}>{selectedPlanDetails.highlights || "Customizable activities based on your interests."}</p>
-                </div>
+
               </div>
+            </div>
+          )}
+
+          {/* --- DATA PREVIEW CARDS (Single Item OR Cart) --- */}
+          {(selectedPlanDetails || cartItems.length > 0) && (
+            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '25px', marginBottom: '35px', animation: 'slideDown 0.4s ease-out' }}>
+              
+              {/* Single Main Plan Detail */}
+              {selectedPlanDetails && (
+                <div style={{ marginBottom: cartItems.length > 0 ? '25px' : '0', paddingBottom: cartItems.length > 0 ? '25px' : '0', borderBottom: cartItems.length > 0 ? '1px dashed #cbd5e1' : 'none' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ backgroundColor: '#16a34a', color: 'white', padding: '8px', borderRadius: '10px' }}>
+                        {itemType === 'Experience' ? <Activity size={20}/> : <ListChecks size={20}/>}
+                      </div>
+                      <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>
+                        {selectedPlanDetails.title || selectedPlanDetails.name}
+                        {selectedPlanDetails.isAiGenerated && <span style={{ marginLeft: '10px', fontSize: '11px', backgroundColor: '#e0f2fe', color: '#0284c7', padding: '4px 8px', borderRadius: '50px', verticalAlign: 'middle' }}>✨ AI Generated</span>}
+                      </h3>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setSelectedPlanDetails(null); 
+                        setItemType(null);
+                        setFormData(prev => ({ ...prev, destination: '' }));
+                      }} 
+                      style={{ background: '#f1f5f9', border: 'none', padding: '5px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', color: '#64748b' }}
+                    >
+                      Change Plan
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+                    <div>
+                      <p style={{ margin: '0 0 5px 0', fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>Duration</p>
+                      <p style={{ margin: 0, fontSize: '14px', color: '#334155', fontWeight: '600' }}><Clock size={14} style={{display:'inline', marginRight:'5px'}}/> {selectedPlanDetails.days || 'Flexible'}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: '0 0 5px 0', fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>Location</p>
+                      <p style={{ margin: 0, fontSize: '14px', color: '#334155', fontWeight: '600' }}><MapPin size={14} style={{display:'inline', marginRight:'5px'}}/> {selectedPlanDetails.dest || selectedPlanDetails.location}</p>
+                    </div>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <p style={{ margin: '0 0 5px 0', fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>Key Highlights</p>
+                      <p style={{ margin: 0, fontSize: '14px', color: '#475569', lineHeight: '1.5' }}>
+                        {Array.isArray(selectedPlanDetails.highlights) 
+                          ? selectedPlanDetails.highlights.join(', ') 
+                          : (selectedPlanDetails.highlights || "Customizable activities based on your interests.")}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Trip Cart Section */}
+              {cartItems.length > 0 && (
+                <div>
+                  <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1e293b', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShoppingBag size={18} color="#0284c7" /> Included from your Trip Cart ({cartItems.length})
+                  </h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
+                    {cartItems.map((item) => (
+                      <div key={item.id} style={{ display: 'flex', gap: '12px', backgroundColor: 'white', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', position: 'relative' }}>
+                        <img src={item.image} alt={item.title} style={{ width: '50px', height: '50px', borderRadius: '8px', objectFit: 'cover' }} />
+                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                          <h4 style={{ fontSize: '13px', fontWeight: 'bold', color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: '0 0 2px 0' }}>{item.title}</h4>
+                          <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0 }}><MapPin size={10} style={{display:'inline'}}/> {item.location}</p>
+                        </div>
+                        <button onClick={() => removeFromCart(item.id)} title="Remove" style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '5px' }}>
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
 
@@ -461,7 +643,7 @@ const PlanTrip = () => {
             </div>
 
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Custom Requests / Interests</label>
-            <textarea rows="3" value={formData.interests} onChange={(e)=>setFormData({...formData, interests: e.target.value})} placeholder="Tell us if you want to change hotels, add extra days, or have specific interests..." style={{ width: '100%', boxSizing:'border-box', padding: '15px', borderRadius: '12px', border: '1px solid #e2e8f0', outline: 'none', marginBottom: '15px', fontFamily: 'inherit', color: '#334155' }} />
+            <textarea rows="4" value={formData.interests} onChange={(e)=>setFormData({...formData, interests: e.target.value})} placeholder="Tell us if you want to change hotels, add extra days, or have specific interests..." style={{ width: '100%', boxSizing:'border-box', padding: '15px', borderRadius: '12px', border: '1px solid #e2e8f0', outline: 'none', marginBottom: '15px', fontFamily: 'inherit', color: '#334155' }} />
 
             {/* --- INTERACTIVE TAG TOGGLES --- */}
             <div style={{ marginBottom: '35px' }}>
@@ -481,7 +663,7 @@ const PlanTrip = () => {
             </div>
 
             <button type="submit" style={{ width: '100%', padding: '18px', borderRadius: '14px', backgroundColor: '#16a34a', color: 'white', fontSize: '18px', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 10px 20px rgba(22,163,74,0.2)' }}>
-              {selectedPlanDetails ? `Confirm & Request Customization` : "Build My Itinerary"}
+              {selectedPlanDetails || cartItems.length > 0 || routeStops.length > 0 ? `Confirm & Request Customization` : "Build My Itinerary"}
             </button>
           </form>
         </div>
@@ -489,30 +671,39 @@ const PlanTrip = () => {
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
         
-        {/* 3. DYNAMIC SEASONAL SUGGESTIONS */}
+        {/* 3. DYNAMIC AI SEASONAL SUGGESTIONS */}
         <div style={{ marginBottom: '70px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '30px' }}>
-            <div style={{ padding: '10px', backgroundColor: '#fef08a', borderRadius: '12px' }}><Sun size={24} color="#ca8a04" /></div>
-            <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: 0 }}>Perfect Match for {currentMonthNameDisplay}</h2>
+            <div style={{ padding: '10px', backgroundColor: '#e0f2fe', borderRadius: '12px' }}><Bot size={24} color="#0284c7" /></div>
+            <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: 0 }}>AI Picks for {currentMonthNameDisplay}</h2>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-            {seasonalPicks.map((pick, idx) => (
-              <div 
-                key={idx} onClick={() => handleTemplateConfirm({ title: pick.name, dest: pick.name, days: "Custom Duration", highlights: pick.desc, description: "Seasonal special recommendation based on your travel dates." })}
-                style={{ backgroundColor: 'white', borderRadius: '20px', overflow: 'hidden', border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.3s ease', boxShadow: '0 4px 10px rgba(0,0,0,0.03)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = '0 15px 30px rgba(0,0,0,0.08)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.03)'; }}
-              >
-                <div style={{ height: '200px', overflow: 'hidden' }}>
-                  <img src={pick.img} alt={pick.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }} onMouseEnter={(e)=>e.currentTarget.style.transform='scale(1.05)'} onMouseLeave={(e)=>e.currentTarget.style.transform='scale(1)'}/>
+          
+          {isLoadingSeasonal ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', backgroundColor: 'white', borderRadius: '20px', border: '1px dashed #cbd5e1' }}>
+              <Loader2 size={30} color="#0284c7" className="animate-spin" style={{ marginBottom: '15px' }} />
+              <p style={{ color: '#475569', fontWeight: '500' }}>Our AI is finding the perfect weather spots for {currentMonthNameDisplay}...</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+              {seasonalPicks.map((pick, idx) => (
+                <div 
+                  key={idx} onClick={() => handleTemplateConfirm({ title: pick.name, dest: pick.name, days: "Custom Duration", highlights: pick.desc, description: "AI seasonal recommendation." })}
+                  style={{ backgroundColor: 'white', borderRadius: '20px', overflow: 'hidden', border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.3s ease', boxShadow: '0 4px 10px rgba(0,0,0,0.03)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = '0 15px 30px rgba(0,0,0,0.08)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.03)'; }}
+                >
+                  <div style={{ height: '200px', overflow: 'hidden', position: 'relative' }}>
+                    <img src={pick.img} alt={pick.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }} onMouseEnter={(e)=>e.currentTarget.style.transform='scale(1.05)'} onMouseLeave={(e)=>e.currentTarget.style.transform='scale(1)'}/>
+                    <div style={{ position: 'absolute', top: '15px', right: '15px', backgroundColor: 'rgba(2, 132, 199, 0.9)', color: 'white', padding: '4px 10px', borderRadius: '50px', fontSize: '10px', fontWeight: 'bold' }}>AI PICK</div>
+                  </div>
+                  <div style={{ padding: '25px' }}>
+                    <h4 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e293b', marginBottom: '8px' }}>{pick.name}</h4>
+                    <p style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.6' }}>{pick.desc}</p>
+                  </div>
                 </div>
-                <div style={{ padding: '25px' }}>
-                  <h4 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e293b', marginBottom: '8px' }}>{pick.name}</h4>
-                  <p style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.6' }}>{pick.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* 4. DYNAMIC ITINERARIES */}
@@ -656,7 +847,10 @@ const PlanTrip = () => {
               
               <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: '#334155', marginBottom: '10px' }}>Key Highlights</h4>
               <ul style={{ paddingLeft: '20px', color: '#475569', fontSize: '15px', lineHeight: '1.6', marginBottom: '25px' }}>
-                {(previewItin.highlights || "Customizable highlights based on your preferences.").split(', ').map((hl, i) => <li key={i} style={{ marginBottom: '8px' }}>{hl}</li>)}
+                {(Array.isArray(previewItin.highlights) 
+                  ? previewItin.highlights 
+                  : (previewItin.highlights || "Customizable highlights based on your preferences.").split(', ')
+                ).map((hl, i) => <li key={i} style={{ marginBottom: '8px' }}>{hl}</li>)}
               </ul>
 
               {previewItin.plan && previewItin.plan.length > 0 && (

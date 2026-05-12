@@ -35,6 +35,7 @@ import GamePage from "./pages/GamePage";
 import CareersPage from "./pages/CareersPage";
 import VehicleOptions from "./pages/VehicleOptions";
 import WishlistPage from "./pages/WishlistPage";
+import MeetTheTeam from "./pages/MeetTheTeam";
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -56,7 +57,7 @@ const HomePageWrapper = ({ onSearch, searchQuery, searchResults }) => {
     },
     {
       target: '.tour-nav-explore', 
-      content: 'Discover hidden gems, browse unique experiences, and read inspiring travel diaries from others.',
+      content: 'Discover hidden gems, browse unique experiences.',
       placement: 'bottom',
       disableBeacon: true,
     },
@@ -81,7 +82,7 @@ const HomePageWrapper = ({ onSearch, searchQuery, searchResults }) => {
     {
       target: '.tour-home-hero',
       content: 'Start your journey by searching for a destination right here.',
-      placement: 'center',
+      placement: 'bottom',
       disableBeacon: true, 
     },
     {
@@ -277,6 +278,7 @@ function App() {
           <Route path="/careers" element={<CareersPage />} />
           <Route path="/vehicles" element={<VehicleOptions />} />
           <Route path="/wishlist" element={<WishlistPage />} />
+          <Route path="/team" element={<MeetTheTeam />} />
         </Routes>
 
         <HoverChatbot />

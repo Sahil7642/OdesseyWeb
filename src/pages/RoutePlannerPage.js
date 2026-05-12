@@ -40,7 +40,6 @@ const getIconForCategory = (cat) => {
   }
 };
 
-// 👇 SUPER STRICT TAG & KEYWORD CATEGORIZER
 const getCategoryStrict = (f, forcedCat) => {
   const key = f.properties.osm_key || '';
   const val = f.properties.osm_value || '';
@@ -237,7 +236,6 @@ const RoutePlannerPage = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeCoords.start?.lat, routeCoords.start?.lng, routeCoords.end?.lat, routeCoords.end?.lng, itineraryStops]);
 
-  // --- 3. DYNAMIC ROUTE SCANNER: HYBRID PARALLEL FETCH ---
   useEffect(() => {
     if (routeOptions.length === 0 || !routeOptions[selectedRouteIndex]) return;
 
@@ -247,21 +245,19 @@ const RoutePlannerPage = () => {
         const currentRoute = routeOptions[selectedRouteIndex];
         const coords = currentRoute.geometry.coordinates;
 
-        // Take 4 strategic points along the route
         const searchCoords = [];
         const numSamples = 4; 
         const step = Math.max(1, Math.floor(coords.length / numSamples));
         for (let i = 0; i < coords.length; i += step) searchCoords.push({ lat: coords[i][1], lng: coords[i][0] });
         searchCoords.push({ lat: coords[coords.length - 1][1], lng: coords[coords.length - 1][0] });
 
-        // Targeted queries to GUARANTEE varied data
         const queries = [
           { term: 'hotel', defaultCat: 'Stays' },
           { term: 'restaurant', defaultCat: 'Food' },
           { term: 'fuel', defaultCat: 'Amenities' },
           { term: 'monument', defaultCat: 'Monuments' },
-          { term: 'fort', defaultCat: 'Monuments' }, // Extra specific for India
-          { term: 'temple', defaultCat: 'Monuments' }, // Extra specific for India
+          { term: 'fort', defaultCat: 'Monuments' }, 
+          { term: 'temple', defaultCat: 'Monuments' }, 
           { term: 'waterfall', defaultCat: 'Hidden Gems' },
           { term: 'viewpoint', defaultCat: 'Hidden Gems' },
           { term: 'city', defaultCat: 'Cities' },
@@ -280,7 +276,6 @@ const RoutePlannerPage = () => {
           });
         });
 
-        // Fire all 40+ micro-requests instantly in parallel
         const allResults = await Promise.all(fetchPromises);
         const flatResults = allResults.flat();
         
@@ -288,10 +283,8 @@ const RoutePlannerPage = () => {
         
         flatResults.forEach(item => {
           const f = item.feature;
-          // Drop if unnamed or not in India
           if (!f.properties.name || (f.properties.countrycode !== 'IN' && f.properties.country !== 'India')) return;
           
-          // Drop junk using strict text parsing
           const cat = getCategoryStrict(f, item.forcedCat);
           if (!cat) return;
 
@@ -314,7 +307,6 @@ const RoutePlannerPage = () => {
 
         const dynamicPlaces = Array.from(uniquePlaces.values());
         
-        // Sort so the 'All' tab looks organized and prioritizes Monuments/Cities
         dynamicPlaces.sort((a, b) => {
           const rank = { 'Cities': 1, 'Monuments': 2, 'Hidden Gems': 3, 'Food': 4, 'Stays': 5, 'Amenities': 6 };
           return rank[a.category] - rank[b.category];
@@ -329,7 +321,6 @@ const RoutePlannerPage = () => {
     return () => clearTimeout(debounceTimer);
   }, [routeOptions, selectedRouteIndex, itineraryStops]);
 
-  // --- 4. DYNAMIC WEATHER ENGINE ---
   useEffect(() => {
     if (!routeCoords.start || !routeCoords.end) return;
     const fetchWeather = async () => {
@@ -366,7 +357,6 @@ const RoutePlannerPage = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeCoords.start?.lat, routeCoords.start?.lng, routeCoords.end?.lat, routeCoords.end?.lng, itineraryStops]);
 
-  // INITIALIZE MAPLIBRE SAFELY
   useEffect(() => {
     if (!isSearching || !mapContainerRef.current) return;
 
@@ -502,7 +492,50 @@ const RoutePlannerPage = () => {
   };
   const handleDragEnd = (e) => { e.target.style.opacity = 1; };
 
-  const handleFinalize = () => { navigate('/plan', { state: { prefillPackage: { title: `Custom Drive: ${origin} to ${destination}`, location: `${origin} to ${destination}` } } }); };
+  // 👇 FIX: The handleFinalize now correctly constructs the 'interests' string 
+  // and passes origin & destination directly so PlanTrip.js automatically fills them.
+  /*const handleFinalize = () => { 
+    const stopsList = itineraryStops.map(stop => stop.name).join(', ');
+    const interestsString = stopsList.length > 0 
+      ? `Please ensure my route stops at the following locations: ${stopsList}.` 
+      : `Planning a direct drive from ${origin} to ${destination}.`;
+
+    navigate('/plan', { 
+      state: { 
+        origin: origin,
+        destination: destination,
+        interests: interestsString,
+        routeStops: itineraryStops // 👈 NEW: Passes the full array of stops to the Plan Trip page
+      } 
+    }); 
+  };*/
+  // 👇 FIX: We create a "clean" array of stops that removes the React Icon component
+  // so React Router doesn't crash when trying to save it to browser history.
+  const handleFinalize = () => { 
+    const stopsList = itineraryStops.map(stop => stop.name).join(', ');
+    const interestsString = stopsList.length > 0 
+      ? `Please ensure my route stops at the following locations: ${stopsList}.` 
+      : `Planning a direct drive from ${origin} to ${destination}.`;
+
+    const cleanStops = itineraryStops.map(stop => ({
+      id: stop.id,
+      name: stop.name,
+      lat: stop.lat,
+      lng: stop.lng,
+      type: stop.type,
+      desc: stop.desc
+      // Notice we intentionally left out the 'icon' property!
+    }));
+
+    navigate('/plan', { 
+      state: { 
+        origin: origin,
+        destination: destination,
+        interests: interestsString,
+        routeStops: cleanStops // Pass the sanitized array
+      } 
+    }); 
+  };
 
   const totalDistMeters = routeLegs.reduce((sum, leg) => sum + leg.distance, 0);
   const totalDurSeconds = routeLegs.reduce((sum, leg) => sum + leg.duration, 0);

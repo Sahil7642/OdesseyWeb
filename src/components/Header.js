@@ -660,7 +660,7 @@ export default Header;
 */
 
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ChevronDown, MapPin, Compass, Calendar, Camera, Info, MessageCircle, ArrowRight, Map, Car, LayoutGrid, Sparkles, BookOpen, Users, Briefcase, Gamepad2, Home, Heart } from 'lucide-react'; // 👈 Added Heart icon
+import { Menu, X, ChevronDown, MapPin, Compass, Calendar, Camera, Info, MessageCircle, ArrowRight, Map, Car, LayoutGrid, Sparkles, BookOpen, Users, Briefcase, Gamepad2, Home, Luggage } from 'lucide-react'; // 👈 Added Luggage (Travel Bag)
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 
 // Import your logo
@@ -730,7 +730,6 @@ const Header = () => {
       items: [
         { name: 'Discover', href: '/discover', icon: Sparkles },
         { name: 'Experiences', href: '/experiences', icon: Compass },
-        { name: 'Diaries', href: '/story', icon: Camera }
       ] 
     },
     { 
@@ -738,7 +737,6 @@ const Header = () => {
       items: [
         { name: 'Plan Trip', href: '/plan', icon: Calendar },
         { name: 'Itineraries', href: '/itinerary', icon: MapPin },
-        { name: 'Wishlist', href: '/wishlist', icon: Heart } // 👈 Added Wishlist here
       ] 
     },
     { 
@@ -756,7 +754,13 @@ const Header = () => {
         { name: 'Blog', href: '/blog', icon: BookOpen }
       ] 
     },
-    { name: 'About Us', href: '/about', icon: Info },
+    { 
+      name: 'About', 
+      items: [
+        { name: 'Our Mission', href: '/about', icon: Info },
+        { name: 'Meet the Team', href: '/team', icon: Users }
+      ] 
+    },
     { name: 'Careers', href: '/careers', icon: Briefcase },
     { name: 'Games', href: '/games', icon: Gamepad2 }
   ];
@@ -768,14 +772,14 @@ const Header = () => {
       items: [
         { label: "Discover", href: "/discover", navIcon: Sparkles },
         { label: "Experiences", href: "/experiences", navIcon: Compass },
+        { label: "Diaries", href: "/story", navIcon: Camera }
       ]
     },
     {
       title: "Plan", icon: Calendar,
       items: [
         { label: "Plan Trip", href: "/plan", navIcon: Calendar },
-        { label: "Curated Itineraries", href: "/itinerary", navIcon: MapPin },
-        { label: "My Wishlist", href: "/wishlist", navIcon: Heart } // 👈 Added Wishlist here
+        { label: "Curated Itineraries", href: "/itinerary", navIcon: MapPin }
       ]
     },
     {
@@ -797,6 +801,7 @@ const Header = () => {
       title: "About Odessey", icon: Info,
       items: [
         { label: "About Us", href: "/about", navIcon: Info },
+        { label: "Meet the Team", href: "/team", navIcon: Users },
         { label: "Careers", href: "/careers", navIcon: Briefcase },
         { label: "Arcade Games", href: "/games", navIcon: Gamepad2 }
       ]
@@ -929,9 +934,22 @@ const Header = () => {
             ))}
           </div>
 
-          <button onClick={() => setIsMenuOpen(true)} style={{ background: 'none', border: 'none', color: textColor, cursor: 'pointer', padding: '4px', transition: 'color 0.3s', display: 'flex', alignItems: 'center' }}>
-            <Menu size={28} />
-          </button>
+          {/* Right Side Icons (Wishlist + Hamburger Menu) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {/* 👇 Wishlist Travel Bag Icon */}
+            <Link 
+              to="/wishlist" 
+              style={{ color: 'green', transition: 'color 0.3s', display: 'flex', alignItems: 'center' }}
+              title="My Travel Wishlist"
+            >
+              <Luggage size={26} />
+            </Link>
+
+            {/* Hamburger Menu */}
+            <button onClick={() => setIsMenuOpen(true)} style={{ background: 'none', border: 'none', color: textColor, cursor: 'pointer', padding: '4px', transition: 'color 0.3s', display: 'flex', alignItems: 'center' }}>
+              <Menu size={28} />
+            </button>
+          </div>
         </div>
       </header>
 
